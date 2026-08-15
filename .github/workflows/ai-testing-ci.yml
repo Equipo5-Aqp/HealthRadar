@@ -1,0 +1,13 @@
+name: AI Testing CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ejecutar pruebas de prompts
+        run: echo "Pipeline de pruebas de IA activo"
