@@ -1,0 +1,355 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -288,
+        0
+      ],
+      "id": "8a482010-5f89-4fbd-b412-8952ab9543b2",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://cdn.www.gob.pe/uploads/document/file/9978635/7636617-boletin-epidemiologico-se-18-2026.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -128,
+        0
+      ],
+      "id": "61516f5a-4a24-4d8d-9186-a3e31cfb1bbe",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Aquí está el contenido extraído del boletín epidemiológico:\n{{ $json.text.substring(0, 9000) }}\n\nEres un asistente de vigilancia epidemiológica. Analiza el boletín \nepidemiológico y extrae la siguiente información:\n- Total de casos de dengue reportados\n- Casos por distrito (si están disponibles)\n- Semana epidemiológica del reporte\n- Tendencia (aumento o disminución respecto a la semana anterior)\n\nDevuelve el resultado en formato JSON estructurado.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        192,
+        0
+      ],
+      "id": "7e8a56ad-49ec-4397-ac98-4e8b3cb26502",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        192,
+        176
+      ],
+      "id": "79038cfe-3c4f-4e7b-b25e-8b73ea050856",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "o5XAFfKNA40uIJs6",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        0
+      ],
+      "id": "35300df8-599e-4861-87de-07f1345dc0c0",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "fUjTxzyQkTBzOa9Z",
+          "mode": "list",
+          "cachedResultName": "resultados_dengue",
+          "cachedResultUrl": "/projects/7ALibw1dhlYFbpmr/datatables/fUjTxzyQkTBzOa9Z"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "resultado_analisis": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "resultado_analisis"
+          ],
+          "schema": [
+            {
+              "id": "resultado_analisis",
+              "displayName": "resultado_analisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        0
+      ],
+      "id": "4ee38abf-2761-400a-a062-663488fedbbe",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -288,
+        400
+      ],
+      "id": "8fdeb580-7c1d-4754-8913-970a0179e4a7",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=-11.98&longitude=-77.01&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=America%2FLima&past_days=7",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -112,
+        400
+      ],
+      "id": "9010d86f-a596-4ca3-9c7b-29531ce59118",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "LIVFz9xlWv7M3jNI",
+          "mode": "list",
+          "cachedResultName": "datos_clima",
+          "cachedResultUrl": "/projects/7ALibw1dhlYFbpmr/datatables/LIVFz9xlWv7M3jNI"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "temp_max": "={{ $json.temp_max }}",
+            "temp_min": "={{ $json.temp_min }}",
+            "precipitacion": "={{ $json.precipitacion }}",
+            "fecha": "={{ $json.fecha }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_max",
+              "displayName": "temp_max",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_min",
+              "displayName": "temp_min",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "precipitacion",
+              "displayName": "precipitacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        400
+      ],
+      "id": "92e7e638-c4a3-4641-a206-180f253af5aa",
+      "name": "Insert row1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const data = item.json.daily;\n  \n  if (!data || !data.time) {\n    continue;\n  }\n\n  for (let i = 0; i < data.time.length; i++) {\n    output.push({\n      json: {\n        fecha: data.time[i],\n        temp_max: data.temperature_2m_max[i],\n        temp_min: data.temperature_2m_min[i],\n        precipitacion: data.precipitation_sum[i]\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        400
+      ],
+      "id": "26f41b57-3bfb-42f4-bcd3-15d87d04b6ca",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Insert row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "147598a2-8da7-4d5d-99fa-c9918e4070bf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a6df3f5f9f064f0572adcf2479c0c61e1a8b6f413bf585d30a80560e81c13ed"
+  },
+  "nodeGroups": [],
+  "id": "OdHZjcsjXCMmzejf",
+  "tags": []
+}

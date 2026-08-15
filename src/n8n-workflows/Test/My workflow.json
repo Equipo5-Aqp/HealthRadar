@@ -1,0 +1,202 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        0
+      ],
+      "id": "8a482010-5f89-4fbd-b412-8952ab9543b2",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://cdn.www.gob.pe/uploads/document/file/9978635/7636617-boletin-epidemiologico-se-18-2026.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -128,
+        0
+      ],
+      "id": "61516f5a-4a24-4d8d-9186-a3e31cfb1bbe",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Aquí está el contenido extraído del boletín epidemiológico:\n{{ $json.text.substring(0, 9000) }}\n\nEres un asistente de vigilancia epidemiológica. Analiza el boletín \nepidemiológico y extrae la siguiente información:\n- Total de casos de dengue reportados\n- Casos por distrito (si están disponibles)\n- Semana epidemiológica del reporte\n- Tendencia (aumento o disminución respecto a la semana anterior)\n\nDevuelve el resultado en formato JSON estructurado.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "7e8a56ad-49ec-4397-ac98-4e8b3cb26502",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        240,
+        176
+      ],
+      "id": "79038cfe-3c4f-4e7b-b25e-8b73ea050856",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "o5XAFfKNA40uIJs6",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        0
+      ],
+      "id": "35300df8-599e-4861-87de-07f1345dc0c0",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "fUjTxzyQkTBzOa9Z",
+          "mode": "list",
+          "cachedResultName": "resultados_dengue",
+          "cachedResultUrl": "/projects/7ALibw1dhlYFbpmr/datatables/fUjTxzyQkTBzOa9Z"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "resultado_analisis": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "resultado_analisis"
+          ],
+          "schema": [
+            {
+              "id": "resultado_analisis",
+              "displayName": "resultado_analisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        0
+      ],
+      "id": "4ee38abf-2761-400a-a062-663488fedbbe",
+      "name": "Insert row"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c0fcec8e-4bbb-401c-b671-8f0a42861aec",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a6df3f5f9f064f0572adcf2479c0c61e1a8b6f413bf585d30a80560e81c13ed"
+  },
+  "nodeGroups": [],
+  "id": "OdHZjcsjXCMmzejf",
+  "tags": []
+}
