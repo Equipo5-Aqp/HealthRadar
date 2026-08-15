@@ -1,0 +1,48 @@
+# HealthRadar — Proyecto Célula 5
+# Regla Crítica de Seguridad (ADR-008, Rol Arquitecto sección 6.8):
+# Cero credenciales expuestas en el repositorio.
+
+# === Archivos de entorno local ===
+.env
+infrastructure/.env
+**/.env
+**/*.env.local
+
+# === Carpeta de contexto local (solo uso en máquina, nunca al repo) ===
+context/
+
+# === Dependencias de Node.js ===
+node_modules/
+**/node_modules/
+
+# === Next.js ===
+.next/
+out/
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+
+# === Archivos temporales de Microsoft Office ===
+~$*
+*.tmp
+
+# === Logs ===
+*.log
+logs/
+
+# === Sistemas Operativos ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDEs y editores ===
+.vscode/settings.json
+.idea/
+*.suo
+*.user

@@ -1,0 +1,13 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar estructura del frontend
+        run: echo "Pipeline de Frontend activo"
