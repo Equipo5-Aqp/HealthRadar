@@ -1,0 +1,110 @@
+# ADR-008: Docker Compose como estrategia de despliegue self-hosted
+# Todos los servicios en la red interna healthradar-net.
+# Únicamente el servicio frontend expone puerto público al host.
+
+networks:
+  healthradar-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  n8n_data:
+    driver: local
+  langfuse_data:
+    driver: local
+
+services:
+  # Base de datos única: PostgreSQL 16 con extensión pgvector (ADR-002)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: healthradar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-healthradar_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}
+      POSTGRES_DB: ${POSTGRES_DB:-healthradar_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../src/database/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - healthradar-net
+    # Aislamiento según ADR-008: Puerto expuesto deshabilitado por defecto hacia el host público.
+    # Descomentar la siguiente línea únicamente para depuración local con DBeaver/psql:
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-healthradar_admin} -d ${POSTGRES_DB:-healthradar_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Orquestador: n8n Self-Hosted (ADR-001)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: healthradar-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST:-n8n}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-n8n_super_secret_encryption_key_2026}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-healthradar_db}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-healthradar_admin}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - healthradar-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Aislamiento según ADR-008: Puerto 5678 no expuesto al host público.
+    # Descomentar únicamente para acceder a la UI de n8n en desarrollo local:
+    # ports:
+    #   - "5678:5678"
+
+  # Observabilidad LLM: Langfuse Self-Hosted (ADR-005)
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: healthradar-langfuse
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET:-langfuse_nextauth_secret_2026_key}
+      - NEXTAUTH_URL=http://langfuse:3000
+      - SALT=${LANGFUSE_SALT:-langfuse_salt_secret_key_2026}
+      - ENCRYPTION_KEY=${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      - TELEMETRY_ENABLED=false
+    volumes:
+      - langfuse_data:/app/data
+    networks:
+      - healthradar-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend: Next.js + Rutas de API seguras (ADR-004)
+  frontend:
+    image: node:20-alpine
+    container_name: healthradar-frontend
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "tail -f /dev/null"
+    environment:
+      - NODE_ENV=development
+      - N8N_INTERNAL_URL=http://n8n:5678
+      - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
+    volumes:
+      - ../src/frontend:/app
+    networks:
+      - healthradar-net
+    depends_on:
+      - n8n
+    # CUMPLIMIENTO ADR-008: Único servicio que expone puerto público al host (3000:3000)
+    ports:
+      - "3000:3000"
