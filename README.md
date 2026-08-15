@@ -118,6 +118,7 @@ Cada decisión técnica relevante del proyecto está documentada en `infrastruct
 | [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos | Vigente |
 | [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md) | Open-Meteo como fuente de datos climáticos | Vigente |
 | [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md) | Docker Compose como estrategia de despliegue | Vigente |
+| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md) | OCI Always Free como proveedor de hosting | Vigente |
 
 ---
 
