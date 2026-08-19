@@ -5,9 +5,47 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  sast:
+    name: Análisis estático de código (SAST)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ejecutar pruebas de prompts
-        run: echo "Pipeline de pruebas de IA activo"
+      - name: Analizar con CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+      - name: Ejecutar análisis
+        uses: github/codeql-action/analyze@v3
+
+  test:
+    name: Ejecutar pruebas de prompts
+    runs-on: ubuntu-latest
+    needs: sast
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Verificar si hay credenciales de n8n configuradas
+        id: check_n8n
+        run: |
+          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ N8N_API_URL o N8N_API_KEY no configurados — se omite esta prueba"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Ejecutar pruebas de prompts contra el webhook de n8n
+        if: steps.check_n8n.outputs.skip == 'false'
+        env:
+          N8N_API_URL: ${{ secrets.N8N_API_URL }}
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+          N8N_NLQ_WEBHOOK_PATH: ${{ secrets.N8N_NLQ_WEBHOOK_PATH }}
+        run: python -m pytest test_llm_outputs.py -v
