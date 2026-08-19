@@ -3,7 +3,9 @@ name: n8n Validate CI
 on:
   pull_request:
     branches: [main]
-
+    paths:
+      - 'src/n8n-workflows/**'
+      - 'src/ia-ops/**'
 
 jobs:
   validate:
@@ -24,6 +26,7 @@ jobs:
             python3 -m json.tool "$f" > /dev/null || (echo "❌ JSON inválido: $f" && exit 1)
             echo "✅ $f válido"
           done
+
       - name: Detectar credenciales expuestas
         run: |
           echo "Buscando posibles secretos en los workflows..."

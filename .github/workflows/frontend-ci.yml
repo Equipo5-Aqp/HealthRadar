@@ -3,7 +3,9 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main]
-    
+    paths:
+      - 'src/frontend/**'
+
 jobs:
   lint:
     name: Verificar estructura del frontend
