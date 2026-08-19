@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'n8n-workflows/**'
-      - 'ia-ops/**'
+      - 'src/n8n-workflows/**'
+      - 'src/ia-ops/**'
 
 jobs:
   validate:
@@ -22,7 +22,7 @@ jobs:
       - name: Validar estructura JSON de los workflows
         run: |
           echo "Validando JSON de workflows n8n..."
-          find n8n-workflows/production n8n-workflows/templates -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
+          find src/n8n-workflows/production src/n8n-workflows/templates -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
             python3 -m json.tool "$f" > /dev/null || (echo "❌ JSON inválido: $f" && exit 1)
             echo "✅ $f válido"
           done
