@@ -13,7 +13,7 @@ jobs:
       - name: Analizar con CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: python, javascript
+          languages: python
       - name: Ejecutar análisis
         uses: github/codeql-action/analyze@v3
 
