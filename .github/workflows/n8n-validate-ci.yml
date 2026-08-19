@@ -3,11 +3,60 @@ name: n8n Validate CI
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'n8n-workflows/**'
+      - 'ia-ops/**'
 
 jobs:
   validate:
+    name: Validar JSONs de n8n
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validar JSONs de n8n
-        run: echo "Pipeline de validación n8n activo"
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validar estructura JSON de los workflows
+        run: |
+          echo "Validando JSON de workflows n8n..."
+          find n8n-workflows/production n8n-workflows/templates -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
+            python3 -m json.tool "$f" > /dev/null || (echo "❌ JSON inválido: $f" && exit 1)
+            echo "✅ $f válido"
+          done
+
+      - name: Detectar credenciales expuestas
+        run: |
+          echo "Buscando posibles secretos en los workflows..."
+          if grep -riE "api[_-]?key|password|secret|token|bearer" n8n-workflows --include="*.json"; then
+            echo "❌ Se detectaron posibles credenciales expuestas en los workflows"
+            exit 1
+          fi
+          echo "✅ Sin credenciales expuestas"
+
+  validate-live-connection:
+    name: Validación contra instancia n8n (opcional)
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Verificar si hay credenciales de n8n configuradas
+        id: check_n8n
+        run: |
+          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ N8N_API_URL o N8N_API_KEY no configurados — se omite esta validación"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Probar conexión con la instancia n8n
+        if: steps.check_n8n.outputs.skip == 'false'
+        env:
+          N8N_API_URL: ${{ secrets.N8N_API_URL }}
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: |
+          curl -sf -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_API_URL/api/v1/workflows" > /dev/null \
+            && echo "✅ Conexión exitosa con n8n" \
+            || (echo "❌ No se pudo conectar a la instancia n8n" && exit 1)
