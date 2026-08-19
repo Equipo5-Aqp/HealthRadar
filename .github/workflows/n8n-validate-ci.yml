@@ -3,9 +3,7 @@ name: n8n Validate CI
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'src/n8n-workflows/**'
-      - 'src/ia-ops/**'
+
 
 jobs:
   validate:
