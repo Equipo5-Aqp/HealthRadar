@@ -24,7 +24,6 @@ jobs:
             python3 -m json.tool "$f" > /dev/null || (echo "❌ JSON inválido: $f" && exit 1)
             echo "✅ $f válido"
           done
-
       - name: Detectar credenciales expuestas
         run: |
           echo "Buscando posibles secretos en los workflows..."
