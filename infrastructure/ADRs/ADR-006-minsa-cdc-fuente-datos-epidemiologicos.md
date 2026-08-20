@@ -15,7 +15,7 @@ agrega el problema de un formato de datos distinto. La OMS publica
 datos agregados a nivel país, sin granularidad distrital, lo que la
 hace inútil para detectar brotes en distritos específicos del Perú.
 Mezclar múltiples fuentes con formatos distintos genera inconsistencias
-en PostgreSQL y obliga a Haiku a manejar esquemas de extracción
+en PostgreSQL y obliga a Gemini a manejar esquemas de extracción
 distintos por fuente, aumentando el riesgo de datos mal insertados.
 
 ## Decisión
@@ -27,8 +27,8 @@ epidemiológicos del sistema. Esta fuente cubre tanto la carga inicial
 del historial como la ingesta dinámica semanal.
 
 Los boletines se publican en formato PDF semanalmente. n8n descarga
-el PDF, Haiku extrae los datos estructurados en JSON, y n8n inserta
-el resultado en PostgreSQL diferenciado por fecha y semana
+el PDF, Gemini Flash (ADR-003) extrae los datos estructurados en JSON,
+y n8n inserta el resultado en PostgreSQL diferenciado por fecha y semana
 epidemiológica.
 
 La OMS e INS quedan fuera de la arquitectura como fuentes de datos
@@ -42,7 +42,7 @@ dinámicos.
 **Beneficios:**
 
 - Fuente única garantiza consistencia total del esquema de datos en
-  PostgreSQL. Haiku siempre procesa el mismo formato de PDF.
+  PostgreSQL. Gemini Flash siempre procesa el mismo formato de PDF.
 - Granularidad distrital disponible, que es la granularidad necesaria
   para detectar brotes locales en el Perú.
 - Elimina el riesgo de inconsistencias por cruce de fuentes con
@@ -56,13 +56,13 @@ dinámicos.
   el boletín o cambia su formato, el sistema pierde su entrada de
   datos epidemiológicos.
 - Los cambios de formato del PDF del MINSA generan Data Drift que
-  puede romper la extracción de Haiku silenciosamente.
+  puede romper la extracción de Gemini silenciosamente.
 
 **Mitigación:**
 
-- Langfuse monitorea cada extracción de Haiku y alerta cuando el
-  JSON resultante cambia de estructura, detectando cambios de formato
-  del boletín antes de que el error llegue a PostgreSQL.
+- Arize Phoenix (ADR-010) monitorea cada extracción de Gemini Flash y
+  alerta cuando el JSON resultante cambia de estructura, detectando
+  cambios de formato del boletín antes de que el error llegue a PostgreSQL.
 - Se agrega un nodo de validación de esquema JSON en n8n entre la
-  extracción de Haiku y la inserción en PostgreSQL para rechazar
+  extracción de Gemini y la inserción en PostgreSQL para rechazar
   datos mal formados antes de contaminar la base de datos.

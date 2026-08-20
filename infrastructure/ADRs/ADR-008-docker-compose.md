@@ -1,13 +1,13 @@
 # ADR-008: Docker Compose como estrategia de despliegue self-hosted
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-004 (Next.js Frontend), ADR-005 (Langfuse)
+Relacionado con: ADR-001 (orquestación n8n), ADR-004 (Next.js Frontend), ADR-010 (Arize Phoenix)
 
 ## Contexto
 
 HealthRadar está compuesto por cuatro contenedores internos: el Frontend
 (Next.js), el orquestador de workflows (n8n), la base de datos
-(PostgreSQL + pgvector) y la plataforma de observabilidad (Langfuse).
-Los ADR-001 y ADR-005 ya mencionan que n8n y Langfuse se despliegan
+(PostgreSQL + pgvector) y la plataforma de observabilidad (Arize Phoenix).
+Los ADR-001 y ADR-010 ya mencionan que n8n y Phoenix se despliegan
 "con Docker", pero ninguno de los ADRs existentes define formalmente
 la estrategia de despliegue del sistema completo, ni resuelve dónde
 vive el contenedor del Frontend ni cómo se comunican entre sí los
@@ -44,7 +44,7 @@ Se evaluaron tres alternativas de orquestación de despliegue:
 Se utilizará **Docker Compose** como única estrategia de despliegue de
 HealthRadar, en un solo host. Los cuatro contenedores del sistema —
 Frontend (Next.js), Orquestador (n8n), Base de Datos (PostgreSQL +
-pgvector) y Observabilidad (Langfuse) — se definen en un mismo archivo
+pgvector) y Observabilidad (Arize Phoenix) — se definen en un mismo archivo
 `docker-compose.yml` en la raíz del repositorio.
 
 Reglas de la estrategia de despliegue:
@@ -56,19 +56,20 @@ Reglas de la estrategia de despliegue:
   contenedor expone puertos innecesarios al host.
 - **Puertos expuestos al host:** únicamente el Frontend (Next.js)
   expone un puerto público, ya que es el único contenedor que debe ser
-  accesible desde fuera de la red interna. n8n, PostgreSQL y Langfuse
+  accesible desde fuera de la red interna. n8n, PostgreSQL y Phoenix
   no exponen puertos públicos; solo son alcanzables entre sí dentro de
   la red interna de Docker Compose.
 - **Variables de entorno y credenciales:** todas las credenciales
-  (tokens de webhook de n8n, claves de conexión a PostgreSQL, tokens
-  de Langfuse) se inyectan mediante un archivo `.env` en la raíz del
+  (tokens de webhook de n8n, claves de conexión a PostgreSQL, secretos
+  de Phoenix) se inyectan mediante un archivo `.env` en la raíz del
   repositorio, nunca escritas directamente en el `docker-compose.yml`
   ni en el código, conforme a la regla crítica de "cero credenciales
   expuestas" (`mi_rol_arquitecto.md`, sección 6).
-- **Persistencia de datos:** PostgreSQL y Langfuse usan volúmenes
-  nombrados de Docker para persistir datos entre reinicios de los
-  contenedores. n8n usa un volumen para persistir los workflows y
-  credenciales configuradas en su interfaz.
+- **Persistencia de datos:** PostgreSQL y Phoenix usan volúmenes
+  nombrados de Docker (`postgres_data`, `phoenix_data`) para persistir
+  datos entre reinicios de los contenedores. n8n usa un volumen
+  (`n8n_data`) para persistir los workflows y credenciales configuradas
+  en su interfaz.
 - **Política de reinicio:** todos los servicios usan
   `restart: unless-stopped`, de modo que ante una caída del host o de
   un contenedor individual, Docker los reinicia automáticamente sin
@@ -89,7 +90,7 @@ Reglas de la estrategia de despliegue:
   aprender una herramienta de orquestación adicional para un sistema
   de cuatro contenedores en un solo host.
 - Superficie de ataque reducida: solo el Frontend expone un puerto
-  público; n8n, PostgreSQL y Langfuse permanecen inaccesibles desde
+  público; n8n, PostgreSQL y Phoenix permanecen inaccesibles desde
   fuera de la red interna de Docker, incluso si sus credenciales se
   vieran comprometidas por otra vía.
 - Un único archivo `docker-compose.yml` es versionable en el

@@ -1,5 +1,9 @@
 # ADR-005: Uso de Langfuse como plataforma de observabilidad para LLMs
 
+**Estado:** Reemplazado por [ADR-010](ADR-010-arize-phoenix-observabilidad-llms.md) (2026-08-19)
+
+> **Nota de reemplazo:** Langfuse v2 alcanzó fin de ciclo de vida (EOL) en Q1-2025. Su versión moderna (v3+) requiere una arquitectura distribuida de 6 contenedores (ClickHouse, Redis, MinIO, Web, Worker, PostgreSQL) inviable para el host de recursos Always Free en OCI (ADR-009). Se adoptó Arize Phoenix en ADR-010 como solución en un único contenedor.
+
 ## Contexto
 
 HealthRadar utiliza dos modelos de lenguaje distintos en momentos

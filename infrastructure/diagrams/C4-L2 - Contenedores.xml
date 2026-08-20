@@ -1,100 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" pages="2">
-  <diagram id="qNj_1NJToft5jFdB2bcX" name="L1 - Contexto">
-    <mxGraphModel dx="1493" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="apeNcyoYZnIZHolvLKNO-38" edge="1" parent="1" source="apeNcyoYZnIZHolvLKNO-21" style="endArrow=classic;html=1;rounded=0;exitX=0.85;exitY=1.032;exitDx=0;exitDy=0;strokeWidth=2;startArrow=classic;startFill=1;exitPerimeter=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;entryPerimeter=0;" target="apeNcyoYZnIZHolvLKNO-30" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="390" y="330" as="sourcePoint" />
-            <mxPoint x="470" y="570" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <object placeholders="1" c4Name="HealthRadar" c4Type="Sistema de Software" c4Description="Automatiza la vigilancia epidemiológica" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-21">
-          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#1061B0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#0D5091;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="305" y="280" as="geometry" />
-          </mxCell>
-        </object>
-        <object placeholders="1" c4Name="MINSA / CDC Perú" c4Type="Sistema Externo" c4Description="Única fuente de datos epidemiológicos. &#xa;Provee historial y boletines semanales en PDF." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-22">
-          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="670" y="40" as="geometry" />
-          </mxCell>
-        </object>
-        <object placeholders="1" c4Name="Open-Meteo" c4Type="Sistema Externo" c4Description="Única fuente de datos climáticos. API REST abierta que provee historial desde 1940 y datos semanales" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-24">
-          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="670" y="180" as="geometry" />
-          </mxCell>
-        </object>
-        <object placeholders="1" c4Name="Anthropic Haiku 4.5" c4Type="Sistema Externo — LLM" c4Description="LLM para extracción de datos desde PDFs de boletines. Devuelve JSON limpio para insertar en PostgreSQL" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-29">
-          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="670" y="400" as="geometry" />
-          </mxCell>
-        </object>
-        <object placeholders="1" c4Name="xAI Grok API" c4Type="Sistema Externo — LLM" c4Description="Genera reportes predictivos en lenguaje natural a partir de datos limpios de PostgreSQL." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-30">
-          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="670" y="530" as="geometry" />
-          </mxCell>
-        </object>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-34" edge="1" parent="1" source="apeNcyoYZnIZHolvLKNO-22" style="endArrow=classic;html=1;rounded=0;exitX=0.007;exitY=0.976;exitDx=0;exitDy=0;exitPerimeter=0;strokeWidth=2;entryX=0.85;entryY=0.012;entryDx=0;entryDy=0;entryPerimeter=0;" target="apeNcyoYZnIZHolvLKNO-21" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="480" y="120" as="sourcePoint" />
-            <mxPoint x="470" y="170" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-35" edge="1" parent="1" source="apeNcyoYZnIZHolvLKNO-24" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;strokeWidth=2;entryX=1;entryY=0.25;entryDx=0;entryDy=0;entryPerimeter=0;" target="apeNcyoYZnIZHolvLKNO-21" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="647" y="110" as="sourcePoint" />
-            <mxPoint x="550.72" y="240" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-37" edge="1" parent="1" source="apeNcyoYZnIZHolvLKNO-21" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;startArrow=classic;startFill=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;entryPerimeter=0;" target="apeNcyoYZnIZHolvLKNO-29" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="450" y="330" as="sourcePoint" />
-            <mxPoint x="454.44" y="390" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <object placeholders="1" c4Name="Analista de Salud&#xa;Pública" c4Type="Persona" c4Description="Realiza consultas NLQ y visualiza reportes de brotes epidemiológicos" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-39">
-          <mxCell parent="1" style="html=1;fontSize=11;dashed=0;whiteSpace=wrap;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;shape=mxgraph.c4.person2;align=center;metaEdit=1;points=[[0.5,0,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0]];resizable=0;" vertex="1">
-            <mxGeometry height="180" width="200" x="10" y="160" as="geometry" />
-          </mxCell>
-        </object>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-40" edge="1" parent="1" source="apeNcyoYZnIZHolvLKNO-39" style="endArrow=openThin;html=1;rounded=0;endFill=0;strokeWidth=2;startArrow=classic;startFill=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="200" y="289.96" as="sourcePoint" />
-            <mxPoint x="300" y="295" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <object placeholders="1" c4Name="Modelos de Lenguaje (LLMs)" c4Type="ContainerScopeBoundary" c4Application="Contenedor" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;&lt;div style=&quot;text-align: left&quot;&gt;%c4Name%&lt;/div&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left&quot;&gt;[%c4Application%]&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-44">
-          <mxCell parent="1" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=20;fillColor=none;strokeColor=#666666;fontColor=#333333;labelBackgroundColor=none;align=left;verticalAlign=bottom;labelBorderColor=none;spacingTop=0;spacing=10;dashPattern=8 4;metaEdit=1;rotatable=0;perimeter=rectanglePerimeter;noLabel=0;labelPadding=0;allowArrows=0;connectable=0;expand=0;recursiveResize=0;editable=1;pointerEvents=0;absoluteArcSize=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="315" width="270" x="655" y="385" as="geometry" />
-          </mxCell>
-        </object>
-        <object placeholders="1" c4Name="Fuentes de Datos Abiertos" c4Type="ContainerScopeBoundary" c4Application="Contenedor" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;&lt;div style=&quot;text-align: left&quot;&gt;%c4Name%&lt;/div&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left&quot;&gt;[%c4Application%]&lt;/div&gt;" id="apeNcyoYZnIZHolvLKNO-46">
-          <mxCell parent="1" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=20;fillColor=none;strokeColor=#666666;fontColor=#333333;labelBackgroundColor=none;align=left;verticalAlign=bottom;labelBorderColor=none;spacingTop=0;spacing=10;dashPattern=8 4;metaEdit=1;rotatable=0;perimeter=rectanglePerimeter;noLabel=0;labelPadding=0;allowArrows=0;connectable=0;expand=0;recursiveResize=0;editable=1;pointerEvents=0;absoluteArcSize=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="340" width="270" x="655" y="20" as="geometry" />
-          </mxCell>
-        </object>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-47" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Consulta NLQ / Recibe reporte de brotes&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="30" width="110" x="210" y="260" as="geometry" />
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-49" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Datos estructurados para NLQ" vertex="1">
-          <mxGeometry height="30" width="110" x="530" y="520" as="geometry" />
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-50" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Contenido PDF para extracción" vertex="1">
-          <mxGeometry height="30" width="110" x="545" y="410" as="geometry" />
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-51" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Boletines PDF semanales" vertex="1">
-          <mxGeometry height="30" width="110" x="540" y="160" as="geometry" />
-        </mxCell>
-        <mxCell id="apeNcyoYZnIZHolvLKNO-53" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Datos climatologicos semanales" vertex="1">
-          <mxGeometry height="30" width="110" x="555" y="250" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="app.diagrams.net">
   <diagram id="Yqt9Pe3MDHLw-l0pj72x" name="L2 - Contenedores">
-    <mxGraphModel dx="1493" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1306" dy="640" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -103,47 +10,47 @@
             <mxGeometry height="180" width="200" x="20" y="130" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="HealthRadar" c4Type="ContainerScopeBoundary" c4Application="Sistema de Software" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;&lt;div style=&quot;text-align: left&quot;&gt;%c4Name%&lt;/div&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left&quot;&gt;[%c4Application%]&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-2">
+        <object placeholders="1" c4Name="HealthRadar (Host Único Docker Compose — ADR-008/009)" c4Type="ContainerScopeBoundary" c4Application="Sistema de Software" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;&lt;div style=&quot;text-align: left&quot;&gt;%c4Name%&lt;/div&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left&quot;&gt;[%c4Application%]&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-2">
           <mxCell parent="1" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=10;fillColor=none;strokeColor=#666666;fontColor=#333333;labelBackgroundColor=none;align=left;verticalAlign=bottom;labelBorderColor=none;spacingTop=0;spacing=10;dashPattern=8 4;metaEdit=1;rotatable=0;perimeter=rectanglePerimeter;noLabel=0;labelPadding=0;allowArrows=0;connectable=0;expand=0;recursiveResize=0;editable=1;pointerEvents=0;absoluteArcSize=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="500" width="600" x="320" y="100" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Frontend Web" c4Type="Contenedor: Next.js" c4Description="Dashboards, mapas de calor y campo de consulta NLQ.&#xa;Expone rutas de API server-side (/api/query) como proxy seguro hacia n8n. SSR + Static Generation." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-3">
+        <object placeholders="1" c4Name="Frontend Web" c4Type="Contenedor: Next.js" c4Description="Dashboards, mapas de calor y campo de consulta NLQ.&#xa;Expone rutas de API server-side (/api/query) como proxy seguro hacia n8n. SSR + Static Generation (ADR-004)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-3">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="340" y="160" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Orquestador de Workflows" c4Type="Contenedor: n8n Self-Hosted" c4Description="Única capa de orquestación. Workflow de ingesta (Schedule Trigger) y workflow de consulta NLQ (Webhook). Ningún componente interactúa entre sí sin pasar por aquí." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-4">
+        <object placeholders="1" c4Name="Orquestador de Workflows" c4Type="Contenedor: n8n Self-Hosted" c4Description="Única capa de orquestación. Workflow de ingesta (Schedule Trigger) y workflow de consulta NLQ (Webhook). Ningún componente interactúa entre sí sin pasar por aquí (ADR-001)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-4">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="670" y="160" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Base de Datos" c4Type="Contenedor: PostgreSQL + pgvector" c4Description="Única base de datos. Almacena historial epidemiológico/climático estructurado y embeddings vectoriales, sin BD vectorial separada." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-5">
+        <object placeholders="1" c4Name="Base de Datos" c4Type="Contenedor: PostgreSQL + pgvector" c4Description="Única base de datos. Almacena historial epidemiológico/climático estructurado, embeddings vectoriales y metadata de trazas (ADR-002)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-5">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="665" y="420" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Observabilidad" c4Type="Contenedor: Langfuse Self-Hosted" c4Description="Recibe trazas HTTP de cada llamada a Haiku o Grok (prompt, respuesta, tokens, latencia). Detecta Data Drift y Prompt Drift. Operación pasiva, en Docker junto a n8n y PostgreSQL." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-6">
+        <object placeholders="1" c4Name="Observabilidad" c4Type="Contenedor: Arize Phoenix Self-Hosted" c4Description="Recibe trazas HTTP/OTel de cada llamada a Gemini o Claude (prompt, respuesta, tokens, latencia). Detecta Data Drift y Prompt Drift. Persistencia en PostgreSQL existente (ADR-010)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-6">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="340" y="420" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="MINSA / CDC Perú" c4Type="Sistema Externo" c4Description="Única fuente de datos epidemiológicos.&#xa;Provee historial y boletines semanales en PDF." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-7">
+        <object placeholders="1" c4Name="MINSA / CDC Perú" c4Type="Sistema Externo" c4Description="Única fuente de datos epidemiológicos.&#xa;Provee historial y boletines semanales en PDF (ADR-006)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-7">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="1020" y="40" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Open-Meteo" c4Type="Sistema Externo" c4Description="Única fuente de datos climáticos. API REST abierta que provee historial desde 1940 y datos semanales." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-8">
+        <object placeholders="1" c4Name="Open-Meteo" c4Type="Sistema Externo" c4Description="Única fuente de datos climáticos. API REST abierta que provee historial desde 1940 y datos semanales (ADR-007)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-8">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="1020" y="180" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="Anthropic Haiku 4.5" c4Type="Sistema Externo — LLM" c4Description="LLM para extracción de datos desde PDFs de boletines. Devuelve JSON limpio para insertar en PostgreSQL. Solo opera en el workflow de ingesta." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-9">
+        <object placeholders="1" c4Name="Google Gemini Flash" c4Type="Sistema Externo — LLM" c4Description="LLM para extracción de datos y tablas desde PDFs de boletines. Devuelve JSON estructurado. Solo opera en el workflow de ingesta (ADR-003)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-9">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="1020" y="357.5" as="geometry" />
           </mxCell>
         </object>
-        <object placeholders="1" c4Name="xAI Grok API" c4Type="Sistema Externo — LLM" c4Description="Genera reportes predictivos en lenguaje natural a partir de datos limpios de PostgreSQL. Solo opera en el workflow de consulta NLQ." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-10">
+        <object placeholders="1" c4Name="Claude Haiku (Anthropic)" c4Type="Sistema Externo — LLM" c4Description="Genera reportes predictivos y analíticos en lenguaje natural a partir de datos limpios de PostgreSQL. Solo opera en el workflow de consulta NLQ (ADR-003)." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="SuDUc3XnyLYxiTWAExNs-10">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#8C8496;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#736782;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
             <mxGeometry height="120" width="240" x="1020" y="492.5" as="geometry" />
           </mxCell>
@@ -181,7 +88,7 @@
             <mxPoint x="480" y="480" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="SuDUc3XnyLYxiTWAExNs-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Envía traza HTTP (prompt, respuesta, tokens, latencia) por cada llamada LLM" vertex="1">
+        <mxCell id="SuDUc3XnyLYxiTWAExNs-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Envía traza HTTP/OTel (prompt, respuesta, tokens, latencia) por cada llamada LLM" vertex="1">
           <mxGeometry height="45" width="130" x="460" y="350" as="geometry" />
         </mxCell>
         <mxCell id="SuDUc3XnyLYxiTWAExNs-19" edge="1" parent="1" source="SuDUc3XnyLYxiTWAExNs-4" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;strokeWidth=2;endFill=1;" target="SuDUc3XnyLYxiTWAExNs-7" value="">
@@ -193,9 +100,9 @@
         <mxCell id="SuDUc3XnyLYxiTWAExNs-20" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Descarga boletín PDF semanal" vertex="1">
           <mxGeometry height="30" width="90" x="920" y="130" as="geometry" />
         </mxCell>
-        <mxCell id="SuDUc3XnyLYxiTWAExNs-21" edge="1" parent="1" source="SuDUc3XnyLYxiTWAExNs-4" style="endArrow=classic;html=1;rounded=0;exitX=0.988;exitY=0.659;exitDx=0;exitDy=0;strokeWidth=2;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;exitPerimeter=0;" target="SuDUc3XnyLYxiTWAExNs-8" value="">
+        <mxCell id="SuDUc3XnyLYxiTWAExNs-21" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="SuDUc3XnyLYxiTWAExNs-8" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="910" y="220" as="sourcePoint" />
+            <mxPoint x="910" y="240" as="sourcePoint" />
             <mxPoint x="980" y="320" as="targetPoint" />
           </mxGeometry>
         </mxCell>
@@ -219,6 +126,15 @@
         </mxCell>
         <mxCell id="SuDUc3XnyLYxiTWAExNs-26" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Envía datos estructurados, recibe reporte NL (solo workflow NLQ)" vertex="1">
           <mxGeometry height="45" width="120" x="925" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="phoenix-pg-link" edge="1" parent="1" source="SuDUc3XnyLYxiTWAExNs-6" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=1;dashed=1;endFill=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SuDUc3XnyLYxiTWAExNs-5" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="580" y="480" as="sourcePoint" />
+            <mxPoint x="660" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="phoenix-pg-text" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=9;" value="Persiste trazas en BD existente (ADR-010)" vertex="1">
+          <mxGeometry height="30" width="80" x="580" y="460" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
