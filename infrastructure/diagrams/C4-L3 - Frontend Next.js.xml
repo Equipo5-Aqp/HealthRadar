@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="L3 - Frontend Next.js" id="hIrsEfSCWJoJOxprQSHG">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1300" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object placeholders="1" c4Name="Frontend Web (Next.js — ADR-004)" c4Type="ContainerScopeBoundary" c4Application="Contenedor" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;&lt;div style=&quot;text-align: left&quot;&gt;%c4Name%&lt;/div&gt;&lt;/b&gt;&lt;/font&gt;&lt;div style=&quot;text-align: left&quot;&gt;[%c4Application%]&lt;/div&gt;" id="fe-boundary-01">
+          <mxCell parent="1" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=10;fillColor=none;strokeColor=#666666;fontColor=#333333;labelBackgroundColor=none;align=left;verticalAlign=bottom;labelBorderColor=none;spacingTop=0;spacing=10;dashPattern=8 4;metaEdit=1;rotatable=0;perimeter=rectanglePerimeter;noLabel=0;labelPadding=0;allowArrows=0;connectable=0;expand=0;recursiveResize=0;editable=1;pointerEvents=0;absoluteArcSize=1;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
+            <mxGeometry height="410" width="1240" x="30" y="270" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="fe-label-ui" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontSize=12;fontStyle=1;" value="Componentes de interfaz (client-side)" vertex="1">
+          <mxGeometry height="20" width="400" x="60" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-label-api" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontSize=12;fontStyle=1;" value="Rutas de API (server-side) — proxy seguro hacia n8n (ADR-004)" vertex="1">
+          <mxGeometry height="20" width="500" x="70" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-note-assumption" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontSize=10;fontColor=#2E6295;fontStyle=2;" value="ℹ /api/dashboard y /api/query actúan como proxy server-side para no exponer tokens de n8n en el cliente." vertex="1">
+          <mxGeometry height="30" width="280" x="870" y="560" as="geometry" />
+        </mxCell>
+        <object placeholders="1" c4Name="Dashboard General" c4Type="Componente" c4Description="Mapas de calor de vectores y zonas de riesgo (ADR-004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-01">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="60" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Alertas de Brotes" c4Type="Componente" c4Description="Notificaciones de brotes detectados (ADR-004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-02">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="230" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Mapa Base de Distritos" c4Type="Componente" c4Description="Static Generation — mapa base del Perú (ADR-004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-03">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="400" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Vista de Datos Históricos" c4Type="Componente" c4Description="Explora los 20 años de historial epidemiológico/climático (ADR-002)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-04">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="570" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Selector de Distrito" c4Type="Componente" c4Description="Filtra por distrito (1,838 distritos, ADR-006/007)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-05">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="740" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Filtro de Semana Epidemiológica" c4Type="Componente" c4Description="Filtra por semana epidemiológica (ADR-006)" label="&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-06">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="910" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Chat NLQ" c4Type="Componente" c4Description="Barra de mensajes tipo chat para consultas NLQ independientes a n8n (ADR-003/004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-07">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#85BBF0;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#6C8EBF;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="90" width="150" x="1080" y="320" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="/api/query" c4Type="Componente: Ruta API (server-side)" c4Description="Proxy seguro hacia el webhook NLQ de n8n. Credenciales solo en servidor (ADR-004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-08">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="100" width="220" x="280" y="535" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="/api/dashboard" c4Type="Componente: Ruta API (server-side)" c4Description="Proxy server-side hacia n8n para lectura de métricas agregadas del dashboard e histórico (ADR-004)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#f0f0f0&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-c-09">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;strokeWidth=1;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="100" width="220" x="640" y="560" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Orquestador de Workflows (n8n)" c4Type="Contenedor" c4Description="Ver L2 / L3-n8n (ADR-001)" label="&lt;font style=&quot;font-size: 13px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 10px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-x-n8n">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;fontColor=#ffffff;align=center;arcSize=10;strokeColor=#2E6295;metaEdit=1;resizable=0;" vertex="1">
+            <mxGeometry height="100" width="220" x="490" y="710" as="geometry" />
+          </mxCell>
+        </object>
+        <object placeholders="1" c4Name="Analista de Salud&#xa;Pública" c4Type="Persona" c4Description="Interactúa con el dashboard y el chat NLQ" label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;&lt;font color=&quot;#cccccc&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="fe-actor-01">
+          <mxCell parent="1" style="html=1;fontSize=11;dashed=0;whiteSpace=wrap;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;shape=mxgraph.c4.person2;align=center;metaEdit=1;points=[[0.5,0,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0]];resizable=0;" vertex="1">
+            <mxGeometry height="180" width="200" x="500" y="40" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="fe-e-01" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=0.042;exitY=0.877;exitDx=0;exitDy=0;exitPerimeter=0;" target="fe-c-01" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="740" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fe-e-02" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=0.099;exitY=0.998;exitDx=0;exitDy=0;exitPerimeter=0;" target="fe-c-02" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-03" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=0.556;exitY=1.004;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="fe-c-04" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="611.2" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fe-e-04" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=0.894;exitY=0.947;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;exitPerimeter=0;" target="fe-c-05" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-05" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=0.939;exitY=0.902;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;exitPerimeter=0;" target="fe-c-06" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-06" edge="1" parent="1" source="fe-actor-01" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;endFill=1;exitX=1.002;exitY=0.852;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;exitPerimeter=0;" target="fe-c-07" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-07" edge="1" parent="1" source="fe-c-07" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;endFill=1;exitX=0.5;exitY=1;entryX=1;entryY=0;" target="fe-c-08" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-label-e07" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=9;" value="Envía mensaje" vertex="1">
+          <mxGeometry height="20" width="90" x="1010" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-08" edge="1" parent="1" source="fe-c-01" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.5;exitY=1;entryX=0.2;entryY=0;" target="fe-c-09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-09" edge="1" parent="1" source="fe-c-02" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.5;exitY=1;entryX=0.35;entryY=0;" target="fe-c-09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-10" edge="1" parent="1" source="fe-c-04" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="fe-c-09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-11" edge="1" parent="1" source="fe-c-05" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.5;exitY=1;entryX=0.65;entryY=0;" target="fe-c-09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-12" edge="1" parent="1" source="fe-c-06" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.5;exitY=1;entryX=0.8;entryY=0;" target="fe-c-09" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-13" edge="1" parent="1" source="fe-c-08" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;endFill=1;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" target="fe-x-n8n" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-e-14" edge="1" parent="1" source="fe-c-09" style="endArrow=classic;html=1;rounded=0;dashed=1;strokeWidth=1;endFill=1;exitX=0.7;exitY=1;entryX=0.7;entryY=0;" target="fe-x-n8n" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-note-static" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=9;fontStyle=2;" value="(Static Generation: no llama a ninguna API en runtime)" vertex="1">
+          <mxGeometry height="30" width="150" x="400" y="410" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

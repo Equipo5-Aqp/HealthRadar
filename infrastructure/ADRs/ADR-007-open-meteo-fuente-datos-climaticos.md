@@ -83,5 +83,6 @@ del flujo automatizado.
 - En el ADR se documenta SENAMHI como fuente de migración prioritaria
   si Open-Meteo deja de estar disponible, en caso de que SENAMHI
   habilite acceso programático en el futuro.
-- Langfuse monitorea las respuestas de Open-Meteo y alerta si la
-  estructura del JSON cambia inesperadamente.
+- Arize Phoenix (ADR-010) monitorea la latencia y trazabilidad de las
+  respuestas de Open-Meteo mediante n8n para alertar si la estructura
+  del JSON cambia inesperadamente.

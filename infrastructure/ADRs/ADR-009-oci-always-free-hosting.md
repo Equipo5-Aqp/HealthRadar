@@ -1,6 +1,6 @@
 # ADR-009: Oracle Cloud Infrastructure (OCI) Always Free como proveedor de hosting para el host único de Docker Compose
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-005 (observabilidad Langfuse), ADR-008 (Docker Compose)
+Relacionado con: ADR-001 (orquestación n8n), ADR-010 (observabilidad Arize Phoenix), ADR-008 (Docker Compose)
 
 ## Contexto
 
@@ -13,12 +13,13 @@ VPS económico o AWS EC2/Azure VM". Queda descartado el uso de n8n Cloud
 u otro servicio gestionado equivalente, porque contradice la premisa de
 self-hosted de ADR-001.
 
-El dimensionamiento del host no es trivial. Langfuse (ADR-005) se
-despliega en producción como seis contenedores (Web, Worker, PostgreSQL,
-ClickHouse, Redis, MinIO), con una recomendación oficial de 4 vCPU y
-8-16 GB de RAM para un uso cómodo. Sumado a n8n, la base de datos propia
-PostgreSQL/pgvector (ADR-002) y el Frontend Next.js (ADR-004), el host
-elegido necesita margen de RAM significativo, no solo CPU.
+El dimensionamiento del host requiere atención. Langfuse v3+ requería
+seis contenedores (Web, Worker, ClickHouse, Redis, MinIO, PostgreSQL)
+con 4-8 GB de RAM solo para observabilidad, lo cual motivó la adopción
+de Arize Phoenix en ADR-010 (un único contenedor sobre el PostgreSQL ya
+existente). Con Arize Phoenix, n8n (ADR-001), PostgreSQL/pgvector (ADR-002)
+y el Frontend Next.js (ADR-004), el host opera de manera holgada dentro
+del margen de memoria disponible.
 
 Se evaluaron tres alternativas dentro de las permitidas por la
 documentación del curso:
@@ -65,8 +66,9 @@ Reglas específicas de esta decisión:
 **Beneficios:**
 
 - 12 GB de RAM disponibles de forma permanente y sin costo, frente a 1
-  GB del free tier de AWS EC2, lo cual es determinante dado el consumo
-  real de Langfuse (seis contenedores).
+  GB del free tier de AWS EC2, lo cual garantiza que el stack completo
+  (PostgreSQL, n8n, Next.js y Arize Phoenix) corra holgado y sin riesgo
+  de caídas por falta de memoria (OOM).
 - Al ser Always Free (no un trial de 6 o 12 meses), no hay riesgo de
   quedarse sin infraestructura a mitad del proyecto por agotamiento de
   créditos, como sí ocurre con AWS EC2 tras julio de 2025.

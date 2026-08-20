@@ -43,11 +43,13 @@ Closes #<!-- Número del Issue en GitHub Projects. Obligatorio. Sin este campo e
 ## Cumplimiento de arquitectura
 
 - [ ] El Frontend no llama directamente a PostgreSQL ni a ninguna API de IA
-- [ ] Todo flujo de datos pasa por n8n (Frontend → /api/query → n8n → DB/LLM)
-- [ ] Si se modificó el `docker-compose.yml`, solo el Frontend expone puerto público al host
+- [ ] Todo flujo de datos pasa por n8n (Frontend → /api/query → n8n → DB/LLM) (ADR-001/004)
+- [ ] Los flujos de IA respetan la división por momento de operación: Gemini Flash para ingesta PDF y Claude Haiku para consultas NLQ (ADR-003)
+- [ ] Si se modificó el `docker-compose.yml`, solo el Frontend expone puerto público al host por defecto (ADR-008)
 - [ ] Si se agregó un workflow de n8n, el JSON exportado está en `src/n8n-workflows/`
-- [ ] Si se agregaron o modificaron prompts, están en `src/ia-ops/prompts/` y no hardcodeados en el nodo de n8n
-- [ ] Si se invocó un LLM en n8n, el workflow incluye el nodo de envío de traza a Langfuse
+- [ ] Si se agregaron o modificaron prompts, están versionados en `src/ia-ops/prompts/` y no hardcodeados
+- [ ] Si se invocó un LLM en n8n, el workflow incluye el nodo de envío de traza a Arize Phoenix (ADR-010)
+- [ ] Si se crearon o modificaron tablas, las migraciones SQL están en `src/database/migrations/` (ADR-002)
 
 ## Pruebas realizadas
 

@@ -6,28 +6,36 @@ HealthRadar requiere dos capacidades distintas de inteligencia artificial:
 procesar PDFs de boletines epidemiológicos del MINSA para extraer datos
 estructurados, y responder consultas en lenguaje natural de analistas de
 salud pública sobre datos históricos y recientes. Usar un único modelo
-para ambas tareas implica un costo mayor y acopla innecesariamente dos
-responsabilidades con naturalezas distintas. Adicionalmente, modelos como
-Grok no están optimizados para extracción de documentos no estructurados,
-y modelos multimodales más capaces tienen un costo por token más alto para
-tareas de generación de texto simple.
+para ambas tareas implica un costo mayor, riesgo de saturación de cuotas
+y acopla innecesariamente dos responsabilidades con naturalezas distintas.
+
+Se evaluaron modelos especializados para cada caso:
+- Para extracción de PDFs: Se requiere alta capacidad multimodal y ventana
+  de contexto amplia para leer documentos de hasta 50 páginas sin necesidad
+  de OCR previo propenso a errores en tablas.
+- Para consultas NLQ: Se requiere precisión de seguimiento de instrucciones,
+  síntesis analítica y redacción en español para salud pública, operando sobre
+  datos ya estructurados provistos por PostgreSQL.
 
 ## Decisión
 
-Se utilizarán dos modelos de lenguaje distintos, cada uno operando en un
-momento diferente del sistema, sin solapamiento:
+Se utilizarán dos modelos de lenguaje distintos de proveedores independientes
+(Google y Anthropic), cada uno operando en un momento diferente del sistema,
+sin solapamiento:
 
-- **Claude Haiku 4.5 (Anthropic)** opera exclusivamente durante el flujo
-  de ingesta semanal. Su única responsabilidad es leer el contenido
-  extraído de los PDFs de boletines epidemiológicos y devolver un JSON
-  estructurado con los datos normalizados. Nunca interactúa con el
-  analista ni accede directamente a PostgreSQL.
+- **Google Gemini Flash (Google AI Studio)** opera exclusivamente durante el
+  flujo de ingesta semanal. Su responsabilidad es leer el contenido nativo
+  y tablas de los PDFs de boletines epidemiológicos y devolver un JSON
+  estructurado y normalizado. Opera bajo el tier gratuito permanente (Free Tier),
+  garantizando costo $0 en la tarea de mayor volumen de tokens. Nunca interactúa
+  con el analista ni accede directamente a PostgreSQL.
 
-- **Grok (xAI)** opera exclusivamente durante el flujo de consulta NLQ.
-  Su única responsabilidad es recibir datos ya estructurados desde
+- **Claude Haiku (Anthropic)** opera exclusivamente durante el flujo de
+  consulta NLQ. Su responsabilidad es recibir datos ya estructurados desde
   PostgreSQL (provistos por n8n) e interpretarlos para generar un reporte
-  en lenguaje natural dirigido al analista. Nunca recibe PDFs ni datos
-  en bruto.
+  analítico en lenguaje natural dirigido al analista. Nunca recibe PDFs ni datos
+  crudos en bruto, lo que reduce el consumo a menos de ~1,000 tokens por consulta
+  y mantiene el costo operativo marginal (< $1.50/mes).
 
 Ambos modelos son invocados únicamente desde n8n, respetando la regla
 crítica de que ningún componente del sistema interactúa directamente con
@@ -37,27 +45,24 @@ una API de IA sin pasar por la capa de orquestación.
 
 **Beneficios:**
 
-- Reducción de costos al usar cada modelo solo para la tarea en que es
-  más eficiente.
-- Separación clara de responsabilidades entre extracción e interpretación.
-- Grok nunca recibe datos en bruto ni documentos no estructurados, lo que
-  reduce el riesgo de respuestas imprecisas por contexto mal formateado.
-- El sistema es independiente por capas: cambiar un modelo no afecta al
-  otro.
+- Optimización extrema de costos: Extracción pesada a costo $0.00 con Gemini Flash
+  y consultas interactivas a costo marginal con Claude Haiku.
+- Eliminación de pipelines de OCR intermedios gracias a la capacidad
+  multimodal nativa de Gemini sobre PDFs.
+- Separación clara de responsabilidades y desacoplamiento de cuotas de consumo.
+- Diversidad de proveedores (Google + Anthropic), evitando Vendor Lock-in y
+  habilitando estrategias de contingencia (fallback) en n8n.
 
 **Riesgos:**
 
-- Dependencia de dos proveedores distintos (Anthropic y xAI). Si uno
-  cambia su API o pricing, se debe actualizar el nodo correspondiente
-  en n8n.
-- Si Haiku extrae datos incorrectamente del PDF, Grok generará reportes
-  basados en datos erróneos sin saberlo. Se requiere validación del JSON
-  extraído antes de insertarlo en PostgreSQL.
+- Dependencia de dos proveedores distintos (Google y Anthropic). Si uno
+  cambia su API o pricing, se debe actualizar el nodo correspondiente en n8n.
+- Si Gemini extrae datos incorrectamente del PDF, Haiku generará reportes
+  basados en datos erróneos sin saberlo.
 
 **Mitigación:**
 
 - Agregar un nodo de validación de esquema JSON en n8n entre la extracción
-  de Haiku y la inserción en PostgreSQL.
-- Monitorear la calidad de extracción con Langfuse para detectar
-  degradación cuando el MINSA cambie el formato de sus boletines
-  (Data Drift).
+  de Gemini y la inserción en PostgreSQL.
+- Monitorear la calidad de extracción y posibles derivas (Data Drift / Prompt Drift)
+  utilizando Arize Phoenix (ADR-010).

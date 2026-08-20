@@ -2,8 +2,7 @@
 
 ## Contexto
 
-HealthRadar requiere un Frontend que muestre dashboards con mapas de
-calor, alertas de brotes y un campo de consulta en lenguaje natural.
+HealthRadar requiere un Frontend que muestre dashboards con mapas de calor, alertas de brotes y un campo de consulta en lenguaje natural.
 La arquitectura base establece que el Frontend no puede interactuar
 directamente con APIs de IA ni con PostgreSQL. Sin embargo, si el
 Frontend llama directamente al webhook de n8n desde el navegador, la

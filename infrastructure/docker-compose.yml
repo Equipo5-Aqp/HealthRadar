@@ -11,7 +11,7 @@ volumes:
     driver: local
   n8n_data:
     driver: local
-  langfuse_data:
+  phoenix_data:
     driver: local
 
 services:
@@ -68,25 +68,28 @@ services:
     # ports:
     #   - "5678:5678"
 
-  # Observabilidad LLM: Langfuse Self-Hosted (ADR-005)
-  langfuse:
-    image: langfuse/langfuse:2
-    container_name: healthradar-langfuse
+  # Observabilidad LLM: Arize Phoenix Self-Hosted (ADR-010)
+  # Reemplaza Langfuse v2 (EOL Q1-2025). Phoenix = 1 solo contenedor + Postgres existente.
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: healthradar-phoenix
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
-      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET:-langfuse_nextauth_secret_2026_key}
-      - NEXTAUTH_URL=http://langfuse:3000
-      - SALT=${LANGFUSE_SALT:-langfuse_salt_secret_key_2026}
-      - ENCRYPTION_KEY=${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
-      - TELEMETRY_ENABLED=false
+      - PHOENIX_SQL_DATABASE_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
+      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-phoenix_jwt_secret_healthradar_2026}
+      - PHOENIX_WORKING_DIR=/phoenix-data
     volumes:
-      - langfuse_data:/app/data
+      - phoenix_data:/phoenix-data
     networks:
       - healthradar-net
     depends_on:
       postgres:
         condition: service_healthy
+    # Aislamiento según ADR-008: Puertos no expuestos al host por defecto.
+    # Descomentar para acceder a la UI de Phoenix (puerto 6006) en desarrollo local:
+    # ports:
+    #   - "6006:6006"
 
   # Frontend: Next.js + Rutas de API seguras (ADR-004)
   frontend:

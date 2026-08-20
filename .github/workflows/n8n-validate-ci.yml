@@ -3,9 +3,6 @@ name: n8n Validate CI
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'src/n8n-workflows/**'
-      - 'src/ia-ops/**'
 
 jobs:
   validate:
@@ -14,12 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detectar cambios relevantes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            n8n:
+              - 'src/n8n-workflows/**'
+              - 'src/ia-ops/**'
+
       - name: Configurar Python
+        if: steps.filter.outputs.n8n == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Validar estructura JSON de los workflows
+        if: steps.filter.outputs.n8n == 'true'
         run: |
           echo "Validando JSON de workflows n8n..."
           find src/n8n-workflows/production src/n8n-workflows/templates -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
@@ -28,13 +36,18 @@ jobs:
           done
 
       - name: Detectar credenciales expuestas
+        if: steps.filter.outputs.n8n == 'true'
         run: |
           echo "Buscando posibles secretos en los workflows..."
-          if grep -riE "api[_-]?key|password|secret|token|bearer" n8n-workflows --include="*.json"; then
+          if grep -riE "api[_-]?key|password|secret|token|bearer" src/n8n-workflows --include="*.json"; then
             echo "❌ Se detectaron posibles credenciales expuestas en los workflows"
             exit 1
           fi
           echo "✅ Sin credenciales expuestas"
+
+      - name: Sin cambios relevantes
+        if: steps.filter.outputs.n8n == 'false'
+        run: echo "✅ Este PR no toca n8n-workflows/ ni ia-ops/ — se omite la validación, check en verde"
 
   validate-live-connection:
     name: Validación contra instancia n8n (opcional)
@@ -46,7 +59,6 @@ jobs:
         run: |
           if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "⚠️ N8N_API_URL o N8N_API_KEY no configurados — se omite esta validación"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
