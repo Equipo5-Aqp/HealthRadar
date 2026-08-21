@@ -110,18 +110,19 @@ sequenceDiagram
 
 Cada decisión técnica relevante del proyecto está documentada en `infrastructure/ADRs/`.
 
-| ADR | Título | Estado |
-|-----|--------|--------|
-| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md) | n8n Self-Hosted como capa de orquestación | Vigente |
-| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md) | PostgreSQL con pgvector como única base de datos | Vigente |
-| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md) | División de LLMs por momento de operación (Gemini + Claude) | Vigente |
-| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md) | Next.js con rutas de API como capa de seguridad | Vigente |
-| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md) | Langfuse como plataforma de observabilidad | Reemplazado por ADR-010 |
-| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos | Vigente |
-| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md) | Open-Meteo como fuente de datos climáticos | Vigente |
-| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md) | Docker Compose como estrategia de despliegue | Vigente |
-| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md) | OCI Always Free como proveedor de hosting | Vigente |
-| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md) | Arize Phoenix Self-Hosted como plataforma de observabilidad | Vigente |
+| ADR                                                                              | Título                                                      | Estado                  |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------- |
+| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md)           | n8n Self-Hosted como capa de orquestación                   | Vigente                 |
+| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md)      | PostgreSQL con pgvector como única base de datos            | Vigente                 |
+| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md)    | División de LLMs por momento de operación (Gemini + Claude) | Vigente                 |
+| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md)         | Next.js con rutas de API como capa de seguridad             | Vigente                 |
+| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md)           | Langfuse como plataforma de observabilidad                  | Reemplazado por ADR-010 |
+| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos         | Vigente                 |
+| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md)     | Open-Meteo como fuente de datos climáticos                  | Vigente                 |
+| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md)                         | Docker Compose como estrategia de despliegue                | Vigente                 |
+| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                   | Reemplazadp por ADR-011 |
+| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad | Vigente                 |
+| [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting  | Vigente                 |
 
 ---
 
@@ -131,8 +132,9 @@ Cada decisión técnica relevante del proyecto está documentada en `infrastruct
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git
-cd Celula5_HealthRadar
+git clone https://github.com/Equipo5-Aqp/HealthRadar.git
+cd HealthRadar
+cd infrastructure
 
 # 2. Configurar variables de entorno
 cp infrastructure/.env.example infrastructure/.env
@@ -146,7 +148,8 @@ docker compose up -d
 docker compose ps
 ```
 
-El sistema queda disponible en `http://localhost:3000` (Frontend).
+El sistema queda disponible en `http://localhost:3000` (Frontend).  
+Para el despliegue en producción en la nube, consultar el [Manual de Despliegue en Azure VM](infrastructure/manuals/Manual_Despliegue_Azure_VM.md).
 
 ---
 
@@ -158,8 +161,9 @@ El sistema queda disponible en `http://localhost:3000` (Frontend).
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/               # Pipelines de CI/CD
 ├── infrastructure/
-│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-010)
+│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-011)
 │   ├── diagrams/                # Diagramas C4 en Draw.io XML (L1, L2, L3)
+│   ├── manuals/                 # Manuales de despliegue y redes (Azure / OCI)
 │   ├── scripts-poc-arquitectura/ # Scripts de verificación y PoCs de arquitectura
 │   ├── docker-compose.yml       # Orquestación de contenedores
 │   └── .env.example             # Plantilla de variables de entorno
