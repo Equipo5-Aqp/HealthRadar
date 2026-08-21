@@ -1,12 +1,475 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HealthRadar Frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<title>HealthRadar — Diseño Sprint 0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0B1420;
+    --bg-1:#111E2E;
+    --bg-2:#16283C;
+    --bg-3:#1E3A5F;
+    --line:#25405C;
+    --line-soft:#1A2C40;
+    --text-hi:#EAF2FA;
+    --text-mid:#9FB4C9;
+    --text-low:#5E7387;
+    --alert:#FF6B4A;
+    --alert-dim:#4A2A22;
+    --alert-bg:#2A180F;
+    --ok:#34D399;
+    --ok-dim:#1B3A30;
+    --ok-bg:#0F241D;
+    --warn:#F5B84D;
+    --warn-bg:#2E230F;
+    --font-d:'Space Grotesk',sans-serif;
+    --font-b:'Inter',sans-serif;
+    --font-m:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#050A10;font-family:var(--font-b);color:var(--text-hi);}
+  .page{max-width:1440px;margin:0 auto;background:var(--bg-0);min-height:100vh;}
+  .section-label{
+    font-family:var(--font-m);
+    font-size:12px;
+    color:var(--text-low);
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    padding:32px 48px 8px;
+    border-top:32px solid #050A10;
+  }
+
+  /* ===== TOPBAR ===== */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 48px;border-bottom:1px solid var(--line-soft);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--alert),#B8391F);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-d);font-weight:700;font-size:15px;color:#fff;
+  }
+  .brand-name{font-family:var(--font-d);font-weight:600;font-size:17px;letter-spacing:-0.01em;}
+  .brand-tag{font-family:var(--font-m);font-size:10px;color:var(--text-low);margin-left:8px;padding:2px 8px;border:1px solid var(--line);border-radius:20px;}
+  .nav{display:flex;gap:28px;}
+  .nav a{color:var(--text-mid);text-decoration:none;font-size:14px;font-weight:500;}
+  .nav a.active{color:var(--text-hi);}
+  .topbar-right{display:flex;align-items:center;gap:16px;}
+  .pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-dim);}
+  .live-tag{font-family:var(--font-m);font-size:11px;color:var(--text-mid);display:flex;align-items:center;gap:6px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;}
+
+  /* ===== SCREEN 1: LOGIN ===== */
+  .login-screen{
+    min-height:640px;display:flex;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,107,74,0.06), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(52,211,153,0.05), transparent 40%),
+      var(--bg-0);
+    position:relative;overflow:hidden;
+  }
+  .login-grid{position:absolute;inset:0;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:48px 48px;opacity:0.4;mask-image:radial-gradient(circle at center, black, transparent 75%);
+  }
+  .login-card{
+    position:relative;width:400px;background:var(--bg-1);border:1px solid var(--line);
+    border-radius:16px;padding:40px 36px;
+  }
+  .login-eyebrow{font-family:var(--font-m);font-size:11px;color:var(--alert);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px;}
+  .login-title{font-family:var(--font-d);font-size:26px;font-weight:600;margin-bottom:8px;letter-spacing:-0.02em;}
+  .login-sub{font-size:14px;color:var(--text-mid);margin-bottom:32px;line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12px;color:var(--text-mid);margin-bottom:6px;font-weight:500;}
+  .field input{
+    width:100%;padding:12px 14px;background:var(--bg-2);border:1px solid var(--line);
+    border-radius:8px;color:var(--text-hi);font-size:14px;font-family:var(--font-b);
+  }
+  .btn-primary{
+    width:100%;padding:13px;background:var(--alert);border:none;border-radius:8px;
+    color:#2A0F06;font-weight:600;font-size:14px;margin-top:8px;font-family:var(--font-b);
+  }
+  .login-foot{margin-top:20px;text-align:center;font-size:12px;color:var(--text-low);}
+
+  /* ===== SCREEN 2: DASHBOARD ===== */
+  .dash-layout{display:grid;grid-template-columns:220px 1fr;min-height:820px;}
+  .sidebar{border-right:1px solid var(--line-soft);padding:24px 16px;background:var(--bg-1);}
+  .side-item{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+    font-size:13px;color:var(--text-mid);margin-bottom:2px;font-weight:500;
+  }
+  .side-item.active{background:var(--bg-3);color:var(--text-hi);}
+  .side-icon{width:16px;height:16px;border-radius:4px;background:var(--line);flex-shrink:0;}
+  .side-divider{height:1px;background:var(--line-soft);margin:16px 0;}
+  .side-caption{font-size:11px;color:var(--text-low);padding:0 12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;font-family:var(--font-m);}
+
+  .main{padding:28px 36px;}
+  .main-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+  .main-title{font-family:var(--font-d);font-size:22px;font-weight:600;letter-spacing:-0.01em;}
+  .main-sub{font-size:13px;color:var(--text-mid);margin-top:4px;}
+  .btn-outline{
+    padding:9px 16px;border:1px solid var(--line);border-radius:8px;background:transparent;
+    color:var(--text-hi);font-size:13px;font-weight:500;font-family:var(--font-b);
+  }
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .kpi{background:var(--bg-1);border:1px solid var(--line-soft);border-radius:12px;padding:18px 20px;}
+  .kpi-label{font-size:12px;color:var(--text-mid);margin-bottom:10px;}
+  .kpi-value{font-family:var(--font-d);font-size:28px;font-weight:600;letter-spacing:-0.02em;}
+  .kpi-value.alert{color:var(--alert);}
+  .kpi-delta{font-family:var(--font-m);font-size:11px;margin-top:6px;color:var(--text-low);}
+  .kpi-delta.up{color:var(--alert);}
+  .kpi-delta.down{color:var(--ok);}
+
+  .content-row{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;}
+  .panel{background:var(--bg-1);border:1px solid var(--line-soft);border-radius:12px;padding:20px;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .panel-title{font-size:14px;font-weight:600;}
+  .panel-sub{font-size:11px;color:var(--text-low);font-family:var(--font-m);}
+
+  .map-area{
+    height:340px;border-radius:10px;background:var(--bg-2);position:relative;overflow:hidden;
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:24px 24px;
+  }
+  .district-dot{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:10px;font-weight:500;}
+  .d1{width:38px;height:38px;background:rgba(255,107,74,0.25);border:2px solid var(--alert);color:var(--alert);top:60px;left:120px;}
+  .d2{width:26px;height:26px;background:rgba(255,107,74,0.18);border:2px solid var(--alert);color:var(--alert);top:140px;left:220px;}
+  .d3{width:20px;height:20px;background:rgba(52,211,153,0.15);border:2px solid var(--ok);color:var(--ok);top:90px;left:320px;}
+  .d4{width:16px;height:16px;background:rgba(52,211,153,0.15);border:2px solid var(--ok);color:var(--ok);top:200px;left:150px;}
+  .d5{width:22px;height:22px;background:rgba(245,184,77,0.18);border:2px solid var(--warn);color:var(--warn);top:220px;left:280px;}
+  .map-legend{position:absolute;bottom:14px;left:14px;display:flex;gap:14px;font-size:11px;color:var(--text-mid);}
+  .legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;}
+
+  .alert-list{display:flex;flex-direction:column;gap:10px;}
+  .alert-item{
+    display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;
+    background:var(--bg-2);border-left:3px solid var(--alert);
+  }
+  .alert-item.warn{border-left-color:var(--warn);}
+  .alert-item.ok{border-left-color:var(--ok);}
+  .alert-icon{width:32px;height:32px;border-radius:8px;background:var(--alert-bg);color:var(--alert);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .alert-item.warn .alert-icon{background:var(--warn-bg);color:var(--warn);}
+  .alert-item.ok .alert-icon{background:var(--ok-bg);color:var(--ok);}
+  .alert-text{flex:1;}
+  .alert-district{font-size:13px;font-weight:600;}
+  .alert-detail{font-size:11px;color:var(--text-mid);margin-top:2px;}
+  .alert-val{font-family:var(--font-m);font-size:13px;color:var(--alert);}
+
+  /* ===== SCREEN 3: CONSULTA NATURAL ===== */
+  .query-screen{padding:28px 36px;}
+  .query-box{
+    background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:6px;
+    display:flex;align-items:center;gap:10px;margin-bottom:24px;
+  }
+  .query-input{
+    flex:1;background:transparent;border:none;color:var(--text-hi);font-size:15px;
+    padding:12px 14px;font-family:var(--font-b);
+  }
+  .query-send{
+    width:38px;height:38px;border-radius:10px;background:var(--alert);border:none;
+    color:#2A0F06;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .suggestions{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;}
+  .suggestion-chip{
+    padding:7px 14px;border:1px solid var(--line);border-radius:20px;font-size:12px;
+    color:var(--text-mid);font-family:var(--font-m);
+  }
+
+  .answer-card{background:var(--bg-1);border:1px solid var(--line-soft);border-radius:12px;padding:24px;margin-bottom:16px;}
+  .answer-badge{
+    display:inline-flex;align-items:center;gap:6px;font-family:var(--font-m);font-size:11px;
+    color:var(--alert);background:var(--alert-bg);padding:4px 10px;border-radius:6px;margin-bottom:14px;
+  }
+  .answer-text{font-size:15px;line-height:1.6;color:var(--text-hi);margin-bottom:18px;}
+  .answer-text b{color:var(--alert);font-weight:600;}
+  .evidence-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .evidence{background:var(--bg-2);border-radius:8px;padding:14px;}
+  .evidence-label{font-size:11px;color:var(--text-low);margin-bottom:6px;}
+  .evidence-val{font-family:var(--font-d);font-size:18px;font-weight:600;}
+  .evidence-val.alert{color:var(--alert);}
+
+  /* ===== SCREEN 4: DETALLE DISTRITO ===== */
+  .detail-screen{padding:28px 36px;}
+  .breadcrumb{font-size:12px;color:var(--text-low);margin-bottom:16px;font-family:var(--font-m);}
+  .breadcrumb span{color:var(--text-hi);}
+  .detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+  .detail-title-row{display:flex;align-items:center;gap:14px;}
+  .risk-badge{
+    font-family:var(--font-m);font-size:11px;padding:6px 12px;border-radius:6px;
+    background:var(--alert-bg);color:var(--alert);font-weight:500;
+  }
+  .detail-title{font-family:var(--font-d);font-size:24px;font-weight:600;}
+
+  .chart-area{height:180px;background:var(--bg-2);border-radius:10px;position:relative;margin-top:16px;padding:16px;}
+  .bars{display:flex;align-items:flex-end;gap:8px;height:100%;}
+  .bar{flex:1;background:var(--bg-3);border-radius:3px 3px 0 0;position:relative;}
+  .bar.hot{background:var(--alert);}
+
+  .factor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px;}
+  .factor{background:var(--bg-2);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px;}
+  .factor-icon{width:34px;height:34px;border-radius:8px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .factor-label{font-size:11px;color:var(--text-mid);}
+  .factor-val{font-family:var(--font-d);font-size:16px;font-weight:600;margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="section-label">Pantalla 1 — Acceso</div>
+  <div class="login-screen">
+    <div class="login-grid"></div>
+    <div class="login-card">
+      <div class="login-eyebrow">Vigilancia epidemiológica</div>
+      <div class="login-title">HealthRadar</div>
+      <div class="login-sub">Detecta brotes antes de que exploten. Cruza datos del MINSA y SENAMHI con 20 años de historial por distrito.</div>
+      <div class="field">
+        <label>Correo institucional</label>
+        <input type="text" placeholder="nombre@minsa.gob.pe" readonly>
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="text" placeholder="••••••••••" readonly>
+      </div>
+      <button class="btn-primary">Ingresar al panel</button>
+      <div class="login-foot">Acceso restringido a analistas autorizados</div>
+    </div>
+  </div>
+
+  <div class="section-label">Pantalla 2 — Dashboard principal</div>
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="side-caption">Panel</div>
+      <div class="side-item active"><span class="side-icon"></span>Dashboard</div>
+      <div class="side-item"><span class="side-icon"></span>Consulta</div>
+      <div class="side-item"><span class="side-icon"></span>Distritos</div>
+      <div class="side-item"><span class="side-icon"></span>Reportes</div>
+      <div class="side-divider"></div>
+      <div class="side-caption">Fuentes de datos</div>
+      <div class="side-item"><span class="side-icon"></span>MINSA</div>
+      <div class="side-item"><span class="side-icon"></span>SENAMHI</div>
+      <div class="side-divider"></div>
+      <div class="side-caption">Sistema</div>
+      <div class="side-item"><span class="side-icon"></span>Estado de ingesta</div>
+    </div>
+    <div>
+      <div class="topbar" style="padding:18px 36px;">
+        <div class="brand">
+          <div class="brand-mark">HR</div>
+          <div class="brand-name">HealthRadar</div>
+          <div class="brand-tag">SPRINT 0</div>
+        </div>
+        <div class="topbar-right">
+          <div class="live-tag"><span class="pulse-dot"></span>Última ingesta: hace 2 días</div>
+          <div class="avatar">MJ</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="main-head">
+          <div>
+            <div class="main-title">Panorama nacional</div>
+            <div class="main-sub">Semana epidemiológica 34 · comparado con semana 33</div>
+          </div>
+          <button class="btn-outline">Descargar reporte</button>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">Distritos monitoreados</div>
+            <div class="kpi-value">196</div>
+            <div class="kpi-delta">Perú, todas las regiones</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Incrementos anómalos</div>
+            <div class="kpi-value alert">7</div>
+            <div class="kpi-delta up">↑ 3 respecto a semana anterior</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Casos totales dengue</div>
+            <div class="kpi-value">1,284</div>
+            <div class="kpi-delta up">↑ 12.4%</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Correlación clima-casos</div>
+            <div class="kpi-value">0.71</div>
+            <div class="kpi-delta">Lluvia últimos 7 días</div>
+          </div>
+        </div>
+
+        <div class="content-row">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Mapa de riesgo por distrito</div>
+              <div class="panel-sub">actualizado semanalmente</div>
+            </div>
+            <div class="map-area">
+              <div class="district-dot d1">SMP</div>
+              <div class="district-dot d2">VES</div>
+              <div class="district-dot d3">MIR</div>
+              <div class="district-dot d4">SUR</div>
+              <div class="district-dot d5">ATE</div>
+              <div class="map-legend">
+                <span><span class="legend-dot" style="background:var(--alert)"></span>Incremento anómalo</span>
+                <span><span class="legend-dot" style="background:var(--warn)"></span>Vigilancia</span>
+                <span><span class="legend-dot" style="background:var(--ok)"></span>Estable</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Alertas recientes</div>
+              <div class="panel-sub">7 activas</div>
+            </div>
+            <div class="alert-list">
+              <div class="alert-item">
+                <div class="alert-icon">!</div>
+                <div class="alert-text">
+                  <div class="alert-district">San Martín de Porres</div>
+                  <div class="alert-detail">Casos por encima del histórico</div>
+                </div>
+                <div class="alert-val">+64%</div>
+              </div>
+              <div class="alert-item">
+                <div class="alert-icon">!</div>
+                <div class="alert-text">
+                  <div class="alert-district">Villa El Salvador</div>
+                  <div class="alert-detail">Lluvia sostenida + casos en alza</div>
+                </div>
+                <div class="alert-val">+41%</div>
+              </div>
+              <div class="alert-item warn">
+                <div class="alert-icon">·</div>
+                <div class="alert-text">
+                  <div class="alert-district">Ate</div>
+                  <div class="alert-detail">Tendencia a vigilar</div>
+                </div>
+                <div class="alert-val" style="color:var(--warn)">+18%</div>
+              </div>
+              <div class="alert-item ok">
+                <div class="alert-icon">✓</div>
+                <div class="alert-text">
+                  <div class="alert-district">Miraflores</div>
+                  <div class="alert-detail">Dentro de rango histórico</div>
+                </div>
+                <div class="alert-val" style="color:var(--ok)">−6%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Pantalla 3 — Consulta en lenguaje natural</div>
+  <div class="query-screen">
+    <div class="main-head">
+      <div>
+        <div class="main-title">Preguntá en lenguaje simple</div>
+        <div class="main-sub">El sistema busca en el historial y en los datos recién descargados</div>
+      </div>
+    </div>
+    <div class="query-box">
+      <input class="query-input" value="¿Qué distritos tienen más dengue que la semana pasada?" readonly>
+      <div class="query-send">↑</div>
+    </div>
+    <div class="suggestions">
+      <div class="suggestion-chip">distritos con riesgo alto</div>
+      <div class="suggestion-chip">comparar Lima Norte vs Lima Sur</div>
+      <div class="suggestion-chip">correlación lluvia y casos</div>
+    </div>
+
+    <div class="answer-card">
+      <div class="answer-badge">● 3 distritos con incremento anómalo</div>
+      <div class="answer-text">
+        San Martín de Porres y Villa El Salvador muestran un aumento de casos <b>por encima de lo esperado</b> para esta época del año, coincidiendo con precipitaciones sostenidas en los últimos 7 días. Ate se mantiene en vigilancia con una tendencia moderada al alza.
+      </div>
+      <div class="evidence-row">
+        <div class="evidence">
+          <div class="evidence-label">Distrito con mayor riesgo</div>
+          <div class="evidence-val alert">SMP</div>
+        </div>
+        <div class="evidence">
+          <div class="evidence-label">Variación vs. histórico</div>
+          <div class="evidence-val alert">+64%</div>
+        </div>
+        <div class="evidence">
+          <div class="evidence-label">Fuente</div>
+          <div class="evidence-val" style="font-size:13px;">MINSA · SENAMHI</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Pantalla 4 — Detalle de distrito</div>
+  <div class="detail-screen">
+    <div class="breadcrumb">Dashboard / Distritos / <span>San Martín de Porres</span></div>
+    <div class="detail-head">
+      <div class="detail-title-row">
+        <div class="detail-title">San Martín de Porres</div>
+        <div class="risk-badge">Incremento anómalo</div>
+      </div>
+      <button class="btn-outline">Exportar evidencia</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Casos semanales · últimas 12 semanas</div>
+        <div class="panel-sub">línea roja = límite histórico esperado</div>
+      </div>
+      <div class="chart-area">
+        <div class="bars">
+          <div class="bar" style="height:30%"></div>
+          <div class="bar" style="height:35%"></div>
+          <div class="bar" style="height:28%"></div>
+          <div class="bar" style="height:40%"></div>
+          <div class="bar" style="height:38%"></div>
+          <div class="bar" style="height:45%"></div>
+          <div class="bar" style="height:42%"></div>
+          <div class="bar" style="height:50%"></div>
+          <div class="bar" style="height:55%"></div>
+          <div class="bar hot" style="height:78%"></div>
+          <div class="bar hot" style="height:88%"></div>
+          <div class="bar hot" style="height:95%"></div>
+        </div>
+      </div>
+      <div class="factor-grid">
+        <div class="factor">
+          <div class="factor-icon">°</div>
+          <div>
+            <div class="factor-label">Temperatura promedio</div>
+            <div class="factor-val">26.4°C</div>
+          </div>
+        </div>
+        <div class="factor">
+          <div class="factor-icon">≈</div>
+          <div>
+            <div class="factor-label">Lluvia acumulada 7 días</div>
+            <div class="factor-val">38.2mm</div>
+          </div>
+        </div>
+        <div class="factor">
+          <div class="factor-icon">Σ</div>
+          <div>
+            <div class="factor-label">Casos esta semana</div>
+            <div class="factor-val">142</div>
+          </div>
+        </div>
+        <div class="factor">
+          <div class="factor-icon">Δ</div>
+          <div>
+            <div class="factor-label">Variación vs. histórico</div>
+            <div class="factor-val" style="color:var(--alert)">+64%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
 </html>
