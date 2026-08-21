@@ -1,6 +1,8 @@
 # ADR-009: Oracle Cloud Infrastructure (OCI) Always Free como proveedor de hosting para el host único de Docker Compose
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-010 (observabilidad Arize Phoenix), ADR-008 (Docker Compose)
+**Estado:** Superado por [ADR-011](ADR-011-azure-vm-hosting.md) (2026-08-21)  
+**Superado por:** [ADR-011](ADR-011-azure-vm-hosting.md) — Adopción de Microsoft Azure Virtual Machines  
+**Relacionado con:** ADR-001 (orquestación n8n), ADR-010 (observabilidad Arize Phoenix), ADR-008 (Docker Compose), ADR-011 (Hosting Azure VM)
 
 ## Contexto
 
@@ -119,3 +121,13 @@ Reglas específicas de esta decisión:
   todas las imágenes Docker del `docker-compose.yml` tengan soporte
   ARM64 nativo, evitando así incompatibilidades de arquitectura al
   desplegar en Ampere A1.
+
+---
+
+## Adenda (2026-08-21): Activación del Plan de Contingencia (Migración a Microsoft Azure)
+
+- **Estado:** Plan de Contingencia Ejecutado y Activo.
+- **Motivo:** Saturación prolongada de capacidad regional (*Out of capacity*) en OCI para la arquitectura Ampere A1 durante más de 48 horas continuas.
+- **Nuevo Proveedor y Host:** Microsoft Azure Virtual Machines — Tamaño `Standard_B2als_v2` (2 vCPUs AMD EPYC, 4 GiB RAM, x86_64, 3,750 IOPS) bajo suscripción *Azure for Students* ($100 USD de crédito / 365 días).
+- **Conformidad con la Cátedra:** Plenamente avalado por la especificación de `05-arquitectura.md` ("usando Docker Compose en un VPS económico o AWS EC2/Azure VM").
+- **Informe Detallado:** [Informe_Activacion_Plan_Contingencia_Azure_ADR009.md](../../context/informes_academicos/Informe_Activacion_Plan_Contingencia_Azure_ADR009.md).
