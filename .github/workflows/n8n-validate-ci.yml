@@ -57,18 +57,18 @@ jobs:
       - name: Verificar si hay credenciales de n8n configuradas
         id: check_n8n
         run: |
-          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
+          if [ -z "${{ secrets.N8N_API_URL }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ N8N_API_URL no configurado — se omite esta validación"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Probar conexión con la instancia n8n
+      - name: Probar conexión con el webhook de n8n
         if: steps.check_n8n.outputs.skip == 'false'
         env:
           N8N_API_URL: ${{ secrets.N8N_API_URL }}
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
         run: |
-          curl -sf -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_API_URL/api/v1/workflows" > /dev/null \
-            && echo "✅ Conexión exitosa con n8n" \
-            || (echo "❌ No se pudo conectar a la instancia n8n" && exit 1)
+          RESPUESTA=$(curl -s -X POST "$N8N_API_URL" -H "Content-Type: application/json" -d '{"test":"true"}')
+          echo "Respuesta de n8n: $RESPUESTA"
+          echo "$RESPUESTA" | grep -q '"status":"ok"' && echo "✅ Integración exitosa" || (echo "❌ n8n no respondió como se esperaba" && exit 1)
