@@ -49,7 +49,7 @@ jobs:
         if: steps.filter.outputs.n8n == 'false'
         run: echo "✅ Este PR no toca n8n-workflows/ ni ia-ops/ — se omite la validación, check en verde"
 
-    validate-live-connection:
+  validate-live-connection:
     name: Validación contra instancia n8n (opcional)
     runs-on: ubuntu-latest
     needs: validate
