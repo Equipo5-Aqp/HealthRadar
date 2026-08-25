@@ -68,7 +68,11 @@ jobs:
         if: steps.check_n8n.outputs.skip == 'false'
         env:
           N8N_API_URL: ${{ secrets.N8N_API_URL }}
+          N8N_WEBHOOK_KEY: ${{ secrets.N8N_WEBHOOK_KEY }}
         run: |
-          RESPUESTA=$(curl -s -X POST "$N8N_API_URL" -H "Content-Type: application/json" -d '{"test":"true"}')
+          RESPUESTA=$(curl -s -X POST "$N8N_API_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-N8N-Webhook-Key: $N8N_WEBHOOK_KEY" \
+            -d '{"test":"true"}')
           echo "Respuesta de n8n: $RESPUESTA"
           echo "$RESPUESTA" | grep -q '"status":"ok"' && echo "✅ Integración exitosa" || (echo "❌ n8n no respondió como se esperaba" && exit 1)
