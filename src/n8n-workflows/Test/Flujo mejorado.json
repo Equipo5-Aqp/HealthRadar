@@ -1,0 +1,454 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        16
+      ],
+      "id": "7ef7d09b-2580-4894-8f16-ac1a37f03c10",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://cdn.www.gob.pe/uploads/document/file/9978635/7636617-boletin-epidemiologico-se-18-2026.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -16,
+        -192
+      ],
+      "id": "8240567b-74df-4134-b63b-e61b07407f9d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        -192
+      ],
+      "id": "32124129-1c50-4f08-b34d-a7c6261f7048",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Aquí está el contenido extraído del boletín epidemiológico:\n{{ $json.text }}\n\nEres un asistente de vigilancia epidemiológica. Analiza el boletín epidemiológico y extrae la información solicitada.\n\nDevuelve el resultado en este formato JSON EXACTO, sin anidar, usando exactamente estos nombres de campo (no inventes otros nombres ni agregues objetos anidados):\n\n{\n  \"semana_epidemiologica\": <número>,\n  \"total_casos_acumulados\": <número>,\n  \"casos_por_distrito\": { \"<nombre_distrito>\": <número>, ... },\n  \"tendencia\": \"<aumento, disminución o estable>\"\n}\n\nSi algún dato no está disponible en el boletín, usa null para ese campo, pero mantén siempre las 4 claves exactas del formato.\n\nResponde ÚNICAMENTE con el JSON, sin texto adicional antes o después, sin bloques de código markdown.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        432,
+        -192
+      ],
+      "id": "22ea7bcc-c4f7-4411-b2cd-924799a2f1d6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        -16
+      ],
+      "id": "c7fbd3f5-a741-46c5-81f1-d9aced58c1ec",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rilDRiBOcs0dVQlk",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.output;\n\nlet data;\ntry {\n  const match = output.match(/\\{[\\s\\S]*\\}/);\n  data = JSON.parse(match ? match[0] : output);\n} catch (e) {\n  throw new Error(\"El modelo no devolvió un JSON válido: \" + e.message);\n}\n\nconst camposEsperados = [\"semana_epidemiologica\", \"total_casos_acumulados\", \"casos_por_distrito\", \"tendencia\"];\nconst faltantes = camposEsperados.filter(campo => !(campo in data));\n\nif (faltantes.length > 0) {\n  throw new Error(`Faltan campos obligatorios en el JSON: ${faltantes.join(\", \")}`);\n}\n\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -192
+      ],
+      "id": "8b631f30-5cd3-4d7e-b29c-d7e6d4d044ee",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "-12.05,-8.11,-3.75,-16.4,-5.19,-13.16"
+            },
+            {
+              "name": "longitude",
+              "value": "-77.04,-79.03,-73.25,-71.54,-80.63,-72.21"
+            },
+            {
+              "name": "daily",
+              "value": "temperature_2m_max,temperature_2m_min,precipitation_sum"
+            },
+            {
+              "name": "timezone",
+              "value": "America/Lima"
+            },
+            {
+              "name": "past_days",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        240
+      ],
+      "id": "3aa39b99-57fe-4339-bd59-92441d9560c3",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const responses = Array.isArray(item.json) ? item.json : [item.json];\n  \n  for (const response of responses) {\n    const data = response.daily;\n    if (!data || !data.time) continue;\n    \n    const promedio = arr => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);\n    const suma = arr => arr.reduce((a, b) => a + b, 0).toFixed(1);\n    \n    output.push({\n      json: {\n        latitud: response.latitude,\n        longitud: response.longitude,\n        semana_inicio: data.time[0],\n        semana_fin: data.time[data.time.length - 1],\n        temp_max_promedio: Number(promedio(data.temperature_2m_max)),\n        temp_min_promedio: Number(promedio(data.temperature_2m_min)),\n        precipitacion_total: Number(suma(data.precipitation_sum))\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        240
+      ],
+      "id": "88e541b2-f166-43ca-a049-c379a8083728",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "WThoJn8WyrVUM88a",
+          "mode": "list",
+          "cachedResultName": "resultados_dengue1",
+          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/WThoJn8WyrVUM88a"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "resultado_analisis": "="
+          },
+          "matchingColumns": [
+            "resultado_analisis"
+          ],
+          "schema": [
+            {
+              "id": "resultado_analisis",
+              "displayName": "resultado_analisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        -192
+      ],
+      "id": "10339826-8565-46b6-8f0c-dd2b7b41b73c",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "HfeBBilcTXTHczS6",
+          "mode": "list",
+          "cachedResultName": "datos_clima",
+          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/HfeBBilcTXTHczS6"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "latitud": "={{ $json.longitud }}",
+            "longitud": "={{ $json.latitud }}",
+            "temp_max_promedio": "={{ $json.temp_max_promedio }}",
+            "temp_min_promedio": "={{ $json.temp_min_promedio }}",
+            "precipitacion_total": "={{ $json.precipitacion_total }}",
+            "semana_inicio": "={{ $json.semana_inicio }}",
+            "semana_fin": "={{ $json.semana_fin }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "latitud",
+              "displayName": "latitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "longitud",
+              "displayName": "longitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "semana_inicio",
+              "displayName": "semana_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "semana_fin",
+              "displayName": "semana_fin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_max_promedio",
+              "displayName": "temp_max_promedio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_min_promedio",
+              "displayName": "temp_min_promedio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "precipitacion_total",
+              "displayName": "precipitacion_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        240
+      ],
+      "id": "ab83d0ac-bacd-4c7c-97ef-54414f82294c",
+      "name": "Insert row1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6006/v1/projects/healthradar-ingesta-semanal/spans",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"name\": \"gemini_pdf_extraction\",\n      \"span_kind\": \"LLM\",\n      \"start_time\": \"2026-08-20T12:00:00Z\",\n      \"end_time\": \"2026-08-20T12:00:05Z\",\n      \"status_code\": \"OK\",\n      \"status_message\": \"\",\n      \"events\": [],\n      \"context\": {\n        \"span_id\": \"1a2b3c4d5e6f7a8b\",\n        \"trace_id\": \"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4\"\n      },\n      \"attributes\": {\n        \"llm.model_name\": \"gemini-3.6-flash\",\n        \"llm.provider\": \"google\"\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1008,
+        -192
+      ],
+      "id": "8c78627a-0d37-48eb-81f6-80daf3a4ee7a",
+      "name": "HTTP Request2",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Insert row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3abd9b51-1034-4dad-a941-e866d23e83e5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+  },
+  "nodeGroups": [],
+  "id": "baE1wEB9YUrVe8av",
+  "tags": []
+}

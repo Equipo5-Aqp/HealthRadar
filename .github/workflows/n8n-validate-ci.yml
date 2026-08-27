@@ -60,7 +60,7 @@ jobs:
       - name: Verificar si hay credenciales de n8n configuradas
         id: check_n8n
         run: |
-          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
+          if [ -z "${{ secrets.N8N_API_URL }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "ℹ️ Secrets N8N_API_URL / N8N_API_KEY no configurados — se omite la validación en vivo"
           else
@@ -71,7 +71,7 @@ jobs:
         if: steps.check_n8n.outputs.skip == 'false'
         env:
           N8N_API_URL: ${{ secrets.N8N_API_URL }}
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+          N8N_WEBHOOK_KEY: ${{ secrets.N8N_WEBHOOK_KEY }}
         run: |
           echo "ℹ️ Intentando conexión con la instancia n8n self-hosted..."
           if curl -sf --max-time 10 -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_API_URL/api/v1/workflows" > /dev/null; then
