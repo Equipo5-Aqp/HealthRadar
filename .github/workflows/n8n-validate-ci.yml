@@ -50,25 +50,33 @@ jobs:
         run: echo "✅ Este PR no toca n8n-workflows/ ni ia-ops/ — se omite la validación, check en verde"
 
   validate-live-connection:
-    name: Validación contra instancia n8n (opcional)
+    name: Validación contra instancia n8n (opcional - no bloqueante)
     runs-on: ubuntu-latest
     needs: validate
+    # ADR-001: n8n self-hosted en Azure VM no es accesible públicamente desde GitHub Actions.
+    # El acceso es exclusivamente por túnel SSH (ADR-011). Este job es informativo, no bloqueante.
+    continue-on-error: true
     steps:
       - name: Verificar si hay credenciales de n8n configuradas
         id: check_n8n
         run: |
           if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
+            echo "ℹ️ Secrets N8N_API_URL / N8N_API_KEY no configurados — se omite la validación en vivo"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Probar conexión con la instancia n8n
+      - name: Probar conexión con la instancia n8n (informativo)
         if: steps.check_n8n.outputs.skip == 'false'
         env:
           N8N_API_URL: ${{ secrets.N8N_API_URL }}
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
         run: |
-          curl -sf -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_API_URL/api/v1/workflows" > /dev/null \
-            && echo "✅ Conexión exitosa con n8n" \
-            || (echo "❌ No se pudo conectar a la instancia n8n" && exit 1)
+          echo "ℹ️ Intentando conexión con la instancia n8n self-hosted..."
+          if curl -sf --max-time 10 -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_API_URL/api/v1/workflows" > /dev/null; then
+            echo "✅ Conexión exitosa con n8n"
+          else
+            echo "⚠️ No se pudo conectar a la instancia n8n (esperado: VM Azure no es pública)."
+            echo "   Validación omitida. Este check es informativo y no bloquea el merge."
+          fi
