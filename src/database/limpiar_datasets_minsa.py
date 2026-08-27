@@ -69,7 +69,7 @@ OUTPUT_DIR = DOWNLOADS_DIR / "minsa_limpieza_output"
 
 # Anio maximo razonable para validacion
 ANO_MAX = datetime.datetime.now().year
-ANO_MIN = 1990
+ANO_MIN = 2010
 
 # Limite de edad para Dengue (deteccion de errores evidentes de captura)
 EDAD_MAX_SANIDAD = 120
