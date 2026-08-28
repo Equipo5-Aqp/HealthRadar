@@ -46,3 +46,6 @@ desktop.ini
 .idea/
 *.suo
 *.user
+# === Playwright (reportes generados) ===
+playwright-report/
+test-results/
