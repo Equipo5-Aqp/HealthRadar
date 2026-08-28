@@ -1,0 +1,217 @@
+{
+  "name": "Conexion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "consulta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a89dc5fb-09b2-4f02-839f-2470cf156492",
+      "name": "Webhook",
+      "webhookId": "8b566a4b-0d69-4c66-9cfa-6c4b7c964649"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "WThoJn8WyrVUM88a",
+          "mode": "list",
+          "cachedResultName": "resultados_dengue1",
+          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/WThoJn8WyrVUM88a"
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        112
+      ],
+      "id": "6749283e-fd76-4888-a764-c449c4823397",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "HfeBBilcTXTHczS6",
+          "mode": "list",
+          "cachedResultName": "datos_clima",
+          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/HfeBBilcTXTHczS6"
+        },
+        "limit": 10
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        -96
+      ],
+      "id": "cf8c1194-9b33-4f55-b013-031e248d03c7",
+      "name": "Get row(s)1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "ab30a512-6e6b-44b6-b65c-692722129772",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente de vigilancia epidemiológica para el sistema HealthRadar.\n\nAquí está el análisis más reciente del boletín epidemiológico:\n{{ $json.resultado_analisis }}\n\nAquí están los datos climáticos más recientes por región:\nTemperatura máxima: {{ $json.temp_max_promedio }}°C\nTemperatura mínima: {{ $json.temp_min_promedio }}°C\nPrecipitación: {{ $json.precipitacion_total }}mm\nSemana: {{ $json.semana_inicio }} a {{ $json.semana_fin }}\n\nEl analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nResponde de forma clara, breve y en español, basándote únicamente en los datos anteriores. \nSi la pregunta no se puede responder con esta información disponible, dilo explícitamente \nen vez de inventar datos.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "5d98ceca-5749-42a8-80d3-b9a1af4ed857",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        208
+      ],
+      "id": "042bfa2e-da4f-4de0-be46-3ed46e2c07f0",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pSmV0ia7eJr1MB0r",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "8bd330a2-2aa5-4d76-86e6-36e4c0b246d4",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get row(s)1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "de11cc1e-ac89-48d7-9f57-1bd2e62ff54b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+  },
+  "nodeGroups": [],
+  "id": "dPV2LlIhCl5Ogv3s",
+  "tags": []
+}
