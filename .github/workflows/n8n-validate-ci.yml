@@ -64,6 +64,7 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
+
       - name: Probar conexión con la instancia n8n (informativo)
         if: steps.check_n8n.outputs.skip == 'false'
         env:
@@ -71,7 +72,7 @@ jobs:
           N8N_WEBHOOK_KEY: ${{ secrets.N8N_WEBHOOK_KEY }}
         run: |
           echo "ℹ️ Intentando conexión con la instancia n8n..."
-          if curl -sf --max-time 10 -X POST -H "X-N8N-Webhook-Key: $N8N_WEBHOOK_KEY" "$N8N_API_URL/webhook/657f267f-0288-451d-93f4-68a0ac1dd254" > /dev/null; then
+          if curl -sf --max-time 10 -X POST -H "X-N8N-Webhook-Key: $N8N_WEBHOOK_KEY" -H "ngrok-skip-browser-warning: true" "$N8N_API_URL/webhook/657f267f-0288-451d-93f4-68a0ac1dd254" > /dev/null; then
             echo "✅ Conexión exitosa con n8n"
           else
             echo "⚠️ No se pudo conectar a la instancia n8n (esperado: es una instancia local, no accesible desde GitHub Actions)."
