@@ -1,0 +1,76 @@
+{
+  "info": {
+    "_postman_id": "6c0d495d-c1ec-4280-b92d-9417a48a0665",
+    "name": "HealthRadar - QA",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38376393"
+  },
+  "item": [
+    {
+      "name": "POST - Consulta NLQ",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "   {\r\n     \"query\": \"¿Qué distritos muestran un incremento anómalo de casos de Dengue correlacionado con el aumento de temperatura de la última semana?\"\r\n   }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/webhook/consulta-nlq",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "webhook",
+            "consulta-nlq"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "POST - Consulta NLQ",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "   {\r\n     \"query\": \"¿Qué distritos muestran un incremento anómalo de casos de Dengue correlacionado con el aumento de temperatura de la última semana?\"\r\n   }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/webhook/consulta-nlq",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhook",
+                "consulta-nlq"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "",
+          "header": [],
+          "cookie": [
+            {
+              "expires": "Invalid Date",
+              "domain": "",
+              "path": ""
+            }
+          ],
+          "body": "    {\r\n     \"respuesta\": \"Se detectó un incremento del 34% en casos de Dengue en el distrito de Cerro Colorado, correlacionado con un aumento de 3°C en la temperatura promedio de la última semana.\",\r\n     \"distrito\": \"Cerro Colorado\",\r\n     \"confianza\": \"alta\"\r\n   }"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "healthradar-qa-demo",
+  "version": "1.0.0",
+  "description": "Demo de pruebas E2E con Playwright para HealthRadar - QA & Prompt Engineer",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

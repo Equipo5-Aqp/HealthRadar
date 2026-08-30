@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>HealthRadar - Demo QA</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; background: #0f172a; color: #e2e8f0; }
+  h1 { color: #38bdf8; }
+  #chat-input { width: 100%; padding: 10px; font-size: 14px; box-sizing: border-box; }
+  #btn-enviar { margin-top: 10px; padding: 10px 20px; background: #38bdf8; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  #loading { display: none; color: #facc15; margin-top: 15px; }
+  #respuesta-chat { display: none; margin-top: 15px; padding: 15px; background: #1e293b; border-radius: 8px; border-left: 4px solid #38bdf8; }
+</style>
+</head>
+<body>
+  <h1>HealthRadar</h1>
+  <p>Vigilancia epidemiológica y predicción de brotes</p>
+
+  <input type="text" id="chat-input" data-testid="chat-input" placeholder="Escribe tu consulta en lenguaje natural (NLQ)...">
+  <button id="btn-enviar" data-testid="btn-enviar">Enviar consulta</button>
+
+  <div id="loading" data-testid="loading">Procesando en n8n...</div>
+  <div id="respuesta-chat" data-testid="respuesta-chat"></div>
+
+  <script>
+    document.getElementById('btn-enviar').addEventListener('click', () => {
+      const query = document.getElementById('chat-input').value.trim();
+      const loading = document.getElementById('loading');
+      const respuesta = document.getElementById('respuesta-chat');
+
+      respuesta.style.display = 'none';
+
+      if (query === '') {
+        respuesta.textContent = 'Por favor escribe una consulta antes de enviar.';
+        respuesta.style.display = 'block';
+        return;
+      }
+
+      loading.style.display = 'block';
+
+      // Simula el tiempo que tarda n8n procesando el NLQ con el LLM
+      setTimeout(() => {
+        loading.style.display = 'none';
+        respuesta.textContent = 'Reporte: Se detectó un incremento del 34% en casos de Dengue en el distrito de Cerro Colorado, correlacionado con un aumento de 3°C en la temperatura promedio de la última semana. Fuente: MINSA + datos climáticos locales.';
+        respuesta.style.display = 'block';
+      }, 1200);
+    });
+  </script>
+</body>
+</html>
