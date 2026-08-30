@@ -1,0 +1,72 @@
+{
+  "name": "CI - Prueba de Integracion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "657f267f-0288-451d-93f4-68a0ac1dd254",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a6a0def7-14ae-4534-9572-82626752b714",
+      "name": "Webhook",
+      "webhookId": "657f267f-0288-451d-93f4-68a0ac1dd254",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XLsGOSOFYURHEENX",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"ok\",\n  \"mensaje\": \"n8n recibió la solicitud\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "74f9c4e2-9944-4bdd-935b-1b94c0c08a5d",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f9217d25-cabd-4c55-a9bc-46215bfbf7bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2b7019baa3735a09549a0e5df300dffd94a7b3c8fb5098fe26e0a5a3cb780366"
+  },
+  "nodeGroups": [],
+  "id": "1qMqPcIOojE48tqu",
+  "tags": []
+}
