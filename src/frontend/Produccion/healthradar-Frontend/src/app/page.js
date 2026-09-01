@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 const MOCK_HISTORY = [
   { id: 1, casos: 30 }, { id: 2, casos: 35 }, { id: 3, casos: 28 },
@@ -31,7 +32,7 @@ export default function Page() {
     setError('')
 
     try {
-      const res = await fetch('http://localhost:5678/webhook-test/consulta', {
+      const res = await fetch('http://localhost:5678/webhook/consulta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pregunta: preguntaActual }),
@@ -69,6 +70,7 @@ export default function Page() {
           <div style={styles.brandName}>HealthRadar</div>
           <div style={styles.brandTag}>NEXT.JS · CONSULTA</div>
         </div>
+        <Link href="/historicos" style={styles.navBtn}>Ver datos históricos →</Link>
       </div>
 
       <div style={styles.main}>
@@ -148,8 +150,9 @@ export default function Page() {
 
 const styles = {
   page: { minHeight: '100vh', background: '#0B1420', color: '#EAF2FA', fontFamily: 'Inter, sans-serif' },
-  topbar: { padding: '18px 40px', borderBottom: '1px solid #1A2C40' },
+  topbar: { padding: '18px 40px', borderBottom: '1px solid #1A2C40', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   brand: { display: 'flex', alignItems: 'center', gap: 10 },
+  navBtn: { fontSize: 13, color: '#9FB4C9', textDecoration: 'none', padding: '8px 14px', border: '1px solid #25405C', borderRadius: 10, fontFamily: 'monospace' },
   brandMark: { width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#FF6B4A,#B8391F)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 },
   brandName: { fontWeight: 600, fontSize: 16, fontFamily: "'Space Grotesk', sans-serif" },
   brandTag: { fontSize: 10, color: '#5E7387', marginLeft: 8, padding: '2px 8px', border: '1px solid #25405C', borderRadius: 20, fontFamily: 'monospace' },
