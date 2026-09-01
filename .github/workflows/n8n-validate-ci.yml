@@ -66,6 +66,7 @@ jobs:
           fi
 
       - name: Verificar que n8n esté activo en la VM Azure
+        if: steps.check_n8n.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
