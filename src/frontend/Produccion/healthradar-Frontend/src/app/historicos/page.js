@@ -23,7 +23,7 @@ export default function HistoricosPage() {
     setCargando(true)
     setError('')
     try {
-      const res = await fetch('http://localhost:5678/webhook/historicos', {
+      const res = await fetch('http://n8n:5678/webhook/historicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tabla: tablaElegida, pagina: paginaElegida }),
