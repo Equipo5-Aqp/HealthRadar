@@ -58,22 +58,21 @@ jobs:
       - name: Verificar si hay credenciales de n8n configuradas
         id: check_n8n
         run: |
-          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_WEBHOOK_KEY }}" ]; then
+          if [ -z "${{ secrets.AZURE_VM_HOST }}" ] || [ -z "${{ secrets.AZURE_VM_SSH_KEY }}" ] || [ -z "${{ secrets.AZURE_VM_USER }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "ℹ️ Secrets N8N_API_URL / N8N_WEBHOOK_KEY no configurados — se omite la validación en vivo"
+            echo "ℹ️ Secrets AZURE_VM_HOST / AZURE_VM_SSH_KEY / AZURE_VM_USER no configurados — se omite la validación en vivo"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-      - name: Probar conexión con la instancia n8n (informativo)
+
+      - name: Verificar que n8n esté activo en la VM Azure
         if: steps.check_n8n.outputs.skip == 'false'
-        env:
-          N8N_API_URL: ${{ secrets.N8N_API_URL }}
-          N8N_WEBHOOK_KEY: ${{ secrets.N8N_WEBHOOK_KEY }}
-        run: |
-          echo "ℹ️ Intentando conexión con la instancia n8n..."
-          if curl -sf --max-time 10 -X POST -H "X-N8N-Webhook-Key: $N8N_WEBHOOK_KEY" "$N8N_API_URL/webhook/657f267f-0288-451d-93f4-68a0ac1dd254" > /dev/null; then
-            echo "✅ Conexión exitosa con n8n"
-          else
-            echo "⚠️ No se pudo conectar a la instancia n8n (esperado: es una instancia local, no accesible desde GitHub Actions)."
-            echo "   Validación omitida. Este check es informativo y no bloquea el merge."
-          fi
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            docker inspect --format '{{.State.Status}}' healthradar-n8n | grep -q running || (echo "❌ n8n no está corriendo" && exit 1)
+            docker exec healthradar-n8n wget -qO- http://localhost:5678/healthz || (echo "❌ n8n no responde" && exit 1)
+            echo "✅ n8n está activo y respondiendo"
