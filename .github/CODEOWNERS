@@ -1,0 +1,9 @@
+# CODEOWNERS - HealthRadar
+# Cada línea asigna revisores obligatorios para las rutas indicadas.
+# Ver: https://docs.github.com/articles/about-code-owners
+
+# Workflows de n8n - requiere revisión de Backend/Full Stack
+/src/n8n-workflows/ @Andy-2214
+
+# Prompts de IA - requiere revisión de QA/Prompt Engineer
+/src/ia-ops/ @edgvrz
