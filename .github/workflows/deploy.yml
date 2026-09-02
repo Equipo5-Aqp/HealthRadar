@@ -1,0 +1,43 @@
+name: Deploy CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Desplegar en VM de Azure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detectar cambios desplegables
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            deployable:
+              - 'src/**'
+              - 'infrastructure/**'
+
+      - name: Desplegar vía SSH
+        if: steps.filter.outputs.deployable == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/azureuser/HealthRadar
+            echo "📥 Actualizando código..."
+            git pull origin main
+            cd infrastructure
+            echo "🐳 Reconstruyendo y desplegando contenedores..."
+            docker compose up -d --build
+            echo "✅ Verificando estado de los servicios..."
+            docker compose ps
+
+      - name: Sin cambios desplegables
+        if: steps.filter.outputs.deployable == 'false'
+        run: echo "✅ Este push no toca src/ ni infrastructure/ — se omite el despliegue"
