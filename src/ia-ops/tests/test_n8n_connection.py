@@ -1,10 +1,10 @@
 import requests
-
+import time
 # URL del webhook conversacional NLQ, accesible vía túnel SSH a la VM de Azure.
 # TODO: reemplazar por la Production URL pública una vez el Arquitecto
 # configure el reverse proxy (bloqueo documentado en HU-06).
 WEBHOOK_URL = "http://localhost:5678/webhook/consulta"
-
+PAUSA_ENTRE_PRUEBAS = 45
 
 def test_webhook_esta_vivo():
     """
@@ -26,6 +26,7 @@ def test_respuesta_incluye_contexto_epidemiologico_y_climatico():
     Merge (boletín epidemiológico + datos climáticos), no solo una 
     de las dos.
     """
+    time.sleep(PAUSA_ENTRE_PRUEBAS) 
     response = requests.post(
         WEBHOOK_URL,
         json={"pregunta": "Dame un resumen de la situación epidemiológica y el clima actual"},
@@ -59,6 +60,7 @@ def test_advierte_desfase_temporal_entre_fuentes():
     climáticos corresponden a periodos distintos, en vez de mezclarlos 
     silenciosamente como si fueran del mismo periodo.
     """
+    time.sleep(PAUSA_ENTRE_PRUEBAS)
     response = requests.post(
         WEBHOOK_URL,
         json={"pregunta": "¿Qué distritos muestran incremento de Dengue?"},
@@ -90,6 +92,7 @@ def test_no_inventa_datos_ante_pregunta_sin_respuesta():
     sustento en los datos disponibles, en vez de inventar una cifra o 
     afirmación falsa.
     """
+    time.sleep(PAUSA_ENTRE_PRUEBAS)
     response = requests.post(
         WEBHOOK_URL,
         json={"pregunta": "¿Cuántos casos de Dengue hay en el distrito de Marte?"},
