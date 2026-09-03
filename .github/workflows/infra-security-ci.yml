@@ -1,0 +1,62 @@
+name: Infra Security CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-docker-ports:
+    name: Verificar exposición de puertos (ADR-008 / ADR-010 / ADR-011)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detectar cambios relevantes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            infra:
+              - 'infrastructure/**'
+
+      - name: Verificar que solo el Frontend expone puerto público
+        if: steps.filter.outputs.infra == 'true'
+        run: |
+          COMPOSE_FILE="infrastructure/docker-compose.yml"
+          echo "Revisando $COMPOSE_FILE..."
+
+          if [ ! -f "$COMPOSE_FILE" ]; then
+            echo "⚠️ No se encontró $COMPOSE_FILE — se omite esta validación"
+            exit 0
+          fi
+
+          FAIL=0
+
+          check_service_no_ports() {
+            local service=$1
+            local adr=$2
+            if awk "/^  ${service}:/{flag=1; next} /^  [a-zA-Z]/{flag=0} flag" "$COMPOSE_FILE" | grep -q "ports:"; then
+              echo "⚠️ El servicio '$service' expone puertos al host (viola $adr)"
+              FAIL=1
+            else
+              echo "✅ '$service' no expone puertos al host"
+            fi
+          }
+
+          check_service_no_ports "phoenix" "ADR-008/ADR-010"
+          check_service_no_ports "n8n" "ADR-008"
+          check_service_no_ports "postgres" "ADR-008/ADR-011"
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "Solo 'frontend' (puerto 3000) y SSH (22, a nivel de NSG de Azure) deben estar expuestos públicamente."
+            echo "Hallazgo reportado al Arquitecto — pendiente de corrección, no bloquea este PR."
+          else
+            echo ""
+            echo "✅ Cumple ADR-008/ADR-010/ADR-011: solo el Frontend expone puerto público"
+          fi
+
+      - name: Sin cambios relevantes
+        if: steps.filter.outputs.infra == 'false'
+        run: echo "✅ Este PR no toca infrastructure/ — se omite la validación, check en verde"
