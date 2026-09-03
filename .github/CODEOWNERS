@@ -2,6 +2,9 @@
 # Cada línea asigna revisores obligatorios para las rutas indicadas.
 # Ver: https://docs.github.com/articles/about-code-owners
 
+# Frontend - requiere revisión de Full Stack
+/src/frontend/ @Andy-2214
+
 # Workflows de n8n - requiere revisión de Backend/Full Stack
 /src/n8n-workflows/ @Andy-2214
 
