@@ -1,5 +1,5 @@
 {
-  "name": "Flujo de recoleccion de boletin",
+  "name": "Flujo de recoleccion de boletin V1",
   "nodes": [
     {
       "parameters": {
@@ -12,24 +12,39 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -448,
-        208
+        -784,
+        224
       ],
-      "id": "276e7b00-aab0-4604-82b3-50f9a2910cd8",
+      "id": "589e0851-334f-4a1e-9f05-6f89b7fa3b0c",
       "name": "Schedule Trigger"
     },
     {
       "parameters": {
-        "url": "https://cdn.www.gob.pe/uploads/document/file/9978635/7636617-boletin-epidemiologico-se-18-2026.pdf",
+        "method": "POST",
+        "url": "https://epipublic.dge.gob.pe/publico/listado_ajax ",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "bq_anio",
+              "value": "2026"
+            },
+            {
+              "name": "bq_categoria",
+              "value": "1"
+            }
+          ]
+        },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        0,
-        0
+        -560,
+        80
       ],
-      "id": "ca2a39ad-a3db-409a-844f-e47e4d9afc5b",
+      "id": "8e7351bd-484e-4cbb-8d25-60e7a2451f37",
       "name": "HTTP Request"
     },
     {
@@ -40,25 +55,25 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1.1,
       "position": [
-        224,
+        0,
         0
       ],
-      "id": "5db9787c-79b1-427f-9a8c-5d09ae80f29d",
+      "id": "097983ba-9970-40c8-8deb-854380b775ec",
       "name": "Extract from File"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Aquí está el contenido extraído del boletín epidemiológico:\n{{ $json.text }}\n\nEres un asistente de vigilancia epidemiológica. Analiza el boletín epidemiológico y extrae la información solicitada.\n\nDevuelve el resultado en este formato JSON EXACTO, sin anidar, usando exactamente estos nombres de campo (no inventes otros nombres ni agregues objetos anidados):\n\n{\n  \"semana_epidemiologica\": <número>,\n  \"total_casos_acumulados\": <número>,\n  \"casos_por_distrito\": { \"<nombre_distrito>\": <número>, ... },\n  \"tendencia\": \"<aumento, disminución o estable>\"\n}\n\nSi algún dato no está disponible en el boletín, usa null para ese campo, pero mantén siempre las 4 claves exactas del formato.\n\nResponde ÚNICAMENTE con el JSON, sin texto adicional antes o después, sin bloques de código markdown.",
+        "text": "==Aquí está el contenido extraído del boletín epidemiológico:\n{{ $json.text }}\n\nEres un asistente de vigilancia epidemiológica del Perú. Lee el boletín completo y genera un resumen estructurado en español, organizado por enfermedad o evento de vigilancia. Para cada enfermedad o evento relevante que aparezca en el boletín (por ejemplo: Dengue, IRA, EDA, COVID-19, Fiebre Amarilla, Influenza, u otros eventos reportados), incluye en una o dos líneas: la semana epidemiológica, la cifra de casos acumulados o relevante, y la tendencia (aumento, disminución o estable).\n\nDespués, agrega un párrafo final de \"Alertas y puntos clave\" con brotes puntuales, eventos inusuales, o hallazgos que un analista de salud pública debería notar de inmediato (brotes localizados, defunciones, incrementos súbitos, brechas de capacidad, etc.).\n\nFormato de salida (texto plano, sin JSON, sin markdown):\n\nSEMANA EPIDEMIOLÓGICA: <número>\n\nDENGUE: <resumen breve>\nIRA: <resumen breve>\nEDA: <resumen breve>\n[otras enfermedades que aparezcan en el boletín, mismo formato]\n\nALERTAS Y PUNTOS CLAVE: <párrafo>\n\nSi algún dato de una enfermedad no aparece en el boletín, omite esa línea en vez de inventar información.",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        448,
+        176,
         0
       ],
-      "id": "0ce24c2e-bd95-49a9-844d-f81f8c1c55dd",
+      "id": "ee3e89aa-a3d1-4885-b3b5-d555b14717a8",
       "name": "AI Agent"
     },
     {
@@ -69,29 +84,29 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        448,
+        176,
         176
       ],
-      "id": "25bd8c4f-f0cb-4bef-9988-b74ab25b26b4",
+      "id": "bf42a522-0bcc-4d88-9454-95815da549e9",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "rilDRiBOcs0dVQlk",
+          "id": "oIqZ4PUbyqaAaI0E",
           "name": "Google Gemini(PaLM) Api account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const output = $input.first().json.output;\n\nlet data;\ntry {\n  const match = output.match(/\\{[\\s\\S]*\\}/);\n  data = JSON.parse(match ? match[0] : output);\n} catch (e) {\n  throw new Error(\"El modelo no devolvió un JSON válido: \" + e.message);\n}\n\nconst camposEsperados = [\"semana_epidemiologica\", \"total_casos_acumulados\", \"casos_por_distrito\", \"tendencia\"];\nconst faltantes = camposEsperados.filter(campo => !(campo in data));\n\nif (faltantes.length > 0) {\n  throw new Error(`Faltan campos obligatorios en el JSON: ${faltantes.join(\", \")}`);\n}\n\nreturn [{ json: data }];"
+        "jsCode": "const output = $input.first().json.output;\n\nif (!output || typeof output !== \"string\" || output.trim().length === 0) {\n  throw new Error(\"El modelo no devolvió un resumen válido\");\n}\n\nconst semanaMatch = output.match(/SEMANA EPIDEMIOLÓGICA:\\s*(\\d{1,2})/i);\nconst semana_epidemiologica = semanaMatch ? Number(semanaMatch[1]) : null;\n\nreturn [{\n  json: {\n    semana_epidemiologica,\n    resumen: output.trim(),\n    fecha_boletin: new Date().toISOString()\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        784,
+        512,
         0
       ],
-      "id": "db2c3286-c98d-4c28-b7d6-866d261ab620",
+      "id": "4dce6250-9cd8-4f83-bb81-11c853c4a17c",
       "name": "Code in JavaScript"
     },
     {
@@ -102,15 +117,15 @@
           "parameters": [
             {
               "name": "latitude",
-              "value": "-12.05,-8.11,-3.75,-16.4,-5.19,-13.16"
+              "value": "-12.05,-6.23,-9.53,-13.63,-16.4,-13.16,-7.16,-12.05,-13.53,-12.78,-9.93,-14.07,-12.07,-8.11,-6.77,-3.75,-12.6,-17.19,-10.68,-5.19,-15.84,-6.49,-18.01,-3.57,-8.38"
             },
             {
               "name": "longitude",
-              "value": "-77.04,-79.03,-73.25,-71.54,-80.63,-72.21"
+              "value": "-77.04,-77.87,-77.53,-72.88,-71.54,-74.22,-78.51,-77.12,-71.97,-74.97,-76.24,-75.73,-75.21,-79.03,-79.84,-73.25,-69.19,-70.93,-76.26,-80.63,-70.02,-76.37,-70.25,-80.45,-74.55"
             },
             {
               "name": "daily",
-              "value": "temperature_2m_max,temperature_2m_min,precipitation_sum"
+              "value": "temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,relative_humidity_2m_mean"
             },
             {
               "name": "timezone",
@@ -127,10 +142,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        16,
+        -272,
         432
       ],
-      "id": "c8c6fff9-f3bd-4b4c-83b2-fda179aca85a",
+      "id": "d1abf723-b14a-444d-b431-6f5a51815fd0",
       "name": "HTTP Request1"
     },
     {
@@ -140,33 +155,49 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        432,
+        16,
         432
       ],
-      "id": "716cee02-54a9-421e-8eb2-55c12599c762",
+      "id": "6215ba6d-c9b2-4779-8351-f57e55f1c4c8",
       "name": "Code in JavaScript1"
     },
     {
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "WThoJn8WyrVUM88a",
+          "value": "k5z1fJowE8T720Wp",
           "mode": "list",
-          "cachedResultName": "resultados_dengue1",
-          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/WThoJn8WyrVUM88a"
+          "cachedResultName": "analisis boletin",
+          "cachedResultUrl": "/projects/FUGU9goqcyUJLXk5/datatables/k5z1fJowE8T720Wp"
         },
         "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "resultado_analisis": "="
-          },
-          "matchingColumns": [
-            "resultado_analisis"
-          ],
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
           "schema": [
             {
-              "id": "resultado_analisis",
-              "displayName": "resultado_analisis",
+              "id": "semana_epidemiologica",
+              "displayName": "semana_epidemiologica",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "resumen",
+              "displayName": "resumen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fecha_boletin",
+              "displayName": "fecha_boletin",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -183,26 +214,26 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        1232,
+        736,
         0
       ],
-      "id": "019a6bcb-9e31-4f02-884d-a5e8dcd9fdef",
+      "id": "b1ef39d4-e501-417e-904f-7332a78220fa",
       "name": "Insert row"
     },
     {
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "HfeBBilcTXTHczS6",
+          "value": "NY1tzBaYPb5fwcWy",
           "mode": "list",
           "cachedResultName": "datos_clima",
-          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/HfeBBilcTXTHczS6"
+          "cachedResultUrl": "/projects/FUGU9goqcyUJLXk5/datatables/NY1tzBaYPb5fwcWy"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "latitud": "={{ $json.longitud }}",
-            "longitud": "={{ $json.latitud }}",
+            "latitud": "={{ $json.latitud }}",
+            "longitud": "={{ $json.longitud }} ",
             "temp_max_promedio": "={{ $json.temp_max_promedio }}",
             "temp_min_promedio": "={{ $json.temp_min_promedio }}",
             "precipitacion_total": "={{ $json.precipitacion_total }}",
@@ -212,28 +243,38 @@
           "matchingColumns": [],
           "schema": [
             {
-              "id": "latitud",
-              "displayName": "latitud",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "longitud",
-              "displayName": "longitud",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
               "id": "semana_inicio",
               "displayName": "semana_inicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "precipitacion_total",
+              "displayName": "precipitacion_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_min_promedio",
+              "displayName": "temp_min_promedio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "temp_max_promedio",
+              "displayName": "temp_max_promedio",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -252,32 +293,22 @@
               "removed": false
             },
             {
-              "id": "temp_max_promedio",
-              "displayName": "temp_max_promedio",
+              "id": "latitud",
+              "displayName": "latitud",
               "required": false,
               "defaultMatch": false,
               "display": true,
-              "type": "number",
+              "type": "string",
               "readOnly": false,
               "removed": false
             },
             {
-              "id": "temp_min_promedio",
-              "displayName": "temp_min_promedio",
+              "id": "longitud",
+              "displayName": "longitud",
               "required": false,
               "defaultMatch": false,
               "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "precipitacion_total",
-              "displayName": "precipitacion_total",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
+              "type": "string",
               "readOnly": false,
               "removed": false
             }
@@ -290,39 +321,38 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        736,
+        304,
         432
       ],
-      "id": "e200ea73-b8ce-4d50-a7d8-b62f1ac27982",
+      "id": "1f81b590-d840-4a4e-8a66-a803f4bcaf3f",
       "name": "Insert row1"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "http://host.docker.internal:6006/v1/projects/healthradar-ingesta-semanal/spans",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"data\": [\n    {\n      \"name\": \"gemini_pdf_extraction\",\n      \"span_kind\": \"LLM\",\n      \"start_time\": \"2026-08-20T12:00:00Z\",\n      \"end_time\": \"2026-08-20T12:00:05Z\",\n      \"status_code\": \"OK\",\n      \"status_message\": \"\",\n      \"events\": [],\n      \"context\": {\n        \"span_id\": \"1a2b3c4d5e6f7a8b\",\n        \"trace_id\": \"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4\"\n      },\n      \"attributes\": {\n        \"llm.model_name\": \"gemini-3.6-flash\",\n        \"llm.provider\": \"google\"\n      }\n    }\n  ]\n}",
+        "url": "={{ $json.url_boletin }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1024,
+        -192,
         0
       ],
-      "id": "8174e8f5-74ea-46f1-8d35-ea1c75ed9358",
-      "name": "HTTP Request2",
-      "onError": "continueRegularOutput"
+      "id": "75b0f4b7-4343-45c3-bf2b-c33299229da0",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data || $input.first().json.body || $input.first().json;\n\n// Comillas simples, no dobles\nconst regex = /href='(https:\\/\\/epipublic\\.dge\\.gob\\.pe\\/uploads\\/boletin\\/boletin_\\d+_\\d+_\\d+\\.pdf)'/;\nconst match = html.match(regex);\n\nif (!match) {\n  throw new Error(\"No se encontró ningún link de boletín en la página del listado\");\n}\n\nconst urlBoletin = match[1];\n\nreturn [{ json: { url_boletin: urlBoletin } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        32
+      ],
+      "id": "de44d801-e894-4d41-807d-a2ba0dc1eca3",
+      "name": "Code in JavaScript2"
     }
   ],
   "pinData": {},
@@ -331,12 +361,12 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "HTTP Request1",
             "type": "main",
             "index": 0
           },
           {
-            "node": "HTTP Request1",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
@@ -347,7 +377,7 @@
       "main": [
         [
           {
-            "node": "Extract from File",
+            "node": "Code in JavaScript2",
             "type": "main",
             "index": 0
           }
@@ -391,7 +421,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request2",
+            "node": "Insert row",
             "type": "main",
             "index": 0
           }
@@ -424,7 +454,18 @@
       "main": [
         [
           {
-            "node": "Insert row",
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
             "type": "main",
             "index": 0
           }
@@ -432,17 +473,17 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "9dfc7f2a-8483-48c4-ae4c-2a8e0d061cd0",
+  "versionId": "96e53730-ab02-4a57-b33b-d38fdacd7841",
   "meta": {
-    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
   },
   "nodeGroups": [],
-  "id": "r4NOMipqzlFIuoo8",
+  "id": "qJ39yvKYJbFcpvzE",
   "tags": []
 }

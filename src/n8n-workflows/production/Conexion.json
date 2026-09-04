@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -320,
+        32
       ],
-      "id": "a89dc5fb-09b2-4f02-839f-2470cf156492",
+      "id": "24f68dc6-be88-4403-a70a-70a6162d98f9",
       "name": "Webhook",
       "webhookId": "8b566a4b-0d69-4c66-9cfa-6c4b7c964649"
     },
@@ -23,20 +23,20 @@
         "operation": "get",
         "dataTableId": {
           "__rl": true,
-          "value": "WThoJn8WyrVUM88a",
+          "value": "k5z1fJowE8T720Wp",
           "mode": "list",
-          "cachedResultName": "resultados_dengue1",
-          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/WThoJn8WyrVUM88a"
+          "cachedResultName": "analisis boletin",
+          "cachedResultUrl": "/projects/FUGU9goqcyUJLXk5/datatables/k5z1fJowE8T720Wp"
         },
         "limit": 1
       },
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        256,
-        112
+        -64,
+        144
       ],
-      "id": "6749283e-fd76-4888-a764-c449c4823397",
+      "id": "ad7146de-4d23-4d4c-837b-9050041c8130",
       "name": "Get row(s)"
     },
     {
@@ -44,20 +44,20 @@
         "operation": "get",
         "dataTableId": {
           "__rl": true,
-          "value": "HfeBBilcTXTHczS6",
+          "value": "NY1tzBaYPb5fwcWy",
           "mode": "list",
           "cachedResultName": "datos_clima",
-          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/HfeBBilcTXTHczS6"
+          "cachedResultUrl": "/projects/FUGU9goqcyUJLXk5/datatables/NY1tzBaYPb5fwcWy"
         },
         "limit": 10
       },
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        272,
-        -96
+        -48,
+        -64
       ],
-      "id": "cf8c1194-9b33-4f55-b013-031e248d03c7",
+      "id": "3cc6ddb5-d52a-4cbc-aa63-ad719251dfc2",
       "name": "Get row(s)1"
     },
     {
@@ -69,25 +69,25 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        672,
-        0
+        352,
+        32
       ],
-      "id": "ab30a512-6e6b-44b6-b65c-692722129772",
+      "id": "ace2b12e-f9ea-4de4-86aa-20aac29e38b2",
       "name": "Merge"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente de vigilancia epidemiológica para el sistema HealthRadar.\n\nAquí está el análisis más reciente del boletín epidemiológico:\n{{ $json.resultado_analisis }}\n\nAquí están los datos climáticos más recientes por región:\nTemperatura máxima: {{ $json.temp_max_promedio }}°C\nTemperatura mínima: {{ $json.temp_min_promedio }}°C\nPrecipitación: {{ $json.precipitacion_total }}mm\nSemana: {{ $json.semana_inicio }} a {{ $json.semana_fin }}\n\nEl analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nResponde de forma clara, breve y en español, basándote únicamente en los datos anteriores. \nSi la pregunta no se puede responder con esta información disponible, dilo explícitamente \nen vez de inventar datos.",
+        "text": "==Eres un asistente de vigilancia epidemiológica para el sistema HealthRadar.\n\nAquí está el análisis más reciente del boletín epidemiológico:\n{{ $json.resumen }}\n\nAquí están los datos climáticos más recientes por región:\nTemperatura máxima: {{ $json.temp_max_promedio }}°C\nTemperatura mínima: {{ $json.temp_min_promedio }}°C\nPrecipitación: {{ $json.precipitacion_total }}mm\nSemana del clima: {{ $json.semana_inicio }} a {{ $json.semana_fin }}\n\nEl analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Antes de responder, compara la semana epidemiológica del boletín con el rango de fechas de los datos climáticos. Si no corresponden a la misma semana o periodo, adviértelo explícitamente al inicio de tu respuesta (por ejemplo: \"Nota: el boletín epidemiológico corresponde a la semana X, mientras que los datos climáticos corresponden a la semana Y; no son del mismo periodo.\"). No mezcles ni presentes ambos datos como si fueran de la misma semana sin esa advertencia.\n\nResponde de forma clara, breve y en español, basándote únicamente en los datos anteriores.\nSi la pregunta no se puede responder con esta información disponible, dilo explícitamente\nen vez de inventar datos.",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        896,
-        0
+        576,
+        32
       ],
-      "id": "5d98ceca-5749-42a8-80d3-b9a1af4ed857",
+      "id": "6e66c603-c346-4242-9b61-fe982f3f96ec",
       "name": "AI Agent"
     },
     {
@@ -98,14 +98,14 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        768,
-        208
+        576,
+        240
       ],
-      "id": "042bfa2e-da4f-4de0-be46-3ed46e2c07f0",
+      "id": "e8a3ad57-36c6-4a30-99ef-58fe61d9f0cf",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "pSmV0ia7eJr1MB0r",
+          "id": "mqsjvSTTxIZSuT9O",
           "name": "Google Gemini(PaLM) Api account 2"
         }
       }
@@ -119,10 +119,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1264,
-        0
+        944,
+        32
       ],
-      "id": "8bd330a2-2aa5-4d76-86e6-36e4c0b246d4",
+      "id": "db94297e-70df-412f-a548-65423710893f",
       "name": "Respond to Webhook"
     }
   ],
@@ -200,18 +200,17 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "de11cc1e-ac89-48d7-9f57-1bd2e62ff54b",
+  "versionId": "b6683a65-7b95-42d5-a45d-4f22642ce739",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
   },
   "nodeGroups": [],
-  "id": "dPV2LlIhCl5Ogv3s",
+  "id": "ZJmPO4nmXILV7GUI",
   "tags": []
 }
