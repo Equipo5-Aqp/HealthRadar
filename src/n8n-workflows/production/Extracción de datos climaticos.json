@@ -12,10 +12,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -464,
-        16
+        0,
+        0
       ],
-      "id": "7ef7d09b-2580-4894-8f16-ac1a37f03c10",
+      "id": "49792e7e-3076-4c1a-bd78-8eecf4e907b3",
       "name": "Schedule Trigger"
     },
     {
@@ -55,10 +55,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -128,
-        16
+        336,
+        0
       ],
-      "id": "3aa39b99-57fe-4339-bd59-92441d9560c3",
+      "id": "b7e4dcec-994b-4e4c-bd5e-4c445c9d1715",
       "name": "HTTP Request1"
     },
     {
@@ -68,10 +68,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        208,
-        32
+        672,
+        16
       ],
-      "id": "88e541b2-f166-43ca-a049-c379a8083728",
+      "id": "001c884c-b32a-4bfa-bcc2-74170fabd0dc",
       "name": "Code in JavaScript1"
     },
     {
@@ -208,10 +208,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        480,
-        32
+        944,
+        16
       ],
-      "id": "ab83d0ac-bacd-4c7c-97ef-54414f82294c",
+      "id": "b6fd0821-8474-4d60-95e8-ca573bcd0f66",
       "name": "Insert row1"
     }
   ],
@@ -257,12 +257,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "43f209c2-5297-4d20-ab00-d31b53df7575",
+  "versionId": "20741f66-7b65-481b-8a3e-767aae1c326b",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
   },
   "nodeGroups": [],
-  "id": "baE1wEB9YUrVe8av",
+  "id": "jU7u3DzIec569YYi",
   "tags": []
 }
