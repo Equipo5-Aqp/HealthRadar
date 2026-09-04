@@ -1,9 +1,13 @@
 import requests
 import time
+import os
 # URL del webhook conversacional NLQ, accesible vía túnel SSH a la VM de Azure.
-# TODO: reemplazar por la Production URL pública una vez el Arquitecto
+# pública vía proxy de Next.js (secret N8N_NLQ_WEBHOOK_URL, puerto 3000).
 # configure el reverse proxy (bloqueo documentado en HU-06).
-WEBHOOK_URL = "http://localhost:5678/webhook/consulta"
+WEBHOOK_URL = os.environ.get(
+    "N8N_NLQ_WEBHOOK_URL",
+    "http://localhost:5678/webhook/consulta"  # fallback local con túnel SSH
+)
 PAUSA_ENTRE_PRUEBAS = 45
 
 def test_webhook_esta_vivo():
