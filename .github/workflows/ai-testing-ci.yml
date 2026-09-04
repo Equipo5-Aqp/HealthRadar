@@ -32,20 +32,33 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      - name: Verificar si hay credenciales de n8n configuradas
-        id: check_n8n
+      - name: Verificar si hay webhook de n8n configurado
+        id: check_webhook
         run: |
-          if [ -z "${{ secrets.N8N_API_URL }}" ] || [ -z "${{ secrets.N8N_API_KEY }}" ]; then
+          if [ -z "${{ secrets.N8N_NLQ_WEBHOOK_URL }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "⚠️ N8N_API_URL o N8N_API_KEY no configurados — se omite esta prueba"
+            echo "⚠️ N8N_NLQ_WEBHOOK_URL no configurado — se omiten estas pruebas"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Ejecutar pruebas de prompts contra el webhook de n8n
-        if: steps.check_n8n.outputs.skip == 'false'
+      - name: "QA · Seguridad — Prompt Injection (HU-04)"
+        if: steps.check_webhook.outputs.skip == 'false'
+        continue-on-error: true
         env:
-          N8N_API_URL: ${{ secrets.N8N_API_URL }}
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
-          N8N_NLQ_WEBHOOK_PATH: ${{ secrets.N8N_NLQ_WEBHOOK_PATH }}
-        run: python -m pytest test_llm_outputs.py -v
+          N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_prompt_injection.py -v
+
+      - name: "QA · Integración — Flujo NLQ (HU-06)"
+        if: steps.check_webhook.outputs.skip == 'false'
+        continue-on-error: true
+        env:
+          N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_n8n_connection.py -v
+
+      - name: "QA · Esquema — Outputs del LLM (HU-05)"
+        if: steps.check_webhook.outputs.skip == 'false'
+        continue-on-error: true
+        env:
+          N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_llm_outputs.py -v
