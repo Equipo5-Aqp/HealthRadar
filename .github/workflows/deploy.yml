@@ -18,6 +18,7 @@ jobs:
           filters: |
             deployable:
               - 'src/**'
+              - '!src/n8n-workflows/**'
               - 'infrastructure/**'
 
       - name: Desplegar vía SSH
@@ -31,7 +32,8 @@ jobs:
             set -e
             cd /home/azureuser/HealthRadar
             echo "📥 Actualizando código..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             cd infrastructure
             echo "🐳 Reconstruyendo y desplegando contenedores..."
             docker compose up -d --build
