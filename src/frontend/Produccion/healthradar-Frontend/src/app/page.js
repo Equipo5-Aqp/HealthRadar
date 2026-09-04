@@ -32,7 +32,7 @@ export default function Page() {
     setError('')
 
     try {
-      const res = await fetch('http://n8n:5678/webhook/consulta', {
+      const res = await fetch('/api/consulta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pregunta: preguntaActual }),
