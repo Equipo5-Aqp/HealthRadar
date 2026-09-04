@@ -1,0 +1,103 @@
+name: n8n Deploy CD
+
+# Este pipeline se ejecuta automáticamente cuando se hace merge a main
+# y se detectan cambios en los workflows de producción de n8n.
+# Se encarga de importar los JSON y publicar/activar los flujos en la VM de Azure.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/n8n-workflows/production/**'
+
+jobs:
+  deploy-n8n:
+    name: Desplegar y Publicar Workflows en n8n Producción
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Importar workflows y publicar en n8n Azure VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "===================================================="
+            echo "🚀 INICIANDO DESPLIEGUE CONTINUO (CD) DE N8N"
+            echo "===================================================="
+
+            # Rutas verificadas contra deploy.yml (misma VM y mismo usuario azureuser)
+            REPO_DIR="/home/azureuser/HealthRadar"
+            WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
+            CONTAINER_NAME="healthradar-n8n"
+
+            echo "📥 1. Actualizando repositorio en la VM..."
+            cd "$REPO_DIR"
+            git pull origin main
+
+            echo "🔍 2. Verificando que el contenedor $CONTAINER_NAME esté activo..."
+            docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" | grep -q running || {
+              echo "❌ Error: El contenedor $CONTAINER_NAME no está corriendo en la VM."
+              exit 1
+            }
+
+            echo "📂 3. Copiando flujos JSON al contenedor..."
+            docker exec "$CONTAINER_NAME" mkdir -p /tmp/n8n-import
+            docker exec "$CONTAINER_NAME" rm -rf /tmp/n8n-import/*
+
+            for workflow_file in "$WORKFLOWS_DIR"/*.json; do
+              if [ -f "$workflow_file" ]; then
+                fname=$(basename "$workflow_file")
+                docker cp "$workflow_file" "$CONTAINER_NAME":/tmp/n8n-import/"$fname"
+                echo "  📄 Copiado: $fname"
+              fi
+            done
+
+            echo "📥 4. Importando flujos a la base de datos de n8n..."
+            docker exec "$CONTAINER_NAME" n8n import:workflow --separate --input=/tmp/n8n-import/
+            docker exec "$CONTAINER_NAME" rm -rf /tmp/n8n-import/
+            echo "  ✅ Flujos importados correctamente en n8n."
+
+            echo "⚡ 5. Publicando / Activando flujos (Activación de Webhooks y Triggers)..."
+            # Al reiniciar el contenedor, el runtime de n8n lee todos los flujos importados
+            # y activa en memoria todos los triggers, cron y webhooks que tengan 'active: true'.
+            docker restart "$CONTAINER_NAME"
+
+            echo "⏳ 6. Esperando que n8n inicie y registre los flujos activos..."
+            MAX_RETRIES=20
+            COUNT=0
+            READY=false
+
+            while [ $COUNT -lt $MAX_RETRIES ]; do
+              sleep 3
+
+              # Primero verificar que el contenedor ya esté en estado 'running'.
+              # Usar docker inspect (no docker exec) para no disparar set -e durante el reinicio.
+              CONTAINER_STATE=$(docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "not_found")
+
+              if [ "$CONTAINER_STATE" = "running" ]; then
+                # Contenedor ya corriendo: intentar el healthcheck de n8n
+                if docker exec "$CONTAINER_NAME" wget -qO- http://localhost:5678/healthz > /dev/null 2>&1; then
+                  READY=true
+                  break
+                fi
+              fi
+
+              COUNT=$((COUNT + 1))
+              echo "  ...esperando n8n - estado: $CONTAINER_STATE ($COUNT/$MAX_RETRIES)"
+            done
+
+            if [ "$READY" = true ]; then
+              echo "===================================================="
+              echo "✅ DESPLIEGUE EXITOSO: n8n está activo y con los flujos publicados."
+              echo "===================================================="
+            else
+              echo "❌ Error: n8n no respondió al healthcheck después de reiniciar."
+              docker logs --tail=40 "$CONTAINER_NAME"
+              exit 1
+            fi
