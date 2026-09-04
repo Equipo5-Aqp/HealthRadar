@@ -1,0 +1,203 @@
+name: n8n Deploy CD
+
+# Se activa automáticamente al hacer merge a main cuando cambian
+# archivos de workflows en src/n8n-workflows/production/
+# El CI de validación (n8n-validate-ci.yml) ya corrió en el PR.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/n8n-workflows/production/**'
+
+jobs:
+  deploy-n8n:
+    name: Desplegar y Publicar Workflows en n8n Producción
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # ── PASO 1 y 2: git pull + copiar + importar ──────────────────────────────
+      - name: Actualizar repo, copiar e importar workflows en n8n
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "===================================================="
+            echo "🚀 INICIANDO DESPLIEGUE CONTINUO (CD) DE N8N"
+            echo "===================================================="
+
+            # Rutas verificadas contra deploy.yml y docker-compose.yml
+            REPO_DIR="/home/azureuser/HealthRadar"
+            WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
+            CONTAINER_NAME="healthradar-n8n"
+
+            echo "📥 1. Actualizando repositorio en la VM..."
+            cd "$REPO_DIR"
+
+            # En el servidor de producción nunca debe haber cambios manuales o pendientes.
+            # Usar fetch + reset --hard garantiza sincronización exacta con main sin errores
+            # de 'overwritten by merge' o archivos locales modificados.
+            echo "  🧹 Sincronizando con origin/main (descartando cualquier residuo local)..."
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd src/n8n-workflows/production/
+
+            echo "🔍 2. Verificando que el contenedor esté activo..."
+            docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" | grep -q running || {
+              echo "❌ El contenedor $CONTAINER_NAME no está corriendo."
+              exit 1
+            }
+
+            echo "📂 3. Copiando flujos JSON al contenedor..."
+            docker exec "$CONTAINER_NAME" rm -rf /tmp/n8n-import
+            docker exec "$CONTAINER_NAME" mkdir -p /tmp/n8n-import
+
+            # Copiar todos los flujos atómicamente evitando problemas con espacios o tildes en nombres
+            docker cp "$WORKFLOWS_DIR/." "$CONTAINER_NAME":/tmp/n8n-import/
+            echo "  📄 Archivos copiados al contenedor:"
+            docker exec "$CONTAINER_NAME" ls -1 /tmp/n8n-import/
+
+            echo "📥 4. Importando flujos a la base de datos de n8n..."
+            docker exec "$CONTAINER_NAME" n8n import:workflow --separate --input=/tmp/n8n-import/
+            echo "  ✅ Flujos importados en la BD de n8n."
+
+       # ── PASO 3: Publicar/Activar vía API de n8n (el botón Publish automatizado) ─
+       # IMPORTANTE: Requiere el secret N8N_API_KEY en GitHub.
+       # Cómo obtenerlo: n8n UI → Settings → n8n API → Create new API key
+       # Cómo configurarlo: GitHub repo → Settings → Secrets → New secret → N8N_API_KEY
+       #
+       # NOTA TÉCNICA: n8n v1+ distingue entre "importar" (escribe en BD) y "publicar"
+       # (crea versión publicada + activa triggers en memoria).
+       # n8n import:workflow solo hace lo primero. La API /activate hace lo segundo.
+       #
+       # ACCESO A LA API: el puerto 5678 no está expuesto al host de la VM (ADR-008),
+       # pero la red Docker (healthradar-net) SÍ es accesible desde el host de la VM.
+       # Se obtiene la IP interna del contenedor con docker inspect (dinámica, cambia
+       # en cada reinicio) y se llama a la API via curl desde el host de la VM.
+       # Esto es seguro: 172.x.x.x solo es alcanzable desde dentro de la misma VM.
+      - name: Publicar y activar workflows vía API de n8n
+        uses: appleboy/ssh-action@v1
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          envs: N8N_API_KEY
+          script: |
+            CONTAINER_NAME="healthradar-n8n"
+            REPO_DIR="/home/azureuser/HealthRadar"
+            WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
+
+            if [ -z "$N8N_API_KEY" ]; then
+              echo "⚠️  Secret N8N_API_KEY no configurado en GitHub."
+              echo "   Los flujos fueron importados en la BD pero NO se publicaron."
+              echo ""
+              echo "   👉 Para completar la automatización:"
+              echo "   1. Ir a la UI de n8n → Settings → n8n API → Create new API key"
+              echo "   2. GitHub repo → Settings → Secrets → New → N8N_API_KEY"
+              echo "   3. Volver a hacer push para que este paso se ejecute."
+              exit 0
+            fi
+
+            echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
+
+            # Obtener la IP interna del contenedor en la red Docker.
+            # La IP es dinámica (cambia en cada reinicio), por eso se consulta en tiempo real.
+            # La red 172.x.x.x solo es accesible desde dentro de la misma VM → seguro.
+            N8N_IP=$(docker inspect \
+              -f '{{.NetworkSettings.Networks.healthradar-net.IPAddress}}' \
+              "$CONTAINER_NAME")
+
+            if [ -z "$N8N_IP" ]; then
+              echo "❌ No se pudo obtener la IP del contenedor $CONTAINER_NAME."
+              exit 1
+            fi
+
+            echo "  📡 IP interna de n8n en la red Docker: $N8N_IP:5678"
+
+            # Iterar sobre cada JSON de producción, extraer su ID y llamar a /activate
+            REPO_DIR="/home/azureuser/HealthRadar"
+            WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
+
+            for json_file in "$WORKFLOWS_DIR"/*.json; do
+              [ -f "$json_file" ] || continue
+              FNAME=$(basename "$json_file")
+
+              # Extraer ID y nombre con python3 de forma segura (soporta espacios y acentos)
+              WF_ID=$(python3 -c \
+                "import sys, json; d=json.load(open(sys.argv[1], encoding='utf-8')); print(d.get('id',''))" \
+                "$json_file" 2>/dev/null || echo "")
+              WF_NAME=$(python3 -c \
+                "import sys, json; d=json.load(open(sys.argv[1], encoding='utf-8')); print(d.get('name',''))" \
+                "$json_file" 2>/dev/null || echo "$FNAME")
+              [ -z "$WF_NAME" ] && WF_NAME="$FNAME"
+
+              if [ -z "$WF_ID" ]; then
+                echo "  ⚠️  $FNAME no tiene campo 'id' — verificar el JSON"
+                continue
+              fi
+
+              # Llamar a la API desde el HOST de la VM usando la IP interna del contenedor.
+              # curl está disponible en Ubuntu (no necesita docker exec).
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                -X POST \
+                -H "X-N8N-API-KEY: $N8N_API_KEY" \
+                -H "Content-Type: application/json" \
+                "http://$N8N_IP:5678/api/v1/workflows/$WF_ID/activate")
+
+              if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
+                echo "  ✅ Publicado: $WF_NAME (ID: $WF_ID)"
+              else
+                echo "  ⚠️  No se pudo publicar $WF_NAME (ID: $WF_ID) — HTTP $HTTP_STATUS"
+              fi
+            done
+
+            echo "✅ Todos los flujos procesados."
+
+      # ── PASO 4: Limpiar temporales y verificación final ───────────────────────
+      - name: Limpieza y verificación final
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            CONTAINER_NAME="healthradar-n8n"
+
+            echo "🧹 Limpiando archivos temporales del contenedor..."
+            docker exec "$CONTAINER_NAME" sh -c 'rm -rf /tmp/n8n-import/ 2>/dev/null || true'
+
+            echo "🔍 Verificando healthcheck de n8n..."
+            MAX_RETRIES=15
+            COUNT=0
+            READY=false
+
+            while [ $COUNT -lt $MAX_RETRIES ]; do
+              sleep 2
+              CONTAINER_STATE=$(docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "not_found")
+              if [ "$CONTAINER_STATE" = "running" ]; then
+                if docker exec "$CONTAINER_NAME" wget -qO- http://localhost:5678/healthz > /dev/null 2>&1; then
+                  READY=true
+                  break
+                fi
+              fi
+              COUNT=$((COUNT + 1))
+              echo "  ...esperando n8n - estado: $CONTAINER_STATE ($COUNT/$MAX_RETRIES)"
+            done
+
+            if [ "$READY" = true ]; then
+              echo "===================================================="
+              echo "✅ DESPLIEGUE EXITOSO: n8n activo y flujos desplegados."
+              echo "===================================================="
+            else
+              echo "❌ n8n no respondió al healthcheck."
+              docker logs --tail=40 "$CONTAINER_NAME"
+              exit 1
+            fi
