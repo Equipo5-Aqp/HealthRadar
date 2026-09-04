@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "src/n8n-workflows/production/**"
+  workflow_dispatch:
 
 jobs:
   deploy-n8n:
