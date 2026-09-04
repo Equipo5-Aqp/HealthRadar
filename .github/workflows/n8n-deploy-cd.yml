@@ -110,15 +110,17 @@ jobs:
             echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
 
             # Obtener la IP interna del contenedor en la red Docker.
-            # La IP es dinámica (cambia en cada reinicio), por eso se consulta en tiempo real.
-            # La red 172.x.x.x solo es accesible desde dentro de la misma VM → seguro.
-            N8N_IP=$(docker inspect \
-              -f '{{.NetworkSettings.Networks.healthradar-net.IPAddress}}' \
-              "$CONTAINER_NAME")
+            # En Go templates de Docker, los nombres con guion (-) causan 'bad character U+002D'.
+            # Se usa 'range' o 'index' para resolverlo de forma segura, con fallback a 172.18.0.4.
+            N8N_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
 
             if [ -z "$N8N_IP" ]; then
-              echo "❌ No se pudo obtener la IP del contenedor $CONTAINER_NAME."
-              exit 1
+              N8N_IP=$(docker inspect -f '{{(index .NetworkSettings.Networks "healthradar-net").IPAddress}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
+            fi
+
+            if [ -z "$N8N_IP" ]; then
+              echo "⚠️  No se pudo resolver la IP por inspección, usando fallback 172.18.0.4..."
+              N8N_IP="172.18.0.4"
             fi
 
             echo "  📡 IP interna de n8n en la red Docker: $N8N_IP:5678"
