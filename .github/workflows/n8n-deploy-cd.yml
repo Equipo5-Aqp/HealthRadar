@@ -8,7 +8,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/n8n-workflows/production/**'
+      - "src/n8n-workflows/production/**"
 
 jobs:
   deploy-n8n:
@@ -67,20 +67,20 @@ jobs:
             docker exec "$CONTAINER_NAME" n8n import:workflow --separate --input=/tmp/n8n-import/
             echo "  ✅ Flujos importados en la BD de n8n."
 
-       # ── PASO 3: Publicar/Activar vía API de n8n (el botón Publish automatizado) ─
-       # IMPORTANTE: Requiere el secret N8N_API_KEY en GitHub.
-       # Cómo obtenerlo: n8n UI → Settings → n8n API → Create new API key
-       # Cómo configurarlo: GitHub repo → Settings → Secrets → New secret → N8N_API_KEY
-       #
-       # NOTA TÉCNICA: n8n v1+ distingue entre "importar" (escribe en BD) y "publicar"
-       # (crea versión publicada + activa triggers en memoria).
-       # n8n import:workflow solo hace lo primero. La API /activate hace lo segundo.
-       #
-       # ACCESO A LA API: el puerto 5678 no está expuesto al host de la VM (ADR-008),
-       # pero la red Docker (healthradar-net) SÍ es accesible desde el host de la VM.
-       # Se obtiene la IP interna del contenedor con docker inspect (dinámica, cambia
-       # en cada reinicio) y se llama a la API via curl desde el host de la VM.
-       # Esto es seguro: 172.x.x.x solo es alcanzable desde dentro de la misma VM.
+        # ── PASO 3: Publicar/Activar vía API de n8n (el botón Publish automatizado) ─
+        # IMPORTANTE: Requiere el secret N8N_API_KEY en GitHub.
+        # Cómo obtenerlo: n8n UI → Settings → n8n API → Create new API key
+        # Cómo configurarlo: GitHub repo → Settings → Secrets → New secret → N8N_API_KEY
+        #
+        # NOTA TÉCNICA: n8n v1+ distingue entre "importar" (escribe en BD) y "publicar"
+        # (crea versión publicada + activa triggers en memoria).
+        # n8n import:workflow solo hace lo primero. La API /activate hace lo segundo.
+        #
+        # ACCESO A LA API: el puerto 5678 no está expuesto al host de la VM (ADR-008),
+        # pero la red Docker (healthradar-net) SÍ es accesible desde el host de la VM.
+        # Se obtiene la IP interna del contenedor con docker inspect (dinámica, cambia
+        # en cada reinicio) y se llama a la API via curl desde el host de la VM.
+        # Esto es seguro: 172.x.x.x solo es alcanzable desde dentro de la misma VM.
       - name: Publicar y activar workflows vía API de n8n
         uses: appleboy/ssh-action@v1
         env:

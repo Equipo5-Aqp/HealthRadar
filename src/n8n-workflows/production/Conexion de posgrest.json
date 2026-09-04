@@ -1,0 +1,333 @@
+{
+  "name": "Conexion de posgrest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "historicos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        -32
+      ],
+      "id": "048755f0-3e9b-49b5-983a-f1df6218ba91",
+      "name": "Webhook",
+      "webhookId": "d4f17646-a645-470a-85b5-017cdb13d467"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $input.all().map(item => item.json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        -16
+      ],
+      "id": "24bdee15-bead-4666-a8e1-84f0b349e572",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM caso_dengue\nORDER BY id_caso_dengue\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        400,
+        -304
+      ],
+      "id": "a98fe199-ce63-44db-8ea2-d16f4c1d415b",
+      "name": "Dengue",
+      "credentials": {
+        "postgres": {
+          "id": "qtdiHPY2u2ZrDB17",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM caso_eda\nORDER BY id_caso_eda\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        400,
+        -96
+      ],
+      "id": "c78bee6a-bb74-4673-a650-26087c914bd7",
+      "name": "EDA",
+      "credentials": {
+        "postgres": {
+          "id": "qtdiHPY2u2ZrDB17",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM caso_ira_neumonia\nORDER BY id_caso_ira\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        400,
+        64
+      ],
+      "id": "cc3a336e-1bcd-4324-b809-684139717f65",
+      "name": "ira_neumonia",
+      "credentials": {
+        "postgres": {
+          "id": "qtdiHPY2u2ZrDB17",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM caso_ira_no_neumonia\nORDER BY id_caso_ira_nn\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        400,
+        240
+      ],
+      "id": "54d541f4-4ace-4ce6-90e3-463ab488f749",
+      "name": "ira_no_neumonia",
+      "credentials": {
+        "postgres": {
+          "id": "qtdiHPY2u2ZrDB17",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "dengue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a3565342-6040-4496-b800-fab74bd881ed"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8e04e55b-4e20-43f2-be0c-d708f1455ff5",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "eda",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3ecd4d59-91e3-4b77-9634-eb9a59115777",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "829c70f0-844a-48f7-bc94-29ecad11c407",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_no_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        -64
+      ],
+      "id": "02da8bd4-b2c9-4b8a-b1d3-2482ffd8d1ef",
+      "name": "Switch"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dengue": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ira_no_neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ira_neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EDA": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Dengue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "EDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ira_neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ira_no_neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c929366b-51e9-4339-a9cd-c4fd6891f967",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
+  },
+  "nodeGroups": [],
+  "id": "31PKsPiAYIbZazl1",
+  "tags": []
+}
