@@ -26,11 +26,11 @@
           "parameters": [
             {
               "name": "latitude",
-              "value": "-8.38"
+              "value": "-6.23,-9.53,-13.63,-16.40,-13.16,-7.16,-12.05,-13.53,-12.78,-9.93,-14.07,-12.07,-8.11,-6.77,-12.05,-3.75,-12.60,-17.19,-10.68,-5.19,-15.84,-6.49,-18.01,-3.57,-8.38"
             },
             {
               "name": "longitude",
-              "value": "-74.55"
+              "value": "-77.87,-77.53,-72.88,-71.54,-74.22,-78.51,-77.12,-71.97,-74.97,-76.24,-75.73,-75.21,-79.03,-79.84,-77.04,-73.25,-69.19,-70.93,-76.26,-80.63,-70.02,-76.37,-70.25,-80.45,-74.55"
             },
             {
               "name": "daily",
@@ -46,7 +46,7 @@
             },
             {
               "name": "end_date",
-              "value": "2026-08-20"
+              "value": "2024-12-31"
             }
           ]
         },
@@ -55,7 +55,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        336,
+        256,
         0
       ],
       "id": "b7e4dcec-994b-4e4c-bd5e-4c445c9d1715",
@@ -63,156 +63,37 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst output = [];\n\n// Diccionario de coordenadas a nombre de departamento\nconst departamentos = [\n  { nombre: \"Lima\", lat: -12.05, lon: -77.04 },\n  { nombre: \"Amazonas\", lat: -6.23, lon: -77.87 },\n  { nombre: \"Áncash\", lat: -9.53, lon: -77.53 },\n  { nombre: \"Apurímac\", lat: -13.63, lon: -72.88 },\n  { nombre: \"Arequipa\", lat: -16.4, lon: -71.54 },\n  { nombre: \"Ayacucho\", lat: -13.16, lon: -74.22 },\n  { nombre: \"Cajamarca\", lat: -7.16, lon: -78.51 },\n  { nombre: \"Callao\", lat: -12.05, lon: -77.12 },\n  { nombre: \"Cusco\", lat: -13.53, lon: -71.97 },\n  { nombre: \"Huancavelica\", lat: -12.78, lon: -74.97 },\n  { nombre: \"Huánuco\", lat: -9.93, lon: -76.24 },\n  { nombre: \"Ica\", lat: -14.07, lon: -75.73 },\n  { nombre: \"Junín\", lat: -12.07, lon: -75.21 },\n  { nombre: \"La Libertad\", lat: -8.11, lon: -79.03 },\n  { nombre: \"Lambayeque\", lat: -6.77, lon: -79.84 },\n  { nombre: \"Loreto\", lat: -3.75, lon: -73.25 },\n  { nombre: \"Madre de Dios\", lat: -12.6, lon: -69.19 },\n  { nombre: \"Moquegua\", lat: -17.19, lon: -70.93 },\n  { nombre: \"Pasco\", lat: -10.68, lon: -76.26 },\n  { nombre: \"Piura\", lat: -5.19, lon: -80.63 },\n  { nombre: \"Puno\", lat: -15.84, lon: -70.02 },\n  { nombre: \"San Martín\", lat: -6.49, lon: -76.37 },\n  { nombre: \"Tacna\", lat: -18.01, lon: -70.25 },\n  { nombre: \"Tumbes\", lat: -3.57, lon: -80.45 },\n  { nombre: \"Ucayali\", lat: -8.38, lon: -74.55 }\n];\n\nfunction getDepartamento(lat, lon) {\n  let masCercano = null;\n  let distanciaMin = Infinity;\n\n  for (const dep of departamentos) {\n    const dist = Math.sqrt(Math.pow(lat - dep.lat, 2) + Math.pow(lon - dep.lon, 2));\n    if (dist < distanciaMin) {\n      distanciaMin = dist;\n      masCercano = dep.nombre;\n    }\n  }\n\n  return masCercano || \"Desconocido\";\n}\n\n// Función para calcular semana epidemiológica y año (ISO week)\nfunction getSemanaEpi(fechaStr) {\n  const fecha = new Date(fechaStr);\n  const target = new Date(fecha.valueOf());\n  const dayNr = (fecha.getDay() + 6) % 7;\n  target.setDate(target.getDate() - dayNr + 3);\n  const firstThursday = target.valueOf();\n  target.setMonth(0, 1);\n  if (target.getDay() !== 4) {\n    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);\n  }\n  const semana = 1 + Math.ceil((firstThursday - target) / 604800000);\n  const anio = new Date(fecha.getFullYear(), 0, 4).getFullYear();\n  return { anio, semana };\n}\n\nfor (const item of items) {\n  const responses = Array.isArray(item.json) ? item.json : [item.json];\n\n  for (const response of responses) {\n    const data = response.daily;\n    if (!data || !data.time) continue;\n\n    const nombreDepartamento = getDepartamento(response.latitude, response.longitude);\n\n    const grupos = {};\n\n    for (let i = 0; i < data.time.length; i++) {\n      const { anio, semana } = getSemanaEpi(data.time[i]);\n      const key = `${anio}-${semana}`;\n\n      if (!grupos[key]) {\n        grupos[key] = {\n          anio,\n          semana,\n          temp_max: [],\n          temp_min: [],\n          temp_mean: [],\n          precipitacion: [],\n          humedad: []\n        };\n      }\n\n      grupos[key].temp_max.push(data.temperature_2m_max[i]);\n      grupos[key].temp_min.push(data.temperature_2m_min[i]);\n      grupos[key].temp_mean.push(data.temperature_2m_mean[i]);\n      grupos[key].precipitacion.push(data.precipitation_sum[i]);\n      grupos[key].humedad.push(data.relative_humidity_2m_mean[i]);\n    }\n\n    const promedio = arr => (arr.reduce((a, b) => a + b, 0) / arr.length);\n    const suma = arr => arr.reduce((a, b) => a + b, 0);\n\n    for (const key in grupos) {\n      const g = grupos[key];\n      output.push({\n        json: {\n          departamento: nombreDepartamento,\n          latitud: response.latitude,\n          longitud: response.longitude,\n          ano: g.anio,\n          semana_epi: g.semana,\n          temp_max_promedio: Number(promedio(g.temp_max).toFixed(1)),\n          temp_min_promedio: Number(promedio(g.temp_min).toFixed(1)),\n          temp_mean_promedio: Number(promedio(g.temp_mean).toFixed(1)),\n          precipitacion_total: Number(suma(g.precipitacion).toFixed(1)),\n          humedad_promedio: Number(promedio(g.humedad).toFixed(1))\n        }\n      });\n    }\n  }\n}\n\nreturn output;"
+        "jsCode": "const items = $input.all();\nconst output = [];\n\n// Catálogo oficial en el mismo orden de las coordenadas que pusiste en HTTP Request\nconst MAPA_DEPARTAMENTOS = [\n  { id: '01', nombre: 'Amazonas',      lat: -6.23,  lon: -77.87 },\n  { id: '02', nombre: 'Ancash',        lat: -9.53,  lon: -77.53 },\n  { id: '03', nombre: 'Apurimac',      lat: -13.63, lon: -72.88 },\n  { id: '04', nombre: 'Arequipa',      lat: -16.40, lon: -71.54 },\n  { id: '05', nombre: 'Ayacucho',      lat: -13.16, lon: -74.22 },\n  { id: '06', nombre: 'Cajamarca',     lat: -7.16,  lon: -78.51 },\n  { id: '07', nombre: 'Callao',        lat: -12.05, lon: -77.12 },\n  { id: '08', nombre: 'Cusco',         lat: -13.53, lon: -71.97 },\n  { id: '09', nombre: 'Huancavelica',  lat: -12.78, lon: -74.97 },\n  { id: '10', nombre: 'Huanuco',       lat: -9.93,  lon: -76.24 },\n  { id: '11', nombre: 'Ica',           lat: -14.07, lon: -75.73 },\n  { id: '12', nombre: 'Junin',         lat: -12.07, lon: -75.21 },\n  { id: '13', nombre: 'La Libertad',   lat: -8.11,  lon: -79.03 },\n  { id: '14', nombre: 'Lambayeque',    lat: -6.77,  lon: -79.84 },\n  { id: '15', nombre: 'Lima',          lat: -12.05, lon: -77.04 },\n  { id: '16', nombre: 'Loreto',        lat: -3.75,  lon: -73.25 },\n  { id: '17', nombre: 'Madre de Dios', lat: -12.60, lon: -69.19 },\n  { id: '18', nombre: 'Moquegua',      lat: -17.19, lon: -70.93 },\n  { id: '19', nombre: 'Pasco',         lat: -10.68, lon: -76.26 },\n  { id: '20', nombre: 'Piura',         lat: -5.19,  lon: -80.63 },\n  { id: '21', nombre: 'Puno',          lat: -15.84, lon: -70.02 },\n  { id: '22', nombre: 'San Martin',    lat: -6.49,  lon: -76.37 },\n  { id: '23', nombre: 'Tacna',         lat: -18.01, lon: -70.25 },\n  { id: '24', nombre: 'Tumbes',        lat: -3.57,  lon: -80.45 },\n  { id: '25', nombre: 'Ucayali',       lat: -8.38,  lon: -74.55 }\n];\n\nfunction getDepartamentoByDistance(lat, lon) {\n  let masCercano = MAPA_DEPARTAMENTOS[0];\n  let distMin = Infinity;\n  for (const dep of MAPA_DEPARTAMENTOS) {\n    const dist = Math.pow(lat - dep.lat, 2) + Math.pow(lon - dep.lon, 2);\n    if (dist < distMin) {\n      distMin = dist;\n      masCercano = dep;\n    }\n  }\n  return masCercano;\n}\n\nfunction getSemanaEpi(fechaStr) {\n  const fecha = new Date(fechaStr);\n  const target = new Date(fecha.valueOf());\n  const dayNr = (fecha.getDay() + 6) % 7;\n  target.setDate(target.getDate() - dayNr + 3);\n  const firstThursday = target.valueOf();\n  target.setMonth(0, 1);\n  if (target.getDay() !== 4) {\n    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);\n  }\n  const semana = 1 + Math.ceil((firstThursday - target) / 604800000);\n  const anio = new Date(fecha.getFullYear(), 0, 4).getFullYear();\n  return { anio, semana };\n}\n\nconst ANIO_LIMITE = 2024;\nconst SEMANA_LIMITE = 52;\n\nfor (let itemIdx = 0; itemIdx < items.length; itemIdx++) {\n  const item = items[itemIdx];\n  const responses = Array.isArray(item.json) ? item.json : [item.json];\n\n  for (let rIdx = 0; rIdx < responses.length; rIdx++) {\n    const response = responses[rIdx];\n    const data = response.daily;\n    if (!data || !data.time) continue;\n\n    // Identifica el departamento correcto según el item que responde n8n\n    const index = responses.length > 1 ? rIdx : itemIdx;\n    const dep = MAPA_DEPARTAMENTOS[index] || getDepartamentoByDistance(response.latitude, response.longitude);\n\n    const grupos = {};\n\n    for (let i = 0; i < data.time.length; i++) {\n      const { anio, semana } = getSemanaEpi(data.time[i]);\n      if (anio < 2010 || anio > ANIO_LIMITE || (anio === ANIO_LIMITE && semana > SEMANA_LIMITE)) {\n        continue;\n      }\n\n      const key = `${anio}-${semana}`;\n      if (!grupos[key]) {\n        grupos[key] = {\n          anio,\n          semana,\n          tmax: [], tmin: [], tmean: [], prec: [], hum: []\n        };\n      }\n\n      if (data.temperature_2m_max?.[i] != null) grupos[key].tmax.push(data.temperature_2m_max[i]);\n      if (data.temperature_2m_min?.[i] != null) grupos[key].tmin.push(data.temperature_2m_min[i]);\n      if (data.temperature_2m_mean?.[i] != null) grupos[key].tmean.push(data.temperature_2m_mean[i]);\n      if (data.precipitation_sum?.[i] != null) grupos[key].prec.push(data.precipitation_sum[i]);\n      if (data.relative_humidity_2m_mean?.[i] != null) grupos[key].hum.push(data.relative_humidity_2m_mean[i]);\n    }\n\n    const promedio = arr => arr.length ? Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : 0;\n    const suma = arr => arr.length ? Number((arr.reduce((a, b) => a + b, 0)).toFixed(1)) : 0;\n\n    for (const key in grupos) {\n      const g = grupos[key];\n      const tmax = promedio(g.tmax);\n      const tmin = promedio(g.tmin);\n      const tmean = promedio(g.tmean);\n      const prec = suma(g.prec);\n      const hum = promedio(g.hum);\n\n      const query = `\n        INSERT INTO dato_climatico (\n          id_departamento, id_periodo,\n          temp_max_promedio, temp_min_promedio, temp_mean_promedio,\n          precipitacion_total, humedad_promedio\n        )\n        SELECT\n          '${dep.id}', pe.id_periodo,\n          ${tmax}, ${tmin}, ${tmean}, ${prec}, ${hum}\n        FROM periodo_epidemiologico pe\n        WHERE pe.anio = ${g.anio} AND pe.semana = ${g.semana}\n        ON CONFLICT (id_departamento, id_periodo) DO NOTHING\n      `.trim();\n\n      output.push({ json: { query, id_dep: dep.id, dep: dep.nombre, anio: g.anio, semana: g.semana } });\n    }\n  }\n}\n\nreturn output;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        16
+        512,
+        0
       ],
-      "id": "001c884c-b32a-4bfa-bcc2-74170fabd0dc",
-      "name": "Code in JavaScript1"
+      "id": "cf275aed-19f8-4c50-a9eb-8c70d9bafae5",
+      "name": "Code in JavaScript"
     },
     {
       "parameters": {
-        "dataTableId": {
-          "__rl": true,
-          "value": "JlelmChJMYTGY8oN",
-          "mode": "list",
-          "cachedResultName": "prueba de open meteo",
-          "cachedResultUrl": "/projects/KjxJLaHgbaxxBh3m/datatables/JlelmChJMYTGY8oN"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "longitud": "={{ $json.longitud }}",
-            "ano": "={{ $json.ano }}",
-            "semana_epi": "={{ $json.semana_epi }}",
-            "temp_max_promedio": "={{ $json.temp_max_promedio }}",
-            "temp_min_promedio": "={{ $json.temp_min_promedio }}",
-            "temp_mean_promedio": "={{ $json.temp_mean_promedio }}",
-            "precipitacion_total": "={{ $json.precipitacion_total }}",
-            "humedad_promedio": "={{ $json.humedad_promedio }}",
-            "latitud": "={{ $json.latitud }}",
-            "departamento": "={{ $json.departamento }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "latitud",
-              "displayName": "latitud",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "longitud",
-              "displayName": "longitud",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "ano",
-              "displayName": "ano",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "semana_epi",
-              "displayName": "semana_epi",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "temp_max_promedio",
-              "displayName": "temp_max_promedio",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "temp_min_promedio",
-              "displayName": "temp_min_promedio",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "temp_mean_promedio",
-              "displayName": "temp_mean_promedio",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "precipitacion_total",
-              "displayName": "precipitacion_total",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "humedad_promedio",
-              "displayName": "humedad_promedio",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "departamento",
-              "displayName": "departamento",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
         "options": {}
       },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
       "position": [
-        944,
-        16
+        768,
+        0
       ],
-      "id": "b6fd0821-8474-4d60-95e8-ca573bcd0f66",
-      "name": "Insert row1"
+      "id": "c268dfd8-a018-4b48-9597-97ae2489a999",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "On8X2Uooy12CrMxf",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -232,18 +113,18 @@
       "main": [
         [
           {
-            "node": "Code in JavaScript1",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code in JavaScript1": {
+    "Code in JavaScript": {
       "main": [
         [
           {
-            "node": "Insert row1",
+            "node": "Execute a SQL query",
             "type": "main",
             "index": 0
           }
@@ -251,15 +132,16 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "20741f66-7b65-481b-8a3e-767aae1c326b",
+  "versionId": "beb71280-fdff-4dcb-a198-4bb3a2604c51",
   "meta": {
-    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
+    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1",
+    "templateCredsSetupCompleted": true
   },
   "nodeGroups": [],
   "id": "jU7u3DzIec569YYi",
