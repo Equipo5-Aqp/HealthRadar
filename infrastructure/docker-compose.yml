@@ -97,13 +97,13 @@ services:
     container_name: healthradar-frontend
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "npm install && npm run build && npm run preview"
+    command: sh -c "npm install && npm run build && npm run start"
     environment:
       - NODE_ENV=development
       - N8N_INTERNAL_URL=http://n8n:5678
       - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
     volumes:
-      - ../src/frontend:/app
+      - ../src/frontend/Produccion/healthradar-Frontend:/app
     networks:
       - healthradar-net
     depends_on:
