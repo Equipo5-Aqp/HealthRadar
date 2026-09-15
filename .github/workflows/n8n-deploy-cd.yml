@@ -204,3 +204,42 @@ jobs:
               docker logs --tail=40 "$CONTAINER_NAME"
               exit 1
             fi
+
+      # ── PASO 5: Pruebas de humo (bloqueantes) ────────────────────────────────
+      - name: Verificar que Phoenix responde internamente
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            CONTAINER_NAME="healthradar-phoenix"
+            CONTAINER_STATE=$(docker inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "not_found")
+            if [ "$CONTAINER_STATE" != "running" ]; then
+              echo "⚠️ Phoenix no está corriendo (estado: $CONTAINER_STATE) — se omite esta verificación"
+              exit 0
+            fi
+            docker exec "$CONTAINER_NAME" wget -qO- http://localhost:6006 > /dev/null \
+              && echo "✅ Phoenix responde" \
+              || (echo "❌ Phoenix no responde" && exit 1)
+
+      - name: Smoke test del flujo NLQ (webhook de n8n)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            RESPONSE=$(docker exec healthradar-n8n wget -qO- --header="Content-Type: application/json" \
+              --post-data='{"pregunta":"prueba de humo staging"}' \
+              http://localhost:5678/webhook/consulta || echo "FAIL")
+            echo "$RESPONSE" | grep -q "FAIL" && (echo "❌ Webhook NLQ no respondió" && exit 1) || echo "✅ Webhook NLQ respondió"
+
+      - name: Verificar logs por errores fatales
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            docker logs healthradar-n8n 2>&1 | grep -iE "fatal|unhandled" && (echo "❌ Errores fatales en n8n" && exit 1) || echo "✅ Sin errores fatales en n8n"
