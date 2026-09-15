@@ -2,7 +2,7 @@ name: Frontend CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   lint:
@@ -41,7 +41,3 @@ jobs:
         if: steps.filter.outputs.frontend == 'true'
         working-directory: src/frontend
         run: npm run build
-
-      - name: Sin cambios relevantes
-        if: steps.filter.outputs.frontend == 'false'
-        run: echo "✅ Este PR no toca src/frontend/ — se omite el build, check en verde"

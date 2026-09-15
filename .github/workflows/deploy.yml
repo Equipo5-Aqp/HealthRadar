@@ -2,11 +2,13 @@ name: Deploy CD
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*.*.*'
 
 jobs:
   deploy:
     name: Desplegar en VM de Azure
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
