@@ -28,6 +28,8 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          # VM B2als_v2 (2 vCPU, 4 GB) puede tardar >10min en build + recreate + healthchecks
+          command_timeout: 20m
           script: |
             set -e
             cd /home/azureuser/HealthRadar
