@@ -1,0 +1,36 @@
+# Ignorar al construir la imagen Docker
+# Evita copiar archivos innecesarios al contexto de build
+
+# Dependencias y build artifacts
+node_modules
+.next
+out
+build
+
+# Control de versiones
+.git
+.gitignore
+
+# Variables de entorno locales
+.env*
+
+# Archivos de desarrollo y documentación
+README.md
+AGENTS.md
+CLAUDE.md
+*.md
+
+# Configuración de linters/editores
+.eslintrc*
+.prettierrc*
+.vscode
+.idea
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
