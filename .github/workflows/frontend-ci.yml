@@ -25,23 +25,19 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: src/frontend/Produccion/healthradar-Frontend/package-lock.json
+          cache-dependency-path: src/frontend/package-lock.json
 
       - name: Instalar dependencias
         if: steps.filter.outputs.frontend == 'true'
-        working-directory: src/frontend/Produccion/healthradar-Frontend
+        working-directory: src/frontend
         run: npm ci
 
       - name: Ejecutar lint
         if: steps.filter.outputs.frontend == 'true'
-        working-directory: src/frontend/Produccion/healthradar-Frontend
+        working-directory: src/frontend
         run: npm run lint
 
       - name: Build
         if: steps.filter.outputs.frontend == 'true'
-        working-directory: src/frontend/Produccion/healthradar-Frontend
+        working-directory: src/frontend
         run: npm run build
-
-      - name: Sin cambios relevantes
-        if: steps.filter.outputs.frontend == 'false'
-        run: echo "✅ Este PR no toca src/frontend/ — se omite el build, check en verde"
