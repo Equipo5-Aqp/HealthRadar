@@ -92,18 +92,18 @@ services:
     #   - "6006:6006"
 
   # Frontend: Next.js + Rutas de API seguras (ADR-004)
+  # HU-204: Imagen propia multi-stage (Dockerfile) con output standalone
+  # HU-203: mem_limit, healthcheck y rotación de logs aplicados
   frontend:
-    image: node:20-alpine
+    build:
+      context: ../src/frontend
+      dockerfile: Dockerfile
     container_name: healthradar-frontend
     restart: unless-stopped
-    working_dir: /app
-    command: sh -c "npm install && npm run build && npm run start"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - N8N_INTERNAL_URL=http://n8n:5678
       - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
-    volumes:
-      - ../src/frontend:/app
     networks:
       - healthradar-net
     depends_on:
@@ -111,3 +111,20 @@ services:
     # CUMPLIMIENTO ADR-008: Único servicio que expone puerto público al host (3000:3000)
     ports:
       - "3000:3000"
+    # HU-203: Límite de RAM — 256 MB es suficiente para Next.js standalone en producción
+    # El total de todos los contenedores es ~2.25 GiB sobre una VM de 4 GiB (ADR-011)
+    mem_limit: 256m
+    memswap_limit: 256m
+    # HU-203: Healthcheck — verifica que el servidor Next.js responde en el puerto 3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
