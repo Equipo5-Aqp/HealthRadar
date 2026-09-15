@@ -38,6 +38,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    # HU-203: Límite de RAM — pgvector puede crecer con consultas vectoriales complejas
+    mem_limit: 768m
+    memswap_limit: 768m
+    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Orquestador: n8n Self-Hosted (ADR-001)
   n8n:
@@ -67,6 +76,24 @@ services:
     # Descomentar únicamente para acceder a la UI de n8n en desarrollo local:
     # ports:
     #   - "5678:5678"
+    # HU-203: Healthcheck — endpoint de salud interno de n8n
+    # start_period 120s: en arranque en frío de la VM, n8n tarda ~60s en recuperar
+    # la conexión a PostgreSQL (observado en logs: "recovered after 2 attempts in 57749ms")
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    # HU-203: Límite de RAM — Node.js + ejecución de workflows concurrentes
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Observabilidad LLM: Arize Phoenix Self-Hosted (ADR-010)
   # Reemplaza Langfuse v2 (EOL Q1-2025). Phoenix = 1 solo contenedor + Postgres existente.
@@ -87,9 +114,25 @@ services:
       postgres:
         condition: service_healthy
     # Aislamiento según ADR-008: Puertos no expuestos al host por defecto.
-    # Descomentar para acceder a la UI de Phoenix (puerto 6006) en desarrollo local:
+    # La imagen declara 4317 (OTLP gRPC), 6006 (UI) y 9090 (métricas); es comportamiento esperado.
     # ports:
     #   - "6006:6006"
+    # HU-203: Healthcheck — la imagen no incluye wget/curl; se verifica la UI (6006) con python
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:6006/').status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # HU-203: Límite de RAM — observabilidad no crítica, puede ser apretado
+    mem_limit: 512m
+    memswap_limit: 512m
+    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Frontend: Next.js + Rutas de API seguras (ADR-004)
   # HU-204: Imagen propia multi-stage (Dockerfile) con output standalone
@@ -112,7 +155,8 @@ services:
     ports:
       - "3000:3000"
     # HU-203: Límite de RAM — 256 MB es suficiente para Next.js standalone en producción
-    # El total de todos los contenedores es ~2.25 GiB sobre una VM de 4 GiB (ADR-011)
+    # Total de límites de los 4 servicios: 768 (postgres) + 1024 (n8n) + 512 (phoenix) + 256 (frontend)
+    # = 2560 MB ≈ 2.5 GiB sobre la VM de 4 GiB (ADR-011), dejando ~1.5 GiB de buffer para el OS
     mem_limit: 256m
     memswap_limit: 256m
     # HU-203: Healthcheck — verifica que el servidor Next.js responde en el puerto 3000
