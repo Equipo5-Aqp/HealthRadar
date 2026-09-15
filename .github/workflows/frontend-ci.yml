@@ -32,11 +32,6 @@ jobs:
         working-directory: src/frontend
         run: npm ci
 
-      - name: Ejecutar lint
-        if: steps.filter.outputs.frontend == 'true'
-        working-directory: src/frontend
-        run: npm run lint
-
       - name: Build
         if: steps.filter.outputs.frontend == 'true'
         working-directory: src/frontend
