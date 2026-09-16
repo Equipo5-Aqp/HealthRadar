@@ -2,7 +2,7 @@ name: n8n Validate CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   validate:
