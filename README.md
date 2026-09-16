@@ -41,17 +41,17 @@ Arize Phoenix Self-Hosted   ← observabilidad pasiva y evaluación de LLMs (ADR
 
 ---
 
-## Diagrama de Flujo: Git + DevSecOps + Despliegue en Azure por el Arquitecto
+## Diagrama de Flujo: Git + DevSecOps + Despliegue automático en Azure
 
-Este flujo diagrama el recorrido desde el desarrollo de una funcionalidad, creacion de un PR, revision de git actions, aprobacion del DevSecOps o del arquitecto y finalmente el merge a la rama main y despliegue en Azure.
+El despliegue a producción es **automático** vía GitHub Actions (`.github/workflows/deploy.yml`): todo push a `main` que modifique `src/` (excepto `src/n8n-workflows/`) o `infrastructure/` dispara el pipeline, que se conecta por SSH a la VM de Azure, sincroniza el código con `origin/main` y reconstruye los contenedores con Docker Compose.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Dev as Desarrollador
     participant GH as GitHub Repo
-    participant GHA as GitHub Actions (CI)
-    actor Arqui as Arquitecto (Tú)
+    participant GHA as GitHub Actions (CI/CD)
+    actor Arqui as Arquitecto
     participant Azure as Azure VM (Host)
     participant Docker as Docker Compose
     actor User as Analista Final
@@ -61,7 +61,7 @@ sequenceDiagram
     Dev->>GH: 2. Abre Pull Request hacia main
 
     %% 2. CI DevSecOps
-    GH->>GHA: 3. Dispara los 3 Workflows automáticos (.github/workflows/)
+    GH->>GHA: 3. Dispara los workflows de CI (.github/workflows/)
     Note over GHA: • frontend-ci.yml: Linter y build Next.js<br/>• n8n-validate-ci.yml: Linter JSON + Secret scan<br/>• ai-testing-ci.yml: SAST CodeQL + Tests de Prompts
     GHA-->>GH: 4. Reporta estado de validación (Passed)
 
@@ -69,17 +69,18 @@ sequenceDiagram
     Arqui->>GH: 5. Revisa cambios y aprueba el PR
     Arqui->>GH: 6. Merge a la rama main
 
-    %% 4. Despliegue en Azure VM
+    %% 4. Despliegue automático en Azure VM (deploy.yml)
     rect rgb(235, 245, 255)
-        Note over Arqui,Docker: FASE DE DESPLIEGUE MANUAL EN AZURE
-        Arqui->>Azure: 7. Conexión SSH: ssh -i key.pem azureuser@IP_AZURE
-        Arqui->>Azure: 8. git pull origin main (actualiza código, JSONs y prompts)
-        Arqui->>Docker: 9. docker compose up -d --build (recrea contenedores)
-        Docker-->>Azure: 10. Servicios levantados y en estado 'healthy'
+        Note over GHA,Docker: FASE DE DESPLIEGUE AUTOMÁTICO (deploy.yml)
+        GH->>GHA: 7. Push a main dispara deploy.yml (solo si hay cambios en src/ o infrastructure/)
+        GHA->>Azure: 8. Conexión SSH (secrets AZURE_VM_HOST / USER / SSH_KEY)
+        Azure->>Azure: 9. git fetch + reset --hard origin/main
+        GHA->>Docker: 10. docker compose up -d --build
+        Docker-->>GHA: 11. docker compose ps → servicios healthy
     end
 
     %% 5. Disponibilidad
-    User->>Docker: 11. Ingresa a http://IP_AZURE:3000 (Página actualizada)
+    User->>Docker: 12. Ingresa a http://IP_AZURE:3000 (Página actualizada)
 ```
 
 ---
