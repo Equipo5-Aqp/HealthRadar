@@ -5,6 +5,10 @@
 networks:
   healthradar-net:
     driver: bridge
+    # IP fija: evita que Docker reasigne IPs al reiniciar la VM.
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:
@@ -29,7 +33,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ../src/database/migrations:/docker-entrypoint-initdb.d
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.4
+    # Apagado limpio: da 30s a Postgres para flush de WAL y cierre ordenado
+    stop_grace_period: 30s
     # Aislamiento según ADR-008: Puerto expuesto deshabilitado por defecto hacia el host público.
     # Descomentar la siguiente línea únicamente para depuración local con DBeaver/psql:
     # ports:
@@ -69,7 +76,10 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.3
+    # Apagado limpio: da 15s a n8n para cerrar workflows activos
+    stop_grace_period: 15s
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,7 +120,8 @@ services:
     volumes:
       - phoenix_data:/phoenix-data
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.5
     depends_on:
       postgres:
         condition: service_healthy
@@ -151,9 +162,11 @@ services:
       # Hoy ninguna ruta del frontend la usa y exponerla en el contenedor es innecesario.
       # - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.2
     depends_on:
-      - n8n
+      n8n:
+        condition: service_healthy
     # CUMPLIMIENTO ADR-008: Único servicio que expone puerto público al host (3000:3000)
     ports:
       - "3000:3000"
