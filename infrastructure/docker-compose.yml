@@ -5,6 +5,10 @@
 networks:
   healthradar-net:
     driver: bridge
+    # IP fija: evita que Docker reasigne IPs al reiniciar la VM.
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:
@@ -21,20 +25,24 @@ services:
     container_name: healthradar-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-healthradar_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}
-      POSTGRES_DB: ${POSTGRES_DB:-healthradar_db}
+      # Sin valores por defecto: las credenciales SIEMPRE vienen de infrastructure/.env
+      POSTGRES_USER: ${POSTGRES_USER:?Definir POSTGRES_USER en infrastructure/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en infrastructure/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?Definir POSTGRES_DB en infrastructure/.env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../src/database/migrations:/docker-entrypoint-initdb.d
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.4
+    # Apagado limpio: da 30s a Postgres para flush de WAL y cierre ordenado
+    stop_grace_period: 30s
     # Aislamiento según ADR-008: Puerto expuesto deshabilitado por defecto hacia el host público.
     # Descomentar la siguiente línea únicamente para depuración local con DBeaver/psql:
     # ports:
     #   - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-healthradar_admin} -d ${POSTGRES_DB:-healthradar_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Definir POSTGRES_USER en infrastructure/.env} -d ${POSTGRES_DB:?Definir POSTGRES_DB en infrastructure/.env}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,7 +58,7 @@ services:
 
   # Orquestador: n8n Self-Hosted (ADR-001)
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.35.7
     container_name: healthradar-n8n
     restart: unless-stopped
     environment:
@@ -58,17 +66,20 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - NODE_ENV=production
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-n8n_super_secret_encryption_key_2026}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?Definir N8N_ENCRYPTION_KEY en infrastructure/.env}
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-healthradar_db}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER:-healthradar_admin}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:?Definir POSTGRES_DB en infrastructure/.env}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:?Definir POSTGRES_USER en infrastructure/.env}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en infrastructure/.env}
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.3
+    # Apagado limpio: da 15s a n8n para cerrar workflows activos
+    stop_grace_period: 15s
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,18 +109,19 @@ services:
   # Observabilidad LLM: Arize Phoenix Self-Hosted (ADR-010)
   # Reemplaza Langfuse v2 (EOL Q1-2025). Phoenix = 1 solo contenedor + Postgres existente.
   phoenix:
-    image: arizephoenix/phoenix:latest
+    image: arizephoenix/phoenix:20.3.0
     container_name: healthradar-phoenix
     restart: unless-stopped
     environment:
-      - PHOENIX_SQL_DATABASE_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
+      - PHOENIX_SQL_DATABASE_URL=postgresql://${POSTGRES_USER:?Definir POSTGRES_USER en infrastructure/.env}:${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en infrastructure/.env}@postgres:5432/${POSTGRES_DB:?Definir POSTGRES_DB en infrastructure/.env}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-phoenix_jwt_secret_healthradar_2026}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:?Definir PHOENIX_SECRET en infrastructure/.env}
       - PHOENIX_WORKING_DIR=/phoenix-data
     volumes:
       - phoenix_data:/phoenix-data
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.5
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,7 +131,7 @@ services:
     #   - "6006:6006"
     # HU-203: Healthcheck — la imagen no incluye wget/curl; se verifica la UI (6006) con python
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:6006/').status==200 else 1)"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:6006/healthz').status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -146,11 +158,15 @@ services:
     environment:
       - NODE_ENV=production
       - N8N_INTERNAL_URL=http://n8n:5678
-      - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER:-healthradar_admin}:${POSTGRES_PASSWORD:-HealthRadar2026_SecuredSecret!}@postgres:5432/${POSTGRES_DB:-healthradar_db}
+      # Reservado para uso futuro (acceso directo a DB desde el frontend, si ADR-001/004 lo permiten).
+      # Hoy ninguna ruta del frontend la usa y exponerla en el contenedor es innecesario.
+      # - DATABASE_INTERNAL_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     networks:
-      - healthradar-net
+      healthradar-net:
+        ipv4_address: 172.20.0.2
     depends_on:
-      - n8n
+      n8n:
+        condition: service_healthy
     # CUMPLIMIENTO ADR-008: Único servicio que expone puerto público al host (3000:3000)
     ports:
       - "3000:3000"
