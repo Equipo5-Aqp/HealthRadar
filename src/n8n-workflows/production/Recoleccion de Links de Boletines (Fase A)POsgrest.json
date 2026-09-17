@@ -1,0 +1,303 @@
+{
+  "name": "Recoleccion de Links de Boletines (Fase A)POsgrest",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Lista fija de años a recorrer.\n// Editar este array a mano si en el futuro se quieren cubrir más años.\nconst anios = [2025, 2026];\n\nreturn anios.map(a => ({ json: { anio: a } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        208
+      ],
+      "id": "5123fcd3-a712-4480-866a-68cb753afac2",
+      "name": "Generar lista de anios"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -128,
+        240
+      ],
+      "id": "bd3736d2-2d48-4d5f-9b62-037559b2d5f0",
+      "name": "Split In Batches (anios)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://epipublic.dge.gob.pe/publico/listado_ajax",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "bq_anio",
+              "value": "={{ $json.anio }}"
+            },
+            {
+              "name": "bq_categoria",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6d474add-7df5-4ee6-8ae3-0573e0617095",
+      "name": "HTTP Request - Listado por anio"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae TODOS los links de boletin del HTML del listado_ajax para\n// el anio consultado, deduplicando (el HTML del DGE repite cada link\n// 2 veces: en la miniatura y en el titulo).\n//\n// IMPORTANTE: la semana NO se parsea del nombre del archivo del PDF,\n// porque el DGE es inconsistente ahi (a veces '202610' = anio+semana\n// con 2 digitos, a veces '20269' = semana de 1 solo digito sin\n// relleno de cero, y a veces falta el numero de semana por completo\n// en el nombre, ej. 'boletin_2026_30_112436.pdf'). En vez de eso, se\n// usa el <span class='periodoVal'>N</span> que el DGE SI pone siempre\n// de forma confiable junto a cada link, dentro del mismo bloque <tr>.\n//\n// La fecha de publicacion tampoco se parsea del nombre del archivo:\n// se toma del texto 'fecha publicacion: DD-MM-AAAA' que tambien\n// aparece siempre en el HTML, junto a cada boletin.\n\nconst html = $input.first().json.data || $input.first().json.body || $input.first().json;\nconst anioConsultado = $('Split In Batches (anios)').item.json.anio;\n\n// Cada fila <tr> trae: el link (repetido 2 veces), el periodoVal (semana)\n// y la fecha de publicacion. Se captura el bloque <tr>...</tr> completo\n// y se extraen esos 3 datos de adentro.\nconst filaRegex = /<tr>([\\s\\S]*?)<\\/tr>/g;\nconst filas = [...html.matchAll(filaRegex)];\n\nif (filas.length === 0) {\n  return [];\n}\n\nconst vistos = new Set();\nconst items = [];\n\nfor (const fila of filas) {\n  const bloque = fila[1];\n\n  const urlMatch = bloque.match(/href='(https:\\/\\/epipublic\\.dge\\.gob\\.pe\\/uploads\\/boletin\\/boletin_[^']+\\.pdf)'/);\n  const semanaMatch = bloque.match(/periodoVal'>(\\d{1,2})<\\/span>/);\n  const fechaMatch = bloque.match(/fecha publicacion:\\s*(\\d{2})-(\\d{2})-(\\d{4})/);\n\n  if (!urlMatch || !semanaMatch) continue; // fila sin link o sin semana valida, se descarta\n\n  const urlBoletin = urlMatch[1];\n  if (vistos.has(urlBoletin)) continue; // deduplicar (el link aparece 2 veces por fila)\n  vistos.add(urlBoletin);\n\n  const semana = Number(semanaMatch[1]);\n\n  let fechaPublicacion = null;\n  if (fechaMatch) {\n    const [, dd, mm, aaaa] = fechaMatch;\n    fechaPublicacion = `${aaaa}-${mm}-${dd}`; // formato ISO, ej. 2026-04-12\n  }\n\n  items.push({\n    json: {\n      url_boletin: urlBoletin,\n      anio: anioConsultado,          // anio real, tomado del parametro que se mando al DGE\n      semana_epidemiologica: semana, // tomado del periodoVal del HTML, no del nombre del archivo\n      fecha_publicacion: fechaPublicacion\n    }\n  });\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        16
+      ],
+      "id": "d4ab8e33-e09e-4b1c-ad2e-b5664ab94cdb",
+      "name": "Extraer links + fecha/semana (dedup)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT anio, semana_epidemiologica\nFROM boletin_descubierto;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        368,
+        48
+      ],
+      "id": "9065583b-f4e3-45a2-86e9-4e5b1e03de3d",
+      "name": "Get row(s) boletines_descubiertos",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Descarta del listado nuevo cualquier boletin cuya combinacion\n// anio + semana_epidemiologica YA exista en boletines_descubiertos.\n\nconst clave = (anio, semana) => `${anio}-${semana}`;\n\nconst nuevos = $('Extraer links + fecha/semana (dedup)').all().map(i => i.json);\n\nconst filasExistentes = $('Get row(s) boletines_descubiertos').all();\n\nconst yaExistentes = new Set(\n  filasExistentes.map(i => clave(i.json.anio, i.json.semana_epidemiologica))\n);\n\nconsole.log('Filas ya existentes leidas:', filasExistentes.length);\nconsole.log('Links nuevos encontrados en el listado:', nuevos.length);\nconsole.log('Claves existentes (muestra 5):', JSON.stringify([...yaExistentes].slice(0, 5)));\nconsole.log('Claves nuevas a comparar (muestra 5):', JSON.stringify(nuevos.slice(0, 5).map(item => clave(item.anio, item.semana_epidemiologica))));\n\nconst pendientesNuevos = nuevos\n  .filter(item => !yaExistentes.has(clave(item.anio, item.semana_epidemiologica)))\n  .map(item => ({ ...item, resumen: '', procesado: false, _sinPendientes: false }));\n\nconsole.log('Pendientes realmente nuevos a insertar:', pendientesNuevos.length);\n\nif (pendientesNuevos.length === 0) {\n  return [{ json: { _sinPendientes: true } }];\n}\n\nreturn pendientesNuevos.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        32
+      ],
+      "id": "18c0411b-c71c-48b1-8165-06439caf94c8",
+      "name": "Filtrar realmente nuevos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._sinPendientes }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        288
+      ],
+      "id": "dc835daa-1d38-49b2-9f1d-e537caab34bc",
+      "name": "Hay algo que insertar?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO boletin_descubierto (\n  anio, semana_epidemiologica, url_boletin, fecha_publicacion\n) VALUES (\n  {{ $json.anio }},\n  {{ $json.semana_epidemiologica }},\n  '{{ $json.url_boletin }}',\n  {{ $json.fecha_publicacion ? \"'\" + $json.fecha_publicacion + \"'\" : \"NULL\" }}\n)\nON CONFLICT (anio, semana_epidemiologica) DO NOTHING;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1072,
+        496
+      ],
+      "id": "f550bf36-321d-4ec9-8e84-f5f322d72b27",
+      "name": "Insert row - boletines_descubiertos",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -608,
+        208
+      ],
+      "id": "6fd80204-87b1-4e60-8e39-701ae01231cb",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generar lista de anios": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (anios)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (anios)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request - Listado por anio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Listado por anio": {
+      "main": [
+        [
+          {
+            "node": "Extraer links + fecha/semana (dedup)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer links + fecha/semana (dedup)": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) boletines_descubiertos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) boletines_descubiertos": {
+      "main": [
+        [
+          {
+            "node": "Filtrar realmente nuevos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar realmente nuevos": {
+      "main": [
+        [
+          {
+            "node": "Hay algo que insertar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay algo que insertar?": {
+      "main": [
+        [
+          {
+            "node": "Insert row - boletines_descubiertos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches (anios)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row - boletines_descubiertos": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (anios)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generar lista de anios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9afaac09-349e-4a8b-802d-14fda97f3d94",
+  "meta": {
+    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+  },
+  "nodeGroups": [],
+  "id": "fJkIme6eUss6c5wP",
+  "tags": []
+}
