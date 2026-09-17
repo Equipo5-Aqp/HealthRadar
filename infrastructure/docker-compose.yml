@@ -73,6 +73,11 @@ services:
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:?Definir POSTGRES_DB en infrastructure/.env}
       - DB_POSTGRESDB_USER=${POSTGRES_USER:?Definir POSTGRES_USER en infrastructure/.env}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en infrastructure/.env}
+      # Proveedores de Modelos de Lenguaje (ADR-003, ADR-010)
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      # Habilitar acceso a variables de entorno dentro de los nodos de n8n ($env)
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
