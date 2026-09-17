@@ -75,6 +75,8 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en infrastructure/.env}
       # Proveedores de Modelos de Lenguaje (ADR-003, ADR-010)
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2:-}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3:-}
       - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
       # Habilitar acceso a variables de entorno dentro de los nodos de n8n ($env)
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
