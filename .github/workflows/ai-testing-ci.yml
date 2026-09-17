@@ -2,11 +2,30 @@ name: AI Testing CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
+  changes:
+    name: Detectar cambios en QA
+    runs-on: ubuntu-latest
+    outputs:
+      qa: ${{ steps.filter.outputs.qa }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filtrar rutas
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            qa:
+              - 'src/ia-ops/**'
+              - 'requirements.txt'
+              - '.github/workflows/ai-testing-ci.yml'
+
   sast:
     name: Análisis estático de código (SAST)
+    needs: changes
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,8 +38,9 @@ jobs:
 
   test:
     name: Ejecutar pruebas de prompts
+    needs: [changes, sast]
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
-    needs: sast
     steps:
       - uses: actions/checkout@v4
 

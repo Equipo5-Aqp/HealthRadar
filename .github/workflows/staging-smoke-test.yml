@@ -1,0 +1,51 @@
+name: Staging Smoke Test
+
+on:
+  pull_request:
+    branches: [develop]
+
+jobs:
+  smoke-test:
+    name: Levantar stack completo y validar (efímero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar .env de prueba
+        run: cp infrastructure/.env.staging.example infrastructure/.env
+
+      - name: Levantar el stack completo
+        working-directory: infrastructure
+        run: docker compose --env-file .env up -d
+
+      - name: Esperar a que Postgres esté healthy
+        run: |
+          for i in $(seq 1 20); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' healthradar-postgres 2>/dev/null || echo "starting")
+            [ "$STATUS" = "healthy" ] && echo "✅ Postgres healthy" && break
+            echo "...esperando Postgres ($i/20)"; sleep 3
+          done
+
+      - name: Esperar a que n8n responda
+        run: |
+          for i in $(seq 1 20); do
+            docker exec healthradar-n8n wget -qO- http://localhost:5678/healthz && echo "✅ n8n healthy" && break
+            echo "...esperando n8n ($i/20)"; sleep 3
+          done
+
+      - name: Smoke test del flujo NLQ (webhook de n8n)
+        run: |
+          RESPONSE=$(docker exec healthradar-n8n wget -qO- --header="Content-Type: application/json" \
+            --post-data='{"pregunta":"prueba de humo staging"}' \
+            http://localhost:5678/webhook/consulta || echo "FAIL")
+          echo "$RESPONSE" | grep -q "FAIL" && (echo "❌ Webhook NLQ no respondió" && exit 1) || echo "✅ Webhook NLQ respondió"
+
+      - name: Verificar logs por errores fatales
+        run: |
+          docker logs healthradar-n8n 2>&1 | grep -iE "fatal|unhandled" && (echo "❌ Errores fatales en n8n" && exit 1) || echo "✅ Sin errores fatales en n8n"
+
+      - name: Apagar y limpiar el stack (siempre se ejecuta)
+        if: always()
+        working-directory: infrastructure
+        run: docker compose down -v
