@@ -1,0 +1,843 @@
+{
+  "name": "Conexion posgrest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "consulta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2240,
+        1056
+      ],
+      "id": "65c5982e-f2fd-467d-8101-9617ee88031f",
+      "name": "Webhook",
+      "webhookId": "8b566a4b-0d69-4c66-9cfa-6c4b7c964649"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detecta a que periodo (anio + rango de semanas epidemiologicas) se\n// refiere la pregunta del analista, SIN usar ningun modelo de IA (cero\n// tokens gastados aqui). Gemini sigue siendo el unico que interpreta\n// la pregunta completa y redacta la respuesta - este nodo solo decide\n// que filas de boletines_descubiertos / clima_alineado traer.\n//\n// Reconoce:\n//   - \"semana 15\", \"SE 27\" -> 1 semana especifica\n//   - \"mayo 2025\", \"julio de 2026\" -> todas las semanas de ese mes\n//   - \"entre marzo y mayo de 2025\" -> rango de semanas entre esos 2 meses\n//   - nada reconocido -> ventana por defecto: ultimas 12 semanas\n//     respecto a la semana mas reciente que ya tenga resumen\n\nconst pregunta = ($('Webhook').item.json.body.pregunta || '').toLowerCase();\n\nconst MESES = {\n  'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,\n  'julio': 7, 'agosto': 8, 'septiembre': 9, 'setiembre': 9, 'octubre': 10,\n  'noviembre': 11, 'diciembre': 12\n};\n\nfunction getSemanaEpi(fechaStr) {\n  // DGE: semana domingo-sabado; SE 01 = la que contiene el 4 de enero\n  const fecha = new Date(fechaStr);\n  const dom = new Date(Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate()));\n  dom.setUTCDate(dom.getUTCDate() - dom.getUTCDay());\n  const mie = new Date(dom);\n  mie.setUTCDate(dom.getUTCDate() + 3);\n  const anio = mie.getUTCFullYear();\n  const jan4 = new Date(Date.UTC(anio, 0, 4));\n  const domSE1 = new Date(jan4);\n  domSE1.setUTCDate(jan4.getUTCDate() - jan4.getUTCDay());\n  const semana = Math.round((dom - domSE1) / (7 * 86400000)) + 1;\n  return { anio, semana };\n}\n\nfunction rangoSemanasDeMes(anio, mes) {\n  const primerDia = new Date(Date.UTC(anio, mes - 1, 1));\n  const ultimoDia = new Date(Date.UTC(anio, mes, 0));\n  const inicio = getSemanaEpi(primerDia.toISOString());\n  const fin = getSemanaEpi(ultimoDia.toISOString());\n  return { anio: inicio.anio, semanaInicio: inicio.semana, semanaFin: fin.semana };\n}\n\n// --- 1. Intentar detectar RANGO \"entre <mes1> y <mes2> de <anio>\" ---\nconst regexRango = new RegExp(\n  `entre\\\\s+(${Object.keys(MESES).join('|')})\\\\s+y\\\\s+(${Object.keys(MESES).join('|')})\\\\s+(?:de\\\\s+)?(\\\\d{4})`,\n  'i'\n);\nconst matchRango = pregunta.match(regexRango);\n\nif (matchRango) {\n  const [, mes1Str, mes2Str, anioStr] = matchRango;\n  const anio = Number(anioStr);\n  const mes1 = MESES[mes1Str];\n  const mes2 = MESES[mes2Str];\n\n  const r1 = rangoSemanasDeMes(anio, mes1);\n  const r2 = rangoSemanasDeMes(anio, mes2);\n\n  return [{\n    json: {\n      anio,\n      semana_desde: Math.min(r1.semanaInicio, r2.semanaInicio),\n      semana_hasta: Math.max(r1.semanaFin, r2.semanaFin),\n      criterio_usado: `rango: ${mes1Str} a ${mes2Str} ${anio}`\n    }\n  }];\n}\n\n// --- 2. Intentar detectar \"SEMANA N\" o \"SE N\" explicita ---\nconst regexSemana = /(?:semana|se)\\s*(\\d{1,2})(?:\\s*-?\\s*(\\d{4}))?/i;\nconst matchSemana = pregunta.match(regexSemana);\n\nif (matchSemana) {\n  const semana = Number(matchSemana[1]);\n  const anio = matchSemana[2] ? Number(matchSemana[2]) : new Date().getFullYear();\n\n  return [{\n    json: {\n      anio,\n      semana_desde: semana,\n      semana_hasta: semana,\n      criterio_usado: `semana especifica: SE ${semana}-${anio}`\n    }\n  }];\n}\n\n// --- 3. Intentar detectar \"<mes> de <anio>\" o \"<mes> <anio>\" ---\nconst regexMes = new RegExp(`(${Object.keys(MESES).join('|')})\\\\s+(?:de\\\\s+)?(\\\\d{4})`, 'i');\nconst matchMes = pregunta.match(regexMes);\n\nif (matchMes) {\n  const [, mesStr, anioStr] = matchMes;\n  const anio = Number(anioStr);\n  const mes = MESES[mesStr];\n  const r = rangoSemanasDeMes(anio, mes);\n\n  return [{\n    json: {\n      anio,\n      semana_desde: r.semanaInicio,\n      semana_hasta: r.semanaFin,\n      criterio_usado: `mes especifico: ${mesStr} ${anio}`\n    }\n  }];\n}\n\n\n// --- 3.5 Intentar detectar SOLO \"el anio <AAAA>\" o \"<AAAA>\" suelto\n//     (sin mes), ej. \"en el año 2023\", \"durante 2023\", \"en 2023\",\n//     \"para 2023\", \"de 2023\", \"del 2023\". Se ampliaron los\n//     conectores porque la version anterior exigia \"en el año\" /\n//     \"año\" pegado al numero, y no reconocia el caso mas comun de\n//     \"en <AAAA>\" suelto (ej. \"cuantos casos hubo en 2023\") - eso\n//     hacia que la pregunta cayera al fallback de \"ultimas 12\n//     semanas\" en vez de al anio correcto. ---\nconst regexAnioSolo = /\\b(?:en el a[nñ]o|durante(?:\\s+el)?(?:\\s+a[nñ]o)?|del a[nñ]o|a[nñ]o|en|para|de|del)\\s+(\\d{4})\\b/i;\nconst matchAnioSolo = pregunta.match(regexAnioSolo);\n\nif (matchAnioSolo) {\n  const anio = Number(matchAnioSolo[1]);\n  return [{\n    json: {\n      anio,\n      semana_desde: 1,\n      semana_hasta: 53,\n      criterio_usado: `anio completo: ${anio}`\n    }\n  }];\n}\n\n// --- 3.6 Ultimo recurso antes del fallback: CUALQUIER año de 4\n//     digitos suelto en la pregunta (2010-2029), sin conector\n//     reconocido antes (ej. \"dengue Loreto 2023\", \"boletin 2026\").\n//     Si esto tampoco matchea, recien ahi se usa la ventana de las\n//     ultimas 12 semanas. Evita que preguntas con año explicito pero\n//     redaccion poco comun caigan silenciosamente al default. ---\nconst regexAnioSuelto = /\\b(20[1-2]\\d)\\b/;\nconst matchAnioSuelto = pregunta.match(regexAnioSuelto);\n\nif (matchAnioSuelto) {\n  const anio = Number(matchAnioSuelto[1]);\n  return [{\n    json: {\n      anio,\n      semana_desde: 1,\n      semana_hasta: 53,\n      criterio_usado: `anio completo (deteccion generica): ${anio}`\n    }\n  }];\n}\n\n// --- 4. Nada detectado: ventana por defecto (ultimas 12 semanas) ---\nreturn [{\n  json: {\n    anio: null,\n    semana_desde: null,\n    semana_hasta: null,\n    ventana_por_defecto: 12,\n    criterio_usado: 'sin periodo detectado: se usara ventana de las ultimas 12 semanas'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2032,
+        1056
+      ],
+      "id": "afa88891-0472-4b0c-a153-e58cbeb355aa",
+      "name": "Detectar periodo en la pregunta"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT anio, semana_epidemiologica, resumen, fecha_publicacion\nFROM boletin_descubierto\nWHERE procesado = TRUE AND btrim(resumen) <> ''\nORDER BY anio, semana_epidemiologica;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1840,
+        1056
+      ],
+      "id": "423c93c0-b5b3-40d2-84f5-8354fb9e527c",
+      "name": "Get row(s)1",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Si 'Detectar periodo en la pregunta' no encontro nada explicito\n// (ventana_por_defecto viene seteada), se calcula la ventana de las\n// ultimas 12 semanas tomando como referencia la semana mas reciente\n// que YA tenga resumen generado (no la fecha de hoy, para no traer\n// semanas que ni siquiera han sido procesadas todavia por Fase B).\n\nconst deteccion = $('Detectar periodo en la pregunta').first().json;\n\nfunction esNulo(valor) {\n  return valor === null || valor === undefined || valor === 'null' || valor === '';\n}\n\nif (!esNulo(deteccion.anio)) {\n  // Ya se detecto un periodo explicito, se pasa tal cual.\n  return [{ json: deteccion }];\n}\n\nconst todasLasFilas = $input.all().map(i => i.json);\nfunction tieneResumenReal(resumen) {\n  if (!resumen) return false;\n  const texto = resumen.toString().trim().toLowerCase();\n  if (texto.length === 0) return false;\n  if (texto === 'empty' || texto === 'null' || texto === 'undefined') return false;\n  return true;\n}\n\nconst conResumen = todasLasFilas.filter(f => tieneResumenReal(f.resumen));\n\nif (conResumen.length === 0) {\n  throw new Error('No hay ningun boletin con resumen generado todavia en boletines_descubiertos.');\n}\n\nconst masReciente = conResumen.reduce((max, f) => {\n  if (f.anio > max.anio) return f;\n  if (f.anio === max.anio && f.semana_epidemiologica > max.semana_epidemiologica) return f;\n  return max;\n}, conResumen[0]);\n\nconst N = deteccion.ventana_por_defecto || 12;\n\n// Genera la lista de (anio, semana) de las ultimas N semanas contando\n// hacia atras desde la mas reciente, manejando el cruce de anio (ej.\n// semana 3 del 2026 menos 12 cae en el 2025).\nlet anio = masReciente.anio;\nlet semana = masReciente.semana_epidemiologica;\nconst semanasDelAnioAnterior = 52; // aproximacion suficiente para acotar la ventana\n\nlet semanaDesdeAnio = anio;\nlet semanaDesde = semana - (N - 1);\nif (semanaDesde < 1) {\n  semanaDesdeAnio = anio - 1;\n  semanaDesde = semanasDelAnioAnterior + semanaDesde;\n}\n\nreturn [{\n  json: {\n    anio: null, // se usa rango multi-anio explicito en vez de un solo anio\n    semana_desde: semanaDesde,\n    semana_hasta: semana,\n    anio_desde: semanaDesdeAnio,\n    anio_hasta: anio,\n    criterio_usado: `ventana por defecto: ultimas ${N} semanas hasta SE ${semana}-${anio}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1664,
+        1056
+      ],
+      "id": "01d2554d-066a-4ace-8997-b5190839caa1",
+      "name": "Resolver ventana por defecto (si aplica)"
+    },
+    {
+      "parameters": {
+        "jsCode": "function tieneResumenReal(resumen) {\n  if (!resumen) return false;\n  const texto = resumen.toString().trim().toLowerCase();\n  if (texto.length === 0) return false;\n  if (texto === 'empty' || texto === 'null' || texto === 'undefined') return false;\n  return true;\n}\n\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nconst todasLasFilas = $('Get row(s)1').all().map(i => i.json);\n\nconst filasConResumen = todasLasFilas.filter(function(f) {\n  return tieneResumenReal(f.resumen);\n});\n\nconst anioEspecifico = periodo.anio;\nconst hayPeriodoEspecifico = (anioEspecifico !== null && anioEspecifico !== undefined && anioEspecifico !== 'null');\n\nlet filtradas = [];\n\nif (hayPeriodoEspecifico) {\n  const anioNum = parseInt(anioEspecifico, 10);\n\n  // Si el anio pedido es anterior a 2025, los boletines NUNCA van a\n  // tener ese periodo (solo cubren 2025 en adelante) - esto no es un\n  // error, es esperado: ese periodo se resuelve por Postgres\n  // (prediccion), no por boletines. No se lanza error aqui; se\n  // devuelve vacio silenciosamente y el AI Agent solo recibira la\n  // tendencia de Postgres, sin bloquear el flujo completo.\n  if (anioNum < 2025) {\n    return [{ json: { _sin_boletines: true } }];\n  }\n\n  const semanaDesde = parseInt(periodo.semana_desde, 10);\n  const semanaHasta = parseInt(periodo.semana_hasta, 10);\n\n  filtradas = filasConResumen.filter(function(f) {\n    const anioFila = parseInt(f.anio, 10);\n    const semanaFila = parseInt(f.semana_epidemiologica, 10);\n    return anioFila === anioNum && semanaFila >= semanaDesde && semanaFila <= semanaHasta;\n  });\n\n  if (filtradas.length === 0) {\n    throw new Error('No se encontraron boletines con resumen para el periodo solicitado: ' + periodo.criterio_usado);\n  }\n} else {\n  const anioDesde = parseInt(periodo.anio_desde, 10);\n  const anioHasta = parseInt(periodo.anio_hasta, 10);\n  const semanaDesde = parseInt(periodo.semana_desde, 10);\n  const semanaHasta = parseInt(periodo.semana_hasta, 10);\n\n  const claveDesde = anioDesde * 100 + semanaDesde;\n  const claveHasta = anioHasta * 100 + semanaHasta;\n\n  filtradas = filasConResumen.filter(function(f) {\n    const anioFila = parseInt(f.anio, 10);\n    const semanaFila = parseInt(f.semana_epidemiologica, 10);\n    const claveFila = anioFila * 100 + semanaFila;\n    return claveFila >= claveDesde && claveFila <= claveHasta;\n  });\n\n  if (filtradas.length === 0) {\n    filtradas = filasConResumen;\n  }\n}\n\nif (filtradas.length === 0) {\n  return [{ json: { _sin_boletines: true } }];\n}\n\nreturn filtradas.map(function(f) {\n  return { json: f };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        1152
+      ],
+      "id": "d82c2f76-f488-48c1-b3f5-a3c69e1a1f08",
+      "name": "Filtrar boletines del periodo"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  departamento,\n  anio,\n  semana AS semana_epidemiologica,\n  semana_inicio,\n  semana_fin,\n  temp_max_promedio,\n  temp_min_promedio,\n  temp_mean_promedio,\n  precipitacion_total,\n  humedad_promedio\nFROM v_clima_actual;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1328,
+        1360
+      ],
+      "id": "91c5f950-6854-4000-a939-a87857b2bf3b",
+      "name": "Get row(s)",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nconst filas = $('Get row(s)').all().map(i => i.json);\n\nconst anioEspecifico = periodo.anio;\nconst hayPeriodoEspecifico = (anioEspecifico !== null && anioEspecifico !== undefined && anioEspecifico !== 'null');\n\nlet filtradas = [];\n\nif (hayPeriodoEspecifico) {\n  const anioNum = parseInt(anioEspecifico, 10);\n  const semanaDesde = parseInt(periodo.semana_desde, 10);\n  const semanaHasta = parseInt(periodo.semana_hasta, 10);\n\n  filtradas = filas.filter(function(f) {\n    const anioFila = parseInt(f.anio, 10);\n    const semanaFila = parseInt(f.semana_epidemiologica, 10);\n    return anioFila === anioNum && semanaFila >= semanaDesde && semanaFila <= semanaHasta;\n  });\n} else {\n  const anioDesde = parseInt(periodo.anio_desde, 10);\n  const anioHasta = parseInt(periodo.anio_hasta, 10);\n  const semanaDesde = parseInt(periodo.semana_desde, 10);\n  const semanaHasta = parseInt(periodo.semana_hasta, 10);\n\n  const claveDesde = anioDesde * 100 + semanaDesde;\n  const claveHasta = anioHasta * 100 + semanaHasta;\n\n  filtradas = filas.filter(function(f) {\n    const anioFila = parseInt(f.anio, 10);\n    const semanaFila = parseInt(f.semana_epidemiologica, 10);\n    const claveFila = anioFila * 100 + semanaFila;\n    return claveFila >= claveDesde && claveFila <= claveHasta;\n  });\n}\n\nreturn filtradas.map(function(f) {\n  return { json: f };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        1392
+      ],
+      "id": "26ed9bfe-0f02-4e90-8bcd-1985c94d61e5",
+      "name": "Filtrar clima del periodo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma un unico bloque de texto con todos los boletines del periodo\n// (resumen completo por cada semana) y un resumen compacto del clima\n// promedio nacional por semana (promediando los 25 departamentos, para\n// no inflar el prompt con 25 filas de clima por cada semana). Este\n// texto consolidado es lo que recibe el AI Agent.\n\nconst boletines = $('Filtrar boletines del periodo').all().map(i => i.json).filter(b => !b._sin_boletines);\nconst clima = $('Filtrar clima del periodo').all().map(i => i.json);\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\n\nconst boletinesOrdenados = boletines.sort((a, b) => {\n  if (a.anio !== b.anio) return a.anio - b.anio;\n  return a.semana_epidemiologica - b.semana_epidemiologica;\n});\n\nlet textoBoletines = '';\nfor (const b of boletinesOrdenados) {\n  textoBoletines += `\\n--- Boletin SE ${b.semana_epidemiologica}-${b.anio} ---\\n${b.resumen}\\n`;\n}\n\n// Promedio nacional de clima por semana (agrupando los 25 departamentos)\nconst climaPorSemana = {};\nfor (const c of clima) {\n  const key = `${c.anio}-${c.semana_epidemiologica}`;\n  if (!climaPorSemana[key]) {\n    climaPorSemana[key] = { anio: c.anio, semana: c.semana_epidemiologica, temp_max: [], temp_min: [], precipitacion: [] };\n  }\n  climaPorSemana[key].temp_max.push(c.temp_max_promedio);\n  climaPorSemana[key].temp_min.push(c.temp_min_promedio);\n  climaPorSemana[key].precipitacion.push(c.precipitacion_total);\n}\n\nconst promedio = arr => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);\n\nlet textoClima = '';\nconst semanasClima = Object.values(climaPorSemana).sort((a, b) => (a.anio - b.anio) || (a.semana - b.semana));\nfor (const s of semanasClima) {\n  textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${promedio(s.temp_max)}°C, temp. min promedio ${promedio(s.temp_min)}°C, precipitacion promedio ${promedio(s.precipitacion)}mm\\n`;\n}\n\nconst textoTendencia = (() => {\n  try {\n    return $('Armar texto de tendencia').first().json.texto_tendencia || '';\n  } catch (e) {\n    return '';\n  }\n})();\n\nreturn [{\n  json: {\n    texto_boletines: textoBoletines.trim(),\n    texto_tendencia: textoTendencia,\n    texto_clima: textoClima.trim(),\n    criterio_periodo: periodo.criterio_usado,\n    cantidad_boletines: boletinesOrdenados.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1520
+      ],
+      "id": "d53e8c84-5242-42bf-bc6c-b8e2fa84d277",
+      "name": "Consolidar boletines + clima del periodo"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "healthradar-conexion"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        2176
+      ],
+      "id": "53c5513d-06c5-4f99-938c-366f53666ca3",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1696,
+        1632
+      ],
+      "id": "95b3d4d2-5749-4484-bf10-0e0e339c3254",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        128,
+        1824
+      ],
+      "id": "5b85b4af-ad01-4451-a728-e8f001d42964",
+      "name": "Merge (esperar ambas ramas)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detecta si la pregunta menciona un departamento peruano, para\n// activar (o no) la rama de prediccion de tendencia via Postgres.\n// Sin costo de tokens de IA, mismo estilo que 'Detectar periodo'.\n\nconst departamentos = {\n  'amazonas': '01', 'ancash': '02', 'apurimac': '03', 'arequipa': '04',\n  'ayacucho': '05', 'cajamarca': '06', 'callao': '07', 'cusco': '08',\n  'huancavelica': '09', 'huanuco': '10', 'ica': '11', 'junin': '12',\n  'la libertad': '13', 'lambayeque': '14', 'lima': '15', 'loreto': '16',\n  'madre de dios': '17', 'moquegua': '18', 'pasco': '19', 'piura': '20',\n  'puno': '21', 'san martin': '22', 'tacna': '23', 'tumbes': '24', 'ucayali': '25'\n};\n\nconst pregunta = ($('Webhook').item.json.body.pregunta || '')\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nlet departamentoDetectado = null;\nlet codigoDetectado = null;\n\nfor (const [nombre, codigo] of Object.entries(departamentos)) {\n  const nombreSinTildes = nombre.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  if (pregunta.includes(nombreSinTildes)) {\n    departamentoDetectado = nombre;\n    codigoDetectado = codigo;\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    departamento_detectado: departamentoDetectado,\n    codigo_departamento: codigoDetectado\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        832
+      ],
+      "id": "f66e9fdd-bcdc-4665-baca-7cecb909b1e6",
+      "name": "Detectar departamento en la pregunta"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide si corresponde consultar Postgres (prediccion historica\n// <=2024). Se activa si:\n//   1. el periodo resuelto (de 'Resolver ventana por defecto') toca al\n//      menos parcialmente anios <= 2024, INDEPENDIENTE de si hay\n//      departamento o no.\n//\n// Si SI se detecto un departamento en la pregunta, la consulta se\n// filtra a ese departamento especifico. Si NO se detecto ninguno\n// (pregunta generica de enfermedad+anio, ej. \"cuantos casos de EDA\n// hubo en 2023\"), se consulta a nivel NACIONAL (los 25 departamentos\n// sumados) en vez de no responder nada - decision tomada explicitamente\n// para no obligar al analista a nombrar un departamento cuando su\n// pregunta es agregada a proposito.\n//\n// Si el periodo es exclusivamente 2025-2026, NO se consulta Postgres:\n// esos anios no tienen datos de casos individuales todavia (se rellenan\n// con los boletines, que el AI Agent ya recibe por otro lado).\n//\n// Ademas arrastra las banderas de que enfermedad(es) consultar\n// (de 'Detectar enfermedad en la pregunta'), para que cada nodo\n// Postgres de tendencia (dengue/eda/ira_neumonia/ira_no_neumonia)\n// sepa si le corresponde ejecutarse.\n\nconst deteccionDepto = $('Detectar departamento en la pregunta').first().json;\nconst deteccionEnfermedad = $('Detectar enfermedad en la pregunta').first().json;\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\n\n// Determinar si el rango de periodo toca anios <= 2024\nlet anioDesde, anioHasta;\nconst anioEspecifico = periodo.anio;\nconst hayPeriodoEspecifico = (anioEspecifico !== null && anioEspecifico !== undefined && anioEspecifico !== 'null');\n\nif (hayPeriodoEspecifico) {\n  anioDesde = parseInt(periodo.anio, 10);\n  anioHasta = parseInt(periodo.anio, 10);\n} else {\n  anioDesde = parseInt(periodo.anio_desde, 10);\n  anioHasta = parseInt(periodo.anio_hasta, 10);\n}\n\nconst tocaHistorico = anioDesde <= 2024;\n\nif (!tocaHistorico) {\n  return [{ json: { activar_prediccion: false, motivo: 'el periodo solicitado es 2025 en adelante, cubierto por boletines, no por Postgres' } }];\n}\n\n// Se activa la prediccion. Se acota el rango a consultar en Postgres a\n// como maximo el anio 2024 (si el rango pedido cruza a 2025+, esa parte\n// ya la cubre el boletin por otro lado).\nconst anioHastaAcotado = Math.min(anioHasta, 2024);\n\n// codigo_departamento puede venir null -> las queries Postgres estan\n// preparadas para tratarlo como \"sin filtro de departamento\" (agregado\n// nacional, sumando los 25).\nconst hayDepartamento = !!deteccionDepto.codigo_departamento;\n\nreturn [{\n  json: {\n    activar_prediccion: true,\n    codigo_departamento: deteccionDepto.codigo_departamento || null,\n    departamento_detectado: deteccionDepto.departamento_detectado || null,\n    nivel_agregacion: hayDepartamento ? 'departamento' : 'nacional',\n    anio_desde: anioDesde,\n    anio_hasta: anioHastaAcotado,\n    semana_desde: hayPeriodoEspecifico ? parseInt(periodo.semana_desde, 10) : parseInt(periodo.semana_desde, 10),\n    semana_hasta: hayPeriodoEspecifico ? parseInt(periodo.semana_hasta, 10) : 53,\n    incluir_dengue: deteccionEnfermedad.incluir_dengue,\n    incluir_eda: deteccionEnfermedad.incluir_eda,\n    incluir_ira_neumonia: deteccionEnfermedad.incluir_ira_neumonia,\n    incluir_ira_no_neumonia: deteccionEnfermedad.incluir_ira_no_neumonia,\n    enfermedades_activas: deteccionEnfermedad.enfermedades_activas\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        832
+      ],
+      "id": "ac977560-627e-4aa9-835f-bbecfd6d1aee",
+      "name": "Decidir si activar prediccion (Postgres)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.activar_prediccion }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -656,
+        816
+      ],
+      "id": "dc807d40-33aa-4b06-8c58-ffde6c634bb2",
+      "name": "Hay prediccion que consultar?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolida hasta 4 fuentes de tendencia historica (Dengue, EDA,\n// IRA neumonia, IRA no neumonia) en un solo texto para el prompt.\n// Recibe todos los items ya juntos desde 'Merge (tendencias por\n// enfermedad)' (modo append: cada Postgres aporta sus filas, ya\n// filtradas por su propio flag incluir_X dentro del WHERE - las\n// enfermedades no activas simplemente no aportan filas).\n//\n// Soporta 2 niveles de agregacion (decision.nivel_agregacion):\n//   - 'departamento': el analista menciono un departamento especifico,\n//     las queries ya vinieron filtradas a ese departamento.\n//   - 'nacional': no se detecto departamento en la pregunta, las\n//     queries ya vinieron sumando/promediando los 25 departamentos.\n//\n// IRA neumonia + no neumonia se combinan en una sola seccion \"IRA\"\n// cuando ambas vinieron activas (caso por defecto); si solo vino\n// una (ej. el analista pidio \"neumonia\" especificamente), se\n// muestra solo esa, ya etiquetada como tal.\n//\n// Si no hay prediccion activada en absoluto (periodo fuera de\n// 2010-2024), llega directo desde la rama FALSE de 'Hay prediccion\n// que consultar?', sin pasar por Postgres ni por el Merge: texto\n// vacio. El AI Agent ya esta instruido para no inventar una\n// prediccion si no recibe este dato.\n\nconst decision = $('Decidir si activar prediccion (Postgres)').first().json;\n\nif (decision.activar_prediccion === false) {\n  return [{ json: { texto_tendencia: '' } }];\n}\n\nconst todasLasFilas = $input.all().map(i => i.json);\n\nconst filasDengue = todasLasFilas.filter(f => f.enfermedad === 'dengue');\nconst filasEda = todasLasFilas.filter(f => f.enfermedad === 'eda');\nconst filasIraNeu = todasLasFilas.filter(f => f.enfermedad === 'ira_neumonia');\nconst filasIraNoNeu = todasLasFilas.filter(f => f.enfermedad === 'ira_no_neumonia');\n\nconst esNacional = decision.nivel_agregacion === 'nacional';\nconst ambitoTexto = esNacional\n  ? 'a nivel nacional (suma de los 25 departamentos, ya que la pregunta no menciono un departamento especifico)'\n  : `en ${decision.departamento_detectado}`;\n\nconst climaTextoDe = (f) => (f.temp_max_promedio !== null && f.temp_max_promedio !== undefined)\n  ? ` | clima ${esNacional ? 'promedio nacional' : ''}: temp max ${Number(f.temp_max_promedio).toFixed(1)}°C, temp min ${Number(f.temp_min_promedio).toFixed(1)}°C, precipitacion ${Number(f.precipitacion_total).toFixed(1)}mm, humedad ${Number(f.humedad_promedio).toFixed(1)}%`\n  : ' | clima: sin dato disponible para esa semana';\n\nfunction bloqueTexto(titulo, filas) {\n  if (filas.length === 0) {\n    return `${titulo} ${ambitoTexto}: no se encontraron casos historicos registrados en el periodo consultado (hasta 2024).\\n`;\n  }\n  let texto = `${titulo} ${ambitoTexto} (datos oficiales hasta 2024):\\n`;\n  for (const f of filas) {\n    texto += `SE ${f.semana}-${f.anio}: ${f.total_casos} casos${climaTextoDe(f)}\\n`;\n  }\n  return texto;\n}\n\nconst bloques = [];\n\nif (decision.incluir_dengue) {\n  bloques.push(bloqueTexto('Tendencia historica de casos de Dengue', filasDengue));\n}\n\nif (decision.incluir_eda) {\n  bloques.push(bloqueTexto('Tendencia historica de casos de EDA (enfermedad diarreica aguda)', filasEda));\n}\n\n// IRA: si ambas sub-fuentes estan activas, se combinan sumando por\n// semana en una sola seccion \"IRA\" (neumonia + no neumonia). Si solo\n// una esta activa, se muestra por separado con su etiqueta especifica.\nif (decision.incluir_ira_neumonia && decision.incluir_ira_no_neumonia) {\n  const combinado = {};\n  for (const f of [...filasIraNeu, ...filasIraNoNeu]) {\n    const key = `${f.anio}-${f.semana}`;\n    if (!combinado[key]) {\n      combinado[key] = { anio: f.anio, semana: f.semana, total_casos: 0, temp_max_promedio: f.temp_max_promedio, temp_min_promedio: f.temp_min_promedio, precipitacion_total: f.precipitacion_total, humedad_promedio: f.humedad_promedio };\n    }\n    combinado[key].total_casos += Number(f.total_casos) || 0;\n  }\n  const filasCombinadas = Object.values(combinado).sort((a, b) => (a.anio - b.anio) || (a.semana - b.semana));\n  bloques.push(bloqueTexto('Tendencia historica de casos de IRA (neumonia + no neumonia combinadas)', filasCombinadas));\n} else if (decision.incluir_ira_neumonia) {\n  bloques.push(bloqueTexto('Tendencia historica de casos de IRA - Neumonia (especifico, sin combinar con no-neumonia)', filasIraNeu));\n} else if (decision.incluir_ira_no_neumonia) {\n  bloques.push(bloqueTexto('Tendencia historica de casos de IRA - No neumonia (especifico)', filasIraNoNeu));\n}\n\nreturn [{ json: { texto_tendencia: bloques.join('\\n').trim() } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        880
+      ],
+      "id": "66466909-f518-4ca6-8424-916ad86edb89",
+      "name": "Armar texto de tendencia"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detecta que enfermedad(es) pregunta el analista, por palabras clave,\n// sin gastar tokens de IA. Mismo estilo que 'Detectar departamento'.\n//\n// Reglas acordadas:\n//  - Si menciona \"dengue\" -> solo dengue.\n//  - Si menciona \"eda\", \"diarrea\", \"diarreica\" -> solo EDA.\n//  - Si menciona \"neumonia\" (con o sin tilde) -> solo IRA neumonia\n//    (no se combina con no-neumonia en este caso, para permitir la\n//    prediccion mas detallada que pidio el analista).\n//  - Si menciona \"ira\" o \"respiratoria\"/\"respiratorio\" SIN decir\n//    \"neumonia\" explicitamente -> IRA combinada (neumonia + no\n//    neumonia sumadas).\n//  - Si no se detecta NINGUNA palabra clave de enfermedad -> se activan\n//    las 4 fuentes (dengue + eda + ira neumonia + ira no neumonia).\n//    Consultar Postgres es barato (query agregada, milisegundos); el\n//    costo real esta en tokens de IA, y el texto que llega al AI Agent\n//    sigue siendo un resumen compacto sin importar cuantas fuentes se\n//    consultaron.\n\nconst pregunta = ($('Webhook').item.json.body.pregunta || '')\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nconst mencionaDengue = /dengue/.test(pregunta);\nconst mencionaEda = /\\beda\\b|diarrea|diarreic/.test(pregunta);\nconst mencionaNeumonia = /neumonia/.test(pregunta);\nconst mencionaIraGeneral = /\\bira\\b|respirator/.test(pregunta);\n\nlet incluirDengue = false;\nlet incluirEda = false;\nlet incluirIraNeumonia = false;\nlet incluirIraNoNeumonia = false;\n\nconst algunaDetectada = mencionaDengue || mencionaEda || mencionaNeumonia || mencionaIraGeneral;\n\nif (!algunaDetectada) {\n  // Nada detectado: se activan las 4 fuentes.\n  incluirDengue = true;\n  incluirEda = true;\n  incluirIraNeumonia = true;\n  incluirIraNoNeumonia = true;\n} else {\n  if (mencionaDengue) incluirDengue = true;\n  if (mencionaEda) incluirEda = true;\n  if (mencionaNeumonia) {\n    // Pidio especificamente neumonia: no se combina con no-neumonia.\n    incluirIraNeumonia = true;\n  } else if (mencionaIraGeneral) {\n    // IRA general (sin distinguir): combinada, ambas tablas.\n    incluirIraNeumonia = true;\n    incluirIraNoNeumonia = true;\n  }\n}\n\nconst enfermedadesActivas = [];\nif (incluirDengue) enfermedadesActivas.push('dengue');\nif (incluirEda) enfermedadesActivas.push('eda');\nif (incluirIraNeumonia) enfermedadesActivas.push('ira_neumonia');\nif (incluirIraNoNeumonia) enfermedadesActivas.push('ira_no_neumonia');\n\nreturn [{\n  json: {\n    incluir_dengue: incluirDengue,\n    incluir_eda: incluirEda,\n    incluir_ira_neumonia: incluirIraNeumonia,\n    incluir_ira_no_neumonia: incluirIraNoNeumonia,\n    enfermedades_activas: enfermedadesActivas,\n    criterio_enfermedad: algunaDetectada\n      ? `detectadas: ${enfermedadesActivas.join(', ')}`\n      : 'sin enfermedad especifica detectada: se consultan las 4'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1376,
+        608
+      ],
+      "id": "a67f5f2f-3ca4-4d42-a424-f50934e99cde",
+      "name": "Detectar enfermedad en la pregunta"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH casos AS (\n  SELECT\n    p.id_periodo,\n    p.anio,\n    p.semana,\n    COUNT(c.id_caso_dengue) AS total_casos\n  FROM periodo_epidemiologico p\n  LEFT JOIN caso_dengue c\n    ON c.id_periodo = p.id_periodo\n    AND ({{ $json.codigo_departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  WHERE (p.anio * 100 + p.semana) BETWEEN\n          ({{ $json.anio_desde }} * 100 + {{ $json.semana_desde }})\n          AND\n          ({{ $json.anio_hasta }} * 100 + {{ $json.semana_hasta }})\n  GROUP BY p.id_periodo, p.anio, p.semana\n),\nclima AS (\n  SELECT\n    dc.id_periodo,\n    AVG(dc.temp_max_promedio) AS temp_max_promedio,\n    AVG(dc.temp_min_promedio) AS temp_min_promedio,\n    AVG(dc.precipitacion_total) AS precipitacion_total,\n    AVG(dc.humedad_promedio) AS humedad_promedio\n  FROM dato_climatico dc\n  WHERE ({{ $json.codigo_departamento ? \"dc.id_departamento = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  GROUP BY dc.id_periodo\n)\nSELECT\n  'dengue' AS enfermedad,\n  casos.anio,\n  casos.semana,\n  casos.total_casos,\n  clima.temp_max_promedio,\n  clima.temp_min_promedio,\n  clima.precipitacion_total,\n  clima.humedad_promedio\nFROM casos\nLEFT JOIN clima ON clima.id_periodo = casos.id_periodo\nWHERE {{ $json.incluir_dengue }} = true\nORDER BY casos.anio, casos.semana;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        64
+      ],
+      "id": "02daaffd-5b12-471b-a139-d5ac076037e0",
+      "name": "Postgres - tendencia (Dengue)",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH casos AS (\n  SELECT\n    p.id_periodo,\n    p.anio,\n    p.semana,\n    COALESCE(SUM(c.episodios), 0) AS total_casos\n  FROM periodo_epidemiologico p\n  LEFT JOIN caso_eda c\n    ON c.id_periodo = p.id_periodo\n    AND ({{ $json.codigo_departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  WHERE (p.anio * 100 + p.semana) BETWEEN\n          ({{ $json.anio_desde }} * 100 + {{ $json.semana_desde }})\n          AND\n          ({{ $json.anio_hasta }} * 100 + {{ $json.semana_hasta }})\n  GROUP BY p.id_periodo, p.anio, p.semana\n),\nclima AS (\n  SELECT\n    dc.id_periodo,\n    AVG(dc.temp_max_promedio) AS temp_max_promedio,\n    AVG(dc.temp_min_promedio) AS temp_min_promedio,\n    AVG(dc.precipitacion_total) AS precipitacion_total,\n    AVG(dc.humedad_promedio) AS humedad_promedio\n  FROM dato_climatico dc\n  WHERE ({{ $json.codigo_departamento ? \"dc.id_departamento = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  GROUP BY dc.id_periodo\n)\nSELECT\n  'eda' AS enfermedad,\n  casos.anio,\n  casos.semana,\n  casos.total_casos,\n  clima.temp_max_promedio,\n  clima.temp_min_promedio,\n  clima.precipitacion_total,\n  clima.humedad_promedio\nFROM casos\nLEFT JOIN clima ON clima.id_periodo = casos.id_periodo\nWHERE {{ $json.incluir_eda }} = true\nORDER BY casos.anio, casos.semana;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        16,
+        272
+      ],
+      "id": "a5095364-63b7-4c20-b1e6-10f1c4a30101",
+      "name": "Postgres - tendencia (EDA)",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH casos AS (\n  SELECT\n    p.id_periodo,\n    p.anio,\n    p.semana,\n    COALESCE(SUM(c.casos_neumonia), 0) AS total_casos\n  FROM periodo_epidemiologico p\n  LEFT JOIN caso_ira_neumonia c\n    ON c.id_periodo = p.id_periodo\n    AND ({{ $json.codigo_departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  WHERE (p.anio * 100 + p.semana) BETWEEN\n          ({{ $json.anio_desde }} * 100 + {{ $json.semana_desde }})\n          AND\n          ({{ $json.anio_hasta }} * 100 + {{ $json.semana_hasta }})\n  GROUP BY p.id_periodo, p.anio, p.semana\n),\nclima AS (\n  SELECT\n    dc.id_periodo,\n    AVG(dc.temp_max_promedio) AS temp_max_promedio,\n    AVG(dc.temp_min_promedio) AS temp_min_promedio,\n    AVG(dc.precipitacion_total) AS precipitacion_total,\n    AVG(dc.humedad_promedio) AS humedad_promedio\n  FROM dato_climatico dc\n  WHERE ({{ $json.codigo_departamento ? \"dc.id_departamento = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  GROUP BY dc.id_periodo\n)\nSELECT\n  'ira_neumonia' AS enfermedad,\n  casos.anio,\n  casos.semana,\n  casos.total_casos,\n  clima.temp_max_promedio,\n  clima.temp_min_promedio,\n  clima.precipitacion_total,\n  clima.humedad_promedio\nFROM casos\nLEFT JOIN clima ON clima.id_periodo = casos.id_periodo\nWHERE {{ $json.incluir_ira_neumonia }} = true\nORDER BY casos.anio, casos.semana;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        16,
+        496
+      ],
+      "id": "70bde896-826c-4870-a61e-748804d5727b",
+      "name": "Postgres - tendencia (IRA neumonia)",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH casos AS (\n  SELECT\n    p.id_periodo,\n    p.anio,\n    p.semana,\n    COALESCE(SUM(c.casos), 0) AS total_casos\n  FROM periodo_epidemiologico p\n  LEFT JOIN caso_ira_no_neumonia c\n    ON c.id_periodo = p.id_periodo\n    AND ({{ $json.codigo_departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  WHERE (p.anio * 100 + p.semana) BETWEEN\n          ({{ $json.anio_desde }} * 100 + {{ $json.semana_desde }})\n          AND\n          ({{ $json.anio_hasta }} * 100 + {{ $json.semana_hasta }})\n  GROUP BY p.id_periodo, p.anio, p.semana\n),\nclima AS (\n  SELECT\n    dc.id_periodo,\n    AVG(dc.temp_max_promedio) AS temp_max_promedio,\n    AVG(dc.temp_min_promedio) AS temp_min_promedio,\n    AVG(dc.precipitacion_total) AS precipitacion_total,\n    AVG(dc.humedad_promedio) AS humedad_promedio\n  FROM dato_climatico dc\n  WHERE ({{ $json.codigo_departamento ? \"dc.id_departamento = '\" + $json.codigo_departamento + \"'\" : \"1=1\" }})\n  GROUP BY dc.id_periodo\n)\nSELECT\n  'ira_no_neumonia' AS enfermedad,\n  casos.anio,\n  casos.semana,\n  casos.total_casos,\n  clima.temp_max_promedio,\n  clima.temp_min_promedio,\n  clima.precipitacion_total,\n  clima.humedad_promedio\nFROM casos\nLEFT JOIN clima ON clima.id_periodo = casos.id_periodo\nWHERE {{ $json.incluir_ira_no_neumonia }} = true\nORDER BY casos.anio, casos.semana;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        32,
+        704
+      ],
+      "id": "aefcc626-2bc6-4dcc-a18d-b8e9e38501ca",
+      "name": "Postgres - tendencia (IRA no neumonia)",
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        880
+      ],
+      "id": "bc48a6c1-7fbd-492f-994e-e95660248c0a",
+      "name": "Merge (tendencias por enfermedad)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae el marcador [NIVEL_RIESGO: alto|medio|bajo] que el AI Agent\n// escribe al final de su respuesta (segun la instruccion agregada al\n// prompt), lo separa a un campo 'nivel_riesgo' estructurado, y limpia\n// esa linea del texto que ve el analista - para que no aparezca como\n// texto crudo raro en el chat del frontend.\n//\n// Mismo principio que 'modelo_usado': un campo de transparencia\n// aparte del texto libre, para que el frontend pueda mostrar un badge\n// con certeza en vez de tener que adivinar buscando palabras clave\n// dentro de la respuesta (fragil: la IA podria escribir \"riesgo\n// considerablemente alto\" o negarlo, y un regex simple lo detectaria\n// mal).\n\nconst salidaAgente = $input.first().json;\nconst textoOriginal = salidaAgente.output || '';\n\nconst regexMarcador = /\\[NIVEL_RIESGO:\\s*(alto|medio|bajo)\\]/i;\nconst match = textoOriginal.match(regexMarcador);\n\nconst nivelRiesgo = match ? match[1].toLowerCase() : null;\n\n// Quita la linea del marcador (y espacios en blanco sobrantes al final)\nconst textoLimpio = textoOriginal.replace(regexMarcador, '').trimEnd();\n\nreturn [{\n  json: {\n    ...salidaAgente,\n    output: textoLimpio,\n    nivel_riesgo: nivelRiesgo\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        1616
+      ],
+      "id": "4912d26b-a9d1-4ee1-b2ba-8ac1226e9b29",
+      "name": "Extraer y limpiar nivel de riesgo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        784,
+        2016
+      ],
+      "id": "ad56bc70-a071-4790-b9a7-95d7270b9d10",
+      "name": "AI Agent Gemini 2",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        768,
+        2352
+      ],
+      "id": "71e8e4fd-fbf0-4b58-bcf1-6ef8946a841f",
+      "name": "Google Gemini Chat Model 2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pSmV0ia7eJr1MB0r",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1072,
+        2336
+      ],
+      "id": "17519a7f-9c22-4c13-b9a6-8c5c2c7a42c1",
+      "name": "AI Agent Gemini 3",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        2592
+      ],
+      "id": "27aa87ca-1208-45a4-80fd-01ea1bd8f169",
+      "name": "Google Gemini Chat Model 3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ympCgm5Np00SYAZD",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        928,
+        1456
+      ],
+      "id": "7dade8cf-3313-4a84-80bf-5782cb35f122",
+      "name": "AI Agent1",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1680
+      ],
+      "id": "c36ce740-0b62-4236-94ec-ad58988880e7",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rilDRiBOcs0dVQlk",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Detectar periodo en la pregunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar periodo en la pregunta": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)1": {
+      "main": [
+        [
+          {
+            "node": "Resolver ventana por defecto (si aplica)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver ventana por defecto (si aplica)": {
+      "main": [
+        [
+          {
+            "node": "Filtrar boletines del periodo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Detectar departamento en la pregunta",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Detectar enfermedad en la pregunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar boletines del periodo": {
+      "main": [
+        [
+          {
+            "node": "Merge (esperar ambas ramas)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Filtrar clima del periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar clima del periodo": {
+      "main": [
+        [
+          {
+            "node": "Merge (esperar ambas ramas)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Consolidar boletines + clima del periodo": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge (esperar ambas ramas)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar boletines + clima del periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar departamento en la pregunta": {
+      "main": [
+        [
+          {
+            "node": "Decidir si activar prediccion (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir si activar prediccion (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Hay prediccion que consultar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay prediccion que consultar?": {
+      "main": [
+        [
+          {
+            "node": "Postgres - tendencia (Dengue)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres - tendencia (EDA)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres - tendencia (IRA neumonia)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres - tendencia (IRA no neumonia)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar texto de tendencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar texto de tendencia": {
+      "main": [
+        [
+          {
+            "node": "Merge (esperar ambas ramas)",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Postgres - tendencia (Dengue)": {
+      "main": [
+        [
+          {
+            "node": "Merge (tendencias por enfermedad)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - tendencia (EDA)": {
+      "main": [
+        [
+          {
+            "node": "Merge (tendencias por enfermedad)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Postgres - tendencia (IRA neumonia)": {
+      "main": [
+        [
+          {
+            "node": "Merge (tendencias por enfermedad)",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Postgres - tendencia (IRA no neumonia)": {
+      "main": [
+        [
+          {
+            "node": "Merge (tendencias por enfermedad)",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge (tendencias por enfermedad)": {
+      "main": [
+        [
+          {
+            "node": "Armar texto de tendencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer y limpiar nivel de riesgo": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Gemini 2": {
+      "main": [
+        [
+          {
+            "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Gemini 3": {
+      "main": [
+        [
+          {
+            "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8efc8196-f642-4fc1-89ff-e5500171f717",
+  "meta": {
+    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+  },
+  "nodeGroups": [],
+  "id": "5n4pFfXZyHtzx2aU",
+  "tags": []
+}
