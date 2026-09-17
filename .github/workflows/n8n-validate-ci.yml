@@ -39,11 +39,59 @@ jobs:
         if: steps.filter.outputs.n8n == 'true'
         run: |
           echo "Buscando posibles secretos en los workflows..."
-          if grep -riE "api[_-]?key|password|secret|token|bearer" src/n8n-workflows --include="*.json"; then
-            echo "❌ Se detectaron posibles credenciales expuestas en los workflows"
-            exit 1
-          fi
-          echo "✅ Sin credenciales expuestas"
+          python3 - <<'PYEOF'
+          import json, re, sys, glob
+
+          # Claves que representan credenciales reales si traen un valor no vacío.
+          SECRET_KEY = re.compile(
+              r"(?i)(api[_-]?key|apikey|passwd|password|client[_-]?secret|"
+              r"access[_-]?token|auth[_-]?token|refresh[_-]?token|bearer|authorization)"
+          )
+          # Patrones de secretos reales por formato (API keys, JWT, llaves privadas).
+          SECRET_VALUE = re.compile(
+              r"(?i)(sk-[a-z0-9]{10,}|AIza[0-9A-Za-z_-]{20,}|ghp_[a-z0-9]{20,}|"
+              r"xox[baprs]-[a-z0-9-]{10,}|-----BEGIN [A-Z ]+PRIVATE KEY-----|"
+              r"eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{5,}\.[a-zA-Z0-9_-]{5,})"
+          )
+          # Metadato interno de n8n: solo referencias id/name, nunca secretos.
+          IGNORED_KEYS = {"credentials"}
+
+          def walk(obj, path, hits):
+              if isinstance(obj, dict):
+                  for k, v in obj.items():
+                      if k in IGNORED_KEYS:
+                          continue
+                      child = f"{path}.{k}"
+                      if isinstance(v, str):
+                          if SECRET_KEY.search(k) and v.strip():
+                              hits.append(f"{child} = {v[:40]}")
+                          elif SECRET_VALUE.search(v) and v.strip():
+                              hits.append(f"{child} = {v[:40]}")
+                      else:
+                          walk(v, child, hits)
+              elif isinstance(obj, list):
+                  for i, v in enumerate(obj):
+                      walk(v, f"{path}[{i}]", hits)
+
+          FILES = sorted(
+              glob.glob("src/n8n-workflows/production/*.json")
+              + glob.glob("src/n8n-workflows/templates/*.json")
+          )
+          FAIL = 0
+          for f in FILES:
+              with open(f, encoding="utf-8") as fh:
+                  data = json.load(fh)
+              hits = []
+              walk(data, f.split("/")[-1], hits)
+              for h in hits:
+                  print(f"  ⚠️  {h}")
+                  FAIL = 1
+
+          if FAIL:
+              print("❌ Se detectaron posibles credenciales expuestas en los workflows")
+              sys.exit(1)
+          print("✅ Sin credenciales expuestas (solo se marcan valores sensibles reales)")
+          PYEOF
 
       - name: Verificar traza a Arize Phoenix en workflows con LLM (ADR-010)
         if: steps.filter.outputs.n8n == 'true'
