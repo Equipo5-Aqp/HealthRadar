@@ -10,6 +10,38 @@ const TABLAS = [
   { valor: 'ira_no_neumonia', etiqueta: 'IRA - No Neumonía' },
 ]
 
+// Mismo diccionario de codigos INEI ya usado en 'Conexion' (Detectar
+// departamento en la pregunta), para mantener consistencia entre el
+// chat de consulta y el panel de historicos.
+const DEPARTAMENTOS = [
+  { codigo: '', nombre: 'Todos los departamentos' },
+  { codigo: '01', nombre: 'Amazonas' },
+  { codigo: '02', nombre: 'Áncash' },
+  { codigo: '03', nombre: 'Apurímac' },
+  { codigo: '04', nombre: 'Arequipa' },
+  { codigo: '05', nombre: 'Ayacucho' },
+  { codigo: '06', nombre: 'Cajamarca' },
+  { codigo: '07', nombre: 'Callao' },
+  { codigo: '08', nombre: 'Cusco' },
+  { codigo: '09', nombre: 'Huancavelica' },
+  { codigo: '10', nombre: 'Huánuco' },
+  { codigo: '11', nombre: 'Ica' },
+  { codigo: '12', nombre: 'Junín' },
+  { codigo: '13', nombre: 'La Libertad' },
+  { codigo: '14', nombre: 'Lambayeque' },
+  { codigo: '15', nombre: 'Lima' },
+  { codigo: '16', nombre: 'Loreto' },
+  { codigo: '17', nombre: 'Madre de Dios' },
+  { codigo: '18', nombre: 'Moquegua' },
+  { codigo: '19', nombre: 'Pasco' },
+  { codigo: '20', nombre: 'Piura' },
+  { codigo: '21', nombre: 'Puno' },
+  { codigo: '22', nombre: 'San Martín' },
+  { codigo: '23', nombre: 'Tacna' },
+  { codigo: '24', nombre: 'Tumbes' },
+  { codigo: '25', nombre: 'Ucayali' },
+]
+
 export default function HistoricosPage() {
   const [tabla, setTabla] = useState('')
   const [pagina, setPagina] = useState(1)
@@ -18,15 +50,22 @@ export default function HistoricosPage() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [consultado, setConsultado] = useState(false)
+  const [departamento, setDepartamento] = useState('')
+  const [anio, setAnio] = useState('')
 
-  async function cargarDatos(tablaElegida, paginaElegida) {
+  async function cargarDatos(tablaElegida, paginaElegida, departamentoElegido, anioElegido) {
     setCargando(true)
     setError('')
     try {
       const res = await fetch('/api/historicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tabla: tablaElegida, pagina: paginaElegida }),
+        body: JSON.stringify({
+          tabla: tablaElegida,
+          pagina: paginaElegida,
+          departamento: departamentoElegido || undefined,
+          anio: anioElegido || undefined,
+        }),
       })
 
       if (!res.ok) {
@@ -57,13 +96,28 @@ export default function HistoricosPage() {
   function seleccionarTabla(valor) {
     setTabla(valor)
     setPagina(1)
-    cargarDatos(valor, 1)
+    cargarDatos(valor, 1, departamento, anio)
   }
 
   function irAPagina(nuevaPagina) {
     if (nuevaPagina < 1) return
     setPagina(nuevaPagina)
-    cargarDatos(tabla, nuevaPagina)
+    cargarDatos(tabla, nuevaPagina, departamento, anio)
+  }
+
+  function aplicarFiltros() {
+    if (!tabla) return
+    setPagina(1)
+    cargarDatos(tabla, 1, departamento, anio)
+  }
+
+  function limpiarFiltros() {
+    setDepartamento('')
+    setAnio('')
+    if (tabla) {
+      setPagina(1)
+      cargarDatos(tabla, 1, '', '')
+    }
   }
 
   return (
@@ -98,6 +152,31 @@ export default function HistoricosPage() {
           ))}
         </div>
 
+        {tabla && (
+          <div style={styles.filterRow}>
+            <select
+              style={styles.filterSelect}
+              value={departamento}
+              onChange={(e) => setDepartamento(e.target.value)}
+            >
+              {DEPARTAMENTOS.map((d) => (
+                <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
+              ))}
+            </select>
+
+            <input
+              style={styles.filterInput}
+              type="number"
+              placeholder="Año (ej. 2020)"
+              value={anio}
+              onChange={(e) => setAnio(e.target.value)}
+            />
+
+            <button style={styles.filterBtn} onClick={aplicarFiltros}>Filtrar</button>
+            <button style={styles.filterBtnGhost} onClick={limpiarFiltros}>Limpiar</button>
+          </div>
+        )}
+
         {!consultado && !cargando && (
           <div style={styles.placeholder}>Selecciona un dataset arriba para ver los datos.</div>
         )}
@@ -107,7 +186,11 @@ export default function HistoricosPage() {
         {error && !cargando && <div style={styles.errorBox}>{error}</div>}
 
         {!cargando && !error && consultado && filas.length === 0 && (
-          <div style={styles.placeholder}>No hay más registros para mostrar.</div>
+          <div style={styles.placeholder}>
+            {(departamento || anio)
+              ? 'No se encontraron registros para el departamento y/o año seleccionados.'
+              : 'No hay más registros para mostrar.'}
+          </div>
         )}
 
         {!cargando && !error && filas.length > 0 && (
@@ -175,6 +258,11 @@ const styles = {
     color: '#9FB4C9', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
   },
   tabButtonActive: { background: '#FF6B4A', color: '#2A0F06', borderColor: '#FF6B4A', fontWeight: 600 },
+  filterRow: { display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' },
+  filterSelect: { padding: '10px 14px', borderRadius: 10, border: '1px solid #25405C', background: '#111E2E', color: '#EAF2FA', fontSize: 13, fontFamily: 'inherit', minWidth: 200 },
+  filterInput: { padding: '10px 14px', borderRadius: 10, border: '1px solid #25405C', background: '#111E2E', color: '#EAF2FA', fontSize: 13, fontFamily: 'inherit', width: 140 },
+  filterBtn: { padding: '10px 18px', borderRadius: 10, border: 'none', background: '#FF6B4A', color: '#2A0F06', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' },
+  filterBtnGhost: { padding: '10px 18px', borderRadius: 10, border: '1px solid #25405C', background: 'transparent', color: '#9FB4C9', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' },
   placeholder: { fontSize: 13, color: '#5E7387', fontFamily: 'monospace', padding: '40px 0', textAlign: 'center' },
   loading: { fontSize: 13, color: '#9FB4C9', fontFamily: 'monospace', marginBottom: 16 },
   errorBox: { background: '#2A180F', border: '1px solid #B8391F', color: '#FF6B4A', borderRadius: 10, padding: 16, fontSize: 13 },
