@@ -1,0 +1,4 @@
+$kind: collection
+description: Colección de validación del webhook /api/historicos (Conexion de posgrest). Flujo determinista, sin IA. Valida contrato HTTP y schema exacto de cada rama del Switch (dengue, eda). Confirmado contra las queries SQL reales del workflow.
+variables:
+  base_url: http://20.9.78.118:3000

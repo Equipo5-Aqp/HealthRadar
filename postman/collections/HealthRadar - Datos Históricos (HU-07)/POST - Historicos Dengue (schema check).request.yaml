@@ -1,0 +1,42 @@
+$kind: http-request
+url: "{{base_url}}/api/historicos"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "tabla": "dengue"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code es 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('La respuesta es un array', function () {
+          const data = pm.response.json();
+          pm.expect(data).to.be.an('array');
+      });
+
+      pm.test('El array no viene vacío', function () {
+          const data = pm.response.json();
+          pm.expect(data.length).to.be.above(0);
+      });
+
+      pm.test('Schema exacto de dengue (confirmado contra la query SQL real)', function () {
+          const data = pm.response.json();
+          const primerCaso = data[0];
+          const schemaEsperado = [
+              'id_caso_dengue', 'ubigeo', 'anio', 'semana',
+              'id_diresa', 'enfermedad', 'diagnostic',
+              'edad', 'tipo_edad', 'sexo'
+          ];
+          const keysReales = Object.keys(primerCaso).sort();
+          const keysEsperadas = [...schemaEsperado].sort();
+          pm.expect(keysReales).to.eql(keysEsperadas);
+      });
+    language: text/javascript
+order: 1000
