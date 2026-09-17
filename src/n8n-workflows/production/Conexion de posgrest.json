@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -128,
-        -32
+        -528,
+        272
       ],
-      "id": "048755f0-3e9b-49b5-983a-f1df6218ba91",
+      "id": "b78cf026-4068-4381-a633-1be169d0970f",
       "name": "Webhook",
       "webhookId": "d4f17646-a645-470a-85b5-017cdb13d467"
     },
@@ -27,29 +27,30 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        768,
-        -16
+        368,
+        288
       ],
-      "id": "24bdee15-bead-4666-a8e1-84f0b349e572",
+      "id": "d75d4bfc-9c8b-4d33-b446-90eef0986c56",
       "name": "Respond to Webhook"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM caso_dengue\nORDER BY id_caso_dengue\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}\n",
+        "query": "SELECT\n  c.id_caso_dengue,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.enfermedad,\n  c.diagnostic,\n  c.edad,\n  c.tipo_edad,\n  c.sexo\nFROM caso_dengue c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_dengue\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        400,
-        -304
+        0,
+        0
       ],
-      "id": "a98fe199-ce63-44db-8ea2-d16f4c1d415b",
+      "id": "eb83ecb8-963a-4db1-8f7e-f597f464eeae",
       "name": "Dengue",
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "qtdiHPY2u2ZrDB17",
+          "id": "ygvcEt61nomOLFgw",
           "name": "Postgres account"
         }
       }
@@ -57,20 +58,21 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM caso_eda\nORDER BY id_caso_eda\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "query": "SELECT\n  c.id_caso_eda,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.episodios,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_eda c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_eda\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        400,
-        -96
+        0,
+        208
       ],
-      "id": "c78bee6a-bb74-4673-a650-26087c914bd7",
+      "id": "9a8b35ed-a52c-46b9-b1f0-f726f1f7da40",
       "name": "EDA",
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "qtdiHPY2u2ZrDB17",
+          "id": "ygvcEt61nomOLFgw",
           "name": "Postgres account"
         }
       }
@@ -78,20 +80,21 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM caso_ira_neumonia\nORDER BY id_caso_ira\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "query": "SELECT\n  c.id_caso_ira,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.casos_neumonia,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_ira_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_ira\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        400,
-        64
+        0,
+        368
       ],
-      "id": "cc3a336e-1bcd-4324-b809-684139717f65",
+      "id": "67008105-506f-4f35-8c3a-85528226eebb",
       "name": "ira_neumonia",
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "qtdiHPY2u2ZrDB17",
+          "id": "ygvcEt61nomOLFgw",
           "name": "Postgres account"
         }
       }
@@ -99,20 +102,21 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM caso_ira_no_neumonia\nORDER BY id_caso_ira_nn\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }}",
+        "query": "SELECT\n  c.id_caso_ira_nn,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.casos\nFROM caso_ira_no_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_ira_nn\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        400,
-        240
+        0,
+        544
       ],
-      "id": "54d541f4-4ace-4ce6-90e3-463ab488f749",
+      "id": "e12d78db-8d51-410c-a38a-758ef8d30091",
       "name": "ira_no_neumonia",
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "qtdiHPY2u2ZrDB17",
+          "id": "ygvcEt61nomOLFgw",
           "name": "Postgres account"
         }
       }
@@ -219,11 +223,239 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        112,
-        -64
+        -288,
+        240
       ],
-      "id": "02da8bd4-b2c9-4b8a-b1d3-2482ffd8d1ef",
+      "id": "029b003c-0cec-4a59-9751-65a9b01e2c04",
       "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  COUNT(c.id_caso_dengue) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_dengue c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        16,
+        832
+      ],
+      "id": "527214b7-ae97-42fc-94c2-9dd54059af68",
+      "name": "Tendencia Dengue",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.episodios) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_eda c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        16,
+        1040
+      ],
+      "id": "b103f045-c003-4d96-9a95-b70e84fe1c17",
+      "name": "Tendencia EDA",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos_neumonia) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        16,
+        1200
+      ],
+      "id": "07677f46-0a69-44ad-a900-9efd11e84674",
+      "name": "Tendencia IRA Neumonia",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_no_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        16,
+        1376
+      ],
+      "id": "fc202be1-28e9-488e-92a7-b3ccc6c59a60",
+      "name": "Tendencia IRA No Neumonia",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "ygvcEt61nomOLFgw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tendencia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        1104
+      ],
+      "id": "40f9a199-901e-49cd-87f3-ca76893e49d2",
+      "name": "Webhook1",
+      "webhookId": "generar-uuid-nuevo-al-importar"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "dengue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "t-cond-dengue"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "t-cond-eda",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "eda",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "t-cond-ira-neumonia",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "t-cond-ira-no-neumonia",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_no_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        1072
+      ],
+      "id": "3e4594c6-812d-444f-ac65-2cf66108e1b7",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $input.all().map(item => item.json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        384,
+        1120
+      ],
+      "id": "7f282cf2-abcc-46d8-b8cb-be892b50eb8f",
+      "name": "Respond to Webhook1"
     }
   ],
   "pinData": {},
@@ -314,6 +546,93 @@
           }
         ]
       ]
+    },
+    "Tendencia Dengue": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tendencia EDA": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tendencia IRA Neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tendencia IRA No Neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Tendencia Dengue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tendencia EDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tendencia IRA Neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tendencia IRA No Neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -322,12 +641,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "c929366b-51e9-4339-a9cd-c4fd6891f967",
+  "versionId": "cc13a42a-4026-462e-841a-579ddcc4abc0",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "9b394d46c3bd45ed3edfcea9097aee61981c5d025650cd9c5f06e4b03c2fdca1"
+    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
   },
   "nodeGroups": [],
-  "id": "31PKsPiAYIbZazl1",
+  "id": "Bz68CWPylT14W2jn",
   "tags": []
 }
