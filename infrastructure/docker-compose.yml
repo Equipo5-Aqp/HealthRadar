@@ -78,6 +78,9 @@ services:
       - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
       # Habilitar acceso a variables de entorno dentro de los nodos de n8n ($env)
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # System Prompts inyectados desde el entorno (consumidos vía $env en nodos de n8n)
+      - SYSTEM_PROMPT_CONEXION=${SYSTEM_PROMPT_CONEXION:-}
+      - SYSTEM_PROMPT_FASE_B=${SYSTEM_PROMPT_FASE_B:-}
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
