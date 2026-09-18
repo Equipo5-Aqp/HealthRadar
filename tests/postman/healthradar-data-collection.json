@@ -1,0 +1,127 @@
+{
+  "info": {
+    "_postman_id": "a1e5f0a0-7b3c-4e2d-9f8a-2c6d4b1e9c30",
+    "name": "HealthRadar - Datos Históricos (HU-07)",
+    "description": "Colección de validación del webhook /api/historicos (Conexion de posgrest). Flujo determinista, sin IA. Valida contrato HTTP y schema exacto de cada rama del Switch (dengue, eda). Confirmado contra las queries SQL reales del workflow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "POST - Historicos Dengue (schema check)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tabla\": \"dengue\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/historicos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "historicos"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code es 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('La respuesta es un array', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('El array no viene vacío', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.length).to.be.above(0);",
+              "});",
+              "",
+              "pm.test('Schema exacto de dengue (confirmado contra la query SQL real)', function () {",
+              "    const data = pm.response.json();",
+              "    const primerCaso = data[0];",
+              "    const schemaEsperado = [",
+              "        'id_caso_dengue', 'ubigeo', 'anio', 'semana',",
+              "        'id_diresa', 'enfermedad', 'diagnostic',",
+              "        'edad', 'tipo_edad', 'sexo'",
+              "    ];",
+              "    const keysReales = Object.keys(primerCaso).sort();",
+              "    const keysEsperadas = [...schemaEsperado].sort();",
+              "    pm.expect(keysReales).to.eql(keysEsperadas);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST - Historicos EDA (schema check)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"tabla\": \"eda\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/historicos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "historicos"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code es 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('La respuesta es un array', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('El array no viene vacío', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.length).to.be.above(0);",
+              "});",
+              "",
+              "pm.test('Schema exacto de eda (confirmado contra la query SQL real)', function () {",
+              "    const data = pm.response.json();",
+              "    const primerCaso = data[0];",
+              "    const schemaEsperado = [",
+              "        'id_caso_eda', 'ubigeo', 'anio', 'semana',",
+              "        'id_diresa', 'grupo_etario', 'episodios',",
+              "        'hospitalizados', 'defunciones'",
+              "    ];",
+              "    const keysReales = Object.keys(primerCaso).sort();",
+              "    const keysEsperadas = [...schemaEsperado].sort();",
+              "    pm.expect(keysReales).to.eql(keysEsperadas);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://20.9.78.118:3000",
+      "type": "string"
+    }
+  ]
+}

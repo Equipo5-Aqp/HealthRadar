@@ -1,0 +1,14 @@
+# Use this workspace to collaborate
+workspace:
+  id: ebd1646e-5ad2-4ace-8c95-ef37d3d07228
+
+localResources:
+  collections:
+    - ../tests/postman/HealthRadar - QA
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/HealthRadar - Datos Históricos (HU-07): 3e5ce3b4-da75-4306-a76d-1bb2a3bc011a
+    ../tests/postman/HealthRadar - QA: 38376393-6c0d495d-c1ec-4280-b92d-9417a48a0665

@@ -1,0 +1,51 @@
+name: QA Postman CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  changes:
+    name: Detectar cambios en colecciones Postman
+    runs-on: ubuntu-latest
+    outputs:
+      postman: ${{ steps.filter.outputs.postman }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filtrar rutas
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            postman:
+              - 'tests/postman/healthradar-data-collection.json'
+              - '.github/workflows/qa-postman-ci.yml'
+
+  newman:
+    name: Ejecutar colección Postman (HU-07 vía Newman)
+    needs: changes
+    if: needs.changes.outputs.postman == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Newman
+        run: npm install -g newman
+
+      - name: "QA · Colección Postman - Datos Históricos (HU-13)"
+        run: |
+          newman run tests/postman/healthradar-data-collection.json \
+            --reporters cli,junit \
+            --reporter-junit-export newman-report.xml
+
+      - name: Publicar reporte de Newman
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-report
+          path: newman-report.xml

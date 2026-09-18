@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/webhook/consulta-nlq"
+method: POST
+body:
+  type: json
+  content: "   {\r
+
+    \     \"query\": \"¿Qué distritos muestran un incremento anómalo de casos de Dengue correlacionado con el aumento de temperatura de la última semana?\"\r
+
+    \   }"
+examples: ./.resources/POST - Consulta NLQ.resources/examples
+order: 1000

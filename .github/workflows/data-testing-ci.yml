@@ -1,0 +1,45 @@
+name: Data Testing CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  changes:
+    name: Detectar cambios en datos históricos
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.filter.outputs.data }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filtrar rutas
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            data:
+              - 'src/ia-ops/tests/test_datos_epidemiologicos.py'
+              - 'tests/postman/healthradar-data-collection.json'
+              - 'requirements.txt'
+              - '.github/workflows/data-testing-ci.yml'
+
+  test:
+    name: Ejecutar pruebas de datos históricos (HU-07)
+    needs: changes
+    if: needs.changes.outputs.data == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: "QA · Webhook Postgres/Switch (HU-07)"
+        env:
+          N8N_HISTORICOS_WEBHOOK_URL: ${{ secrets.N8N_HISTORICOS_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_datos_epidemiologicos.py -v

@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/webhook/consulta-nlq"
+  method: POST
+  body:
+    type: json
+    content: "   {\r
+
+      \     \"query\": \"¿Qué distritos muestran un incremento anómalo de casos de Dengue correlacionado con el aumento de temperatura de la última semana?\"\r
+
+      \   }"
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: "    {\r
+
+      \     \"respuesta\": \"Se detectó un incremento del 34% en casos de Dengue en el distrito de Cerro Colorado, correlacionado con un aumento de 3°C en la temperatura promedio de la última semana.\",\r
+
+      \     \"distrito\": \"Cerro Colorado\",\r
+
+      \     \"confianza\": \"alta\"\r
+
+      \   }"
+order: 1000

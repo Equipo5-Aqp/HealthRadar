@@ -82,3 +82,17 @@ jobs:
         env:
           N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
         run: python -m pytest src/ia-ops/tests/test_llm_outputs.py -v
+      
+      - name: "QA · Detección de Periodo NLQ (HU-10)"
+        if: steps.check_webhook.outputs.skip == 'false'
+        continue-on-error: true
+        env:
+          N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_nlq_periodo.py -v
+
+      - name: "QA · Failover Multi-Modelo (HU-11)"
+        if: steps.check_webhook.outputs.skip == 'false'
+        continue-on-error: true
+        env:
+          N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
+        run: python -m pytest src/ia-ops/tests/test_failover_modelo.py -v
