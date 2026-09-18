@@ -12,6 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detectar cambios en tests de QA
+        uses: dorny/paths-filter@v3
+        id: qa_filter
+        with:
+          filters: |
+            qa:
+              - 'src/ia-ops/tests/test_ingesta_boletin.py'
+
       - name: Preparar .env de prueba
         run: cp infrastructure/.env.staging.example infrastructure/.env
 
@@ -26,6 +34,27 @@ jobs:
             [ "$STATUS" = "healthy" ] && echo "✅ Postgres healthy" && break
             echo "...esperando Postgres ($i/20)"; sleep 3
           done
+
+      - name: Configurar Python para tests de QA
+        if: steps.qa_filter.outputs.qa == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias de QA
+        if: steps.qa_filter.outputs.qa == 'true'
+        run: pip install psycopg2-binary pytest
+
+      - name: "QA · Ingesta de Boletines (HU-08)"
+        if: steps.qa_filter.outputs.qa == 'true'
+        continue-on-error: true
+        env:
+          HEALTHRADAR_DB_HOST: localhost
+          HEALTHRADAR_DB_PORT: 5432
+          HEALTHRADAR_DB_NAME: healthradar_db
+          HEALTHRADAR_DB_USER: healthradar_admin
+          HEALTHRADAR_DB_PASSWORD: healthradar_admin
+        run: python -m pytest src/ia-ops/tests/test_ingesta_boletin.py -v
 
       - name: Esperar a que n8n responda
         run: |
