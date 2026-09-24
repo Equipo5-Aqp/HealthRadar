@@ -9,6 +9,8 @@ const SUGERENCIAS = [
   'correlación lluvia y casos',
 ]
 
+// Constantes de presentación de riesgo (sincronizadas con @healthradar/core/presentacion/riesgo.js
+// y protegidas por test de snapshot en core/presentacion/__tests__/snapshot.test.js - ADR-012)
 const RIESGO_COLORES = {
   alto: { bg: '#2A180F', text: '#FF6B4A', barra: '#FF6B4A' },
   medio: { bg: '#2A2410', text: '#FFD24A', barra: '#FFD24A' },

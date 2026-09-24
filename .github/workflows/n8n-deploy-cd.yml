@@ -20,6 +20,17 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
+      - name: Setup Node.js para @healthradar/core
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run @healthradar/core tests
+        working-directory: src/core
+        run: |
+          npm ci
+          npm test
+
       # ── PASO 1 y 2: git pull + copiar + importar ──────────────────────────────
       - name: Actualizar repo, copiar e importar workflows en n8n
         uses: appleboy/ssh-action@v1

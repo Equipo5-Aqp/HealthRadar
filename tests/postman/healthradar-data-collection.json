@@ -19,9 +19,9 @@
           "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "{{base_url}}/api/historicos",
+          "raw": "{{base_url}}/historicos/api/historicos",
           "host": ["{{base_url}}"],
-          "path": ["api", "historicos"]
+          "path": ["historicos", "api", "historicos"]
         }
       },
       "event": [
@@ -74,9 +74,9 @@
           "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "{{base_url}}/api/historicos",
+          "raw": "{{base_url}}/historicos/api/historicos",
           "host": ["{{base_url}}"],
-          "path": ["api", "historicos"]
+          "path": ["historicos", "api", "historicos"]
         }
       },
       "event": [

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WebhookNLQOutput",
+  "description": "Contrato de salida del webhook de consulta NLQ hacia el frontend",
+  "type": "object",
+  "required": ["output"],
+  "properties": {
+    "output": {
+      "type": "string",
+      "description": "Texto de respuesta redactado por el AI Agent, limpio de marcadores internos"
+    },
+    "nivel_riesgo": {
+      "type": ["string", "null"],
+      "enum": ["alto", "medio", "bajo", null],
+      "description": "Nivel de riesgo epidemiológico evaluado o null si no aplica"
+    },
+    "modelo_usado": {
+      "type": "string",
+      "description": "Identificador del modelo LLM que generó la respuesta"
+    }
+  },
+  "additionalProperties": true
+}

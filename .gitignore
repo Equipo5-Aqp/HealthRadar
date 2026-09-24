@@ -49,3 +49,6 @@ desktop.ini
 # === Playwright (reportes generados) ===
 playwright-report/
 test-results/
+
+# === Cobertura de tests ===
+**/coverage/

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContextoPrompt",
+  "description": "Contrato de salida consolidado para inyectar en el prompt del AI Agent",
+  "type": "object",
+  "required": [
+    "texto_boletines",
+    "texto_tendencia",
+    "texto_clima",
+    "criterio_periodo",
+    "cantidad_boletines"
+  ],
+  "properties": {
+    "texto_boletines": {
+      "type": "string"
+    },
+    "texto_tendencia": {
+      "type": "string"
+    },
+    "texto_clima": {
+      "type": "string"
+    },
+    "criterio_periodo": {
+      "type": "string"
+    },
+    "cantidad_boletines": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

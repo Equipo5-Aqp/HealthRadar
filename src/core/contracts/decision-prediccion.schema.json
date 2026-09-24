@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DecisionPrediccion",
+  "description": "Contrato de salida para la decisión de activación de predicción histórica en Postgres",
+  "type": "object",
+  "required": ["activar_prediccion"],
+  "properties": {
+    "activar_prediccion": {
+      "type": "boolean"
+    },
+    "motivo": {
+      "type": "string"
+    },
+    "codigo_departamento": {
+      "type": ["string", "null"]
+    },
+    "departamento_detectado": {
+      "type": ["string", "null"]
+    },
+    "nivel_agregacion": {
+      "type": "string",
+      "enum": ["departamento", "nacional"]
+    },
+    "anio_desde": {
+      "type": "integer"
+    },
+    "anio_hasta": {
+      "type": "integer"
+    },
+    "semana_desde": {
+      "type": "integer"
+    },
+    "semana_hasta": {
+      "type": "integer"
+    },
+    "incluir_dengue": {
+      "type": "boolean"
+    },
+    "incluir_eda": {
+      "type": "boolean"
+    },
+    "incluir_ira_neumonia": {
+      "type": "boolean"
+    },
+    "incluir_ira_no_neumonia": {
+      "type": "boolean"
+    },
+    "enfermedades_activas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
