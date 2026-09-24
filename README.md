@@ -14,8 +14,12 @@ El sistema sigue un flujo de datos estricto donde cada capa tiene una responsabi
 Analista de Salud
       │
       ▼
-Frontend (Next.js)          ← única interfaz pública, puerto 3000 (ADR-004)
-      │  /api/query (server-side proxy)
+nginx-shell                 ← única interfaz pública, puerto 3000 (ADR-008, ADR-013)
+      │  /historicos → mf-historicos:3000
+      │  /           → mf-consulta:3000
+      ▼
+Microfrontends (Next.js)    ← Next.js Multi-Zones independientes
+      │  /api/consulta, /historicos/api/historicos (server-side proxies)
       ▼
 n8n Self-Hosted             ← orquestador único de toda la lógica (ADR-001)
       │
@@ -154,19 +158,21 @@ sequenceDiagram
 
 Cada decisión técnica relevante del proyecto está documentada en `infrastructure/ADRs/`.
 
-| ADR                                                                              | Título                                                      | Estado                  |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------- |
-| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md)           | n8n Self-Hosted como capa de orquestación                   | Vigente                 |
-| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md)      | PostgreSQL con pgvector como única base de datos            | Vigente                 |
-| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md)    | División de LLMs por momento de operación (Gemini + Claude) | Vigente                 |
-| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md)         | Next.js con rutas de API como capa de seguridad             | Vigente                 |
-| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md)           | Langfuse como plataforma de observabilidad                  | Reemplazado por ADR-010 |
-| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos         | Vigente                 |
-| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md)     | Open-Meteo como fuente de datos climáticos                  | Vigente                 |
-| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md)                         | Docker Compose como estrategia de despliegue                | Vigente                 |
-| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                   | Reemplazadp por ADR-011 |
-| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad | Vigente                 |
-| [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting  | Vigente                 |
+| ADR                                                                              | Título                                                       | Estado                  |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------- |
+| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md)           | n8n Self-Hosted como capa de orquestación                    | Vigente                 |
+| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md)      | PostgreSQL con pgvector como única base de datos             | Vigente                 |
+| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md)    | División de LLMs por momento de operación (Gemini + Claude)  | Vigente                 |
+| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md)         | Next.js con rutas de API como capa de seguridad              | Vigente                 |
+| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md)           | Langfuse como plataforma de observabilidad                   | Reemplazado por ADR-010 |
+| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos          | Vigente                 |
+| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md)     | Open-Meteo como fuente de datos climáticos                   | Vigente                 |
+| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md)                         | Docker Compose como estrategia de despliegue                 | Vigente                 |
+| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                    | Reemplazadp por ADR-011 |
+| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad  | Vigente                 |
+| [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting   | Vigente                 |
+| [ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md)              | Arquitectura centrada en datos con capa de decisiones en n8n | Propuesto               |
+| [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md)       | Migración a Microfrontend con Next.js Multi-Zones y Nginx     | Vigente                 |
 
 ---
 
@@ -192,8 +198,20 @@ docker compose up -d
 docker compose ps
 ```
 
-El sistema queda disponible en `http://localhost:3000` (Frontend).  
+El sistema queda disponible en `http://localhost:3000` (Nginx Shell Router).  
 Para el despliegue en producción en la nube, consultar el [Manual de Despliegue en Azure VM](infrastructure/manuals/Manual_Despliegue_Azure_VM.md).
+
+### Desarrollo local de Microfrontends (sin Docker)
+
+```bash
+# Terminal 1 — mf-consulta:
+cd src/mf-consulta && npm run dev      # http://localhost:3001
+
+# Terminal 2 — mf-historicos:
+cd src/mf-historicos && npm run dev    # http://localhost:3002
+```
+> **Nota de navegación:** Los enlaces cross-zone (`/historicos` y `/`) resuelven a través de `nginx-shell` (puerto 3000). En desarrollo local sin Nginx, abrir manualmente el puerto correspondiente de cada MF.
+
 
 ---
 
@@ -205,14 +223,16 @@ Para el despliegue en producción en la nube, consultar el [Manual de Despliegue
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/               # Pipelines de CI/CD
 ├── infrastructure/
-│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-011)
+│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-013)
 │   ├── diagrams/                # Diagramas C4 en Draw.io XML (L1, L2, L3)
 │   ├── manuals/                 # Manuales de despliegue y redes (Azure / OCI)
 │   ├── scripts-poc-arquitectura/ # Scripts de verificación y PoCs de arquitectura
+│   ├── nginx/                   # Configuración de Nginx Shell Router (ADR-013)
 │   ├── docker-compose.yml       # Orquestación de contenedores
 │   └── .env.example             # Plantilla de variables de entorno
 ├── src/
-│   ├── frontend/                # Aplicación Next.js
+│   ├── mf-consulta/             # Microfrontend 1: Chat NLQ y tendencias
+│   ├── mf-historicos/           # Microfrontend 2: Datos históricos
 │   ├── n8n-workflows/           # Workflows de n8n (JSON versionados)
 │   ├── database/
 │   │   ├── migrations/          # Migraciones SQL numeradas
