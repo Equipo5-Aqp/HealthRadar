@@ -1,0 +1,27 @@
+{
+  "name": "Test @healthradar/core smoke",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Smoke test: verifica que require('@healthradar/core') funciona\n// dentro del contenedor n8n. Si este nodo falla, el require está\n// roto y ningún workflow de producción debe desplegarse.\n\nconst core = require('@healthradar/core');\n\nreturn [{\n  json: {\n    status: 'ok',\n    version: core.version(),\n    modules_loaded: [\n      typeof core.detectarPeriodo === 'function' ? 'detectarPeriodo' : null,\n      typeof core.detectarDepartamento === 'function' ? 'detectarDepartamento' : null,\n      typeof core.detectarEnfermedad === 'function' ? 'detectarEnfermedad' : null,\n      typeof core.decidirPrediccion === 'function' ? 'decidirPrediccion' : null,\n      typeof core.filtrarBoletines === 'function' ? 'filtrarBoletines' : null,\n      typeof core.filtrarClima === 'function' ? 'filtrarClima' : null,\n      typeof core.construirContextoPrompt === 'function' ? 'construirContextoPrompt' : null,\n      typeof core.armarTextoTendencia === 'function' ? 'armarTextoTendencia' : null,\n      typeof core.extraerNivelRiesgo === 'function' ? 'extraerNivelRiesgo' : null,\n      typeof core.validarResumenBoletin === 'function' ? 'validarResumenBoletin' : null\n    ].filter(Boolean)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "id": "smoke-test-core-001",
+      "name": "Smoke test @healthradar/core"
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Workflow inactivo de humo (ADR-012): valida que require('@healthradar/core') funciona en el contenedor n8n. Ejecutar manualmente tras cada deploy. Si falla aquí, no desplegar workflows de producción."
+  },
+  "tags": []
+}
