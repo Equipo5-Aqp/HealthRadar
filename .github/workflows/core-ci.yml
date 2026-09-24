@@ -1,0 +1,42 @@
+# ADR-012: CI para @healthradar/core
+# Ejecuta los tests unitarios de la capa de decisiones en cada push
+# que modifique src/core/. Red de seguridad antes del deploy.
+
+name: Core CI (@healthradar/core)
+
+on:
+  push:
+    paths:
+      - 'src/core/**'
+  pull_request:
+    paths:
+      - 'src/core/**'
+
+jobs:
+  test:
+    name: Unit Tests + Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: src/core/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/core
+        run: npm ci
+
+      - name: Run tests with coverage
+        working-directory: src/core
+        run: npm test -- --ci --reporters=default
+
+      - name: Check coverage threshold
+        working-directory: src/core
+        run: |
+          # Fail if statement coverage drops below 90%
+          npx jest --coverage --coverageReporters=text-summary | grep -E "Statements\s+:" | awk -F'[:%]' '{if ($2 < 90) exit 1}'

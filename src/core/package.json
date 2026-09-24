@@ -1,0 +1,17 @@
+{
+  "name": "@healthradar/core",
+  "version": "0.1.0",
+  "description": "Capa de decisiones pura — lógica de dominio sin dependencias de framework (ADR-012)",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}

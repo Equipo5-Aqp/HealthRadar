@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PeriodoResuelto",
+  "description": "Contrato de salida para la resolución de periodo epidemiológico",
+  "type": "object",
+  "required": ["semana_desde", "semana_hasta", "criterio_usado"],
+  "properties": {
+    "anio": {
+      "type": ["integer", "null"],
+      "description": "Año específico cuando aplica, o null si es rango multi-año"
+    },
+    "semana_desde": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 53
+    },
+    "semana_hasta": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 53
+    },
+    "anio_desde": {
+      "type": "integer"
+    },
+    "anio_hasta": {
+      "type": "integer"
+    },
+    "ventana_por_defecto": {
+      "type": "integer"
+    },
+    "criterio_usado": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

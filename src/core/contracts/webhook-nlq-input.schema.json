@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WebhookNLQInput",
+  "description": "Contrato de entrada para el webhook de consulta NLQ (/consulta)",
+  "type": "object",
+  "required": ["pregunta"],
+  "properties": {
+    "pregunta": {
+      "type": "string",
+      "description": "Pregunta epidemiológica en lenguaje natural realizada por el analista",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": true
+}
