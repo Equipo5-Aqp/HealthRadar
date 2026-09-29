@@ -3,10 +3,14 @@
 # Ver: https://docs.github.com/articles/about-code-owners
 
 # Frontend - requiere revisión de Full Stack
-/src/frontend/ @Andy-2214
+/src/mf-*/ @Andy-2214
 
 # Workflows de n8n - requiere revisión de Backend/Full Stack
 /src/n8n-workflows/ @Andy-2214
 
 # Prompts de IA - requiere revisión de QA/Prompt Engineer
 /src/ia-ops/ @edgvrz
+
+# CI/CD, Workflows y Automatizaciones - requiere revisión de Arquitectura y MLOps/DevSecOps
+/.github/workflows/ @Roberto-Bautista @HerbertChCa
+/.github/scripts/ @Roberto-Bautista @HerbertChCa
