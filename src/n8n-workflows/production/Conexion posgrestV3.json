@@ -1,5 +1,5 @@
 {
-  "name": "Conexion posgrestV3",
+  "name": "Conexion posgrest V3",
   "nodes": [
     {
       "parameters": {
@@ -128,7 +128,7 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $execution.id }}"
+        "sessionKey": "={{ String($('Webhook').item.json.body.sessionId || '').slice(0,64) || $execution.id }}"
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.4,
@@ -137,7 +137,9 @@
         2240
       ],
       "id": "461060d1-3bd3-4601-bf11-8e8d6b67374a",
-      "name": "Simple Memory"
+      "name": "Simple Memory",
+      "notes": "Memoria por sesion: usa body.sessionId (lo manda el front); si no viene, una memoria aislada por consulta.",
+      "notesInFlow": true
     },
     {
       "parameters": {
