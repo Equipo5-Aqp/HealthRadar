@@ -1,0 +1,716 @@
+{
+  "name": "Procesar 1 Boletin Pendiente (Fase B)V3",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.url_boletin }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -2464,
+        640
+      ],
+      "id": "f331254a-84d6-49d6-8f42-e71f50764aec",
+      "name": "HTTP Request - Descargar PDF"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { validarResumenBoletin } = require('@healthradar/core');\nconst pend = $('Postgres - Obtener pendiente').item.json;\nconst output = $input.first().json.output;\n// Modelo que respondio (solo para nombrar la fuente en los mensajes de error)\nlet agente = 1;\ntry { if ($('AI Agent Gemini 3').isExecuted) agente = 3; else if ($('AI Agent Gemini 2').isExecuted) agente = 2; } catch (e) {}\nconst NODO_MODELO = { 1: 'Google Gemini Chat Model', 2: 'Google Gemini Chat Model 2', 3: 'Google Gemini Chat Model 3' };\nlet modelo = 'gemini';\ntry { modelo = String($node[NODO_MODELO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {}\nconst validado = validarResumenBoletin(output, modelo, pend.semana_epidemiologica, {\n  semanaPrevia: pend.semana_previa,\n  resumenPrevio: pend.resumen_previo,\n  // exigirCifras: true,   // activar cuando SYSTEM_PROMPT_FASE_B ya pida la linea [CIFRAS: ...]\n});\nreturn [{\n  json: {\n    id_boletin: pend.id_boletin,\n    anio: pend.anio,\n    semana_epidemiologica: pend.semana_epidemiologica,\n    resumen: validado.resumen,\n    procesado: true\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        672
+      ],
+      "id": "f3b9a8a4-bb52-4ae2-9560-31e62ded405f",
+      "name": "Validar resumen (detiene si falla)",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE boletin_descubierto\nSET procesado = TRUE,\n    resumen = '{{ $json.resumen.replace(/'/g, \"''\") }}'\nWHERE id_boletin = {{ $json.id_boletin }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1200,
+        496
+      ],
+      "id": "f5c17eb1-0246-43bd-9ed8-92e98060c8cc",
+      "name": "Update row - marcar procesado",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -2032,
+        640
+      ],
+      "id": "d1813a47-9999-4b42-9d59-2af3ab74ba14",
+      "name": "AI Agent",
+      "retryOnFail": false,
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Sprint 3: system prompt desde SYSTEM_PROMPT_FASE_B (src/ia-ops/prompts)"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.7-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2016,
+        816
+      ],
+      "id": "fb926975-8cfd-4917-95f7-e87cc4e4d4d4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "9pMFGOvyV39GEH41",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -1776,
+        880
+      ],
+      "id": "6ccfbecf-ab1c-47d9-836a-44a1ee0fd5b1",
+      "name": "AI Agent Gemini 2",
+      "retryOnFail": false,
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Sprint 3: system prompt desde SYSTEM_PROMPT_FASE_B (src/ia-ops/prompts)"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        1072
+      ],
+      "id": "608fe811-4947-48f6-a160-e80a34a56c32",
+      "name": "Google Gemini Chat Model 2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4mn2oqCt7JCaKPbT",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -1728,
+        1280
+      ],
+      "id": "f73df436-660f-4766-b2fe-df26c768cd73",
+      "name": "AI Agent Gemini 3",
+      "retryOnFail": false,
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Sprint 3: system prompt desde SYSTEM_PROMPT_FASE_B (src/ia-ops/prompts)"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1744,
+        1488
+      ],
+      "id": "0e83debe-1149-4249-93fb-d44df79f60e0",
+      "name": "Google Gemini Chat Model 3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YXgOFpNMi1nQo8jx",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2240,
+        640
+      ],
+      "id": "2f826de7-9491-44e5-a3df-78aadb275ef5",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sprint 3 (ADR-012): la regla DGE vive en @healthradar/core (calcularRangoFechasSemana).\nconst { calcularRangoFechasSemana } = require('@healthradar/core');\nreturn [{ json: calcularRangoFechasSemana($json.anio, $json.semana_epidemiologica) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        672
+      ],
+      "id": "3a08d899-d5d8-4011-9482-ed749d403c9e",
+      "name": "Calcular rango de fechas de la semana",
+      "notesInFlow": true,
+      "notes": "Sprint 3: adaptador de @healthradar/core"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2b29ca34-cbd6-4b9c-a0d1-e93571470774",
+      "name": "Split In Batches (departamentos)"
+    },
+    {
+      "parameters": {
+        "url": "https://archive-api.open-meteo.com/v1/archive",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $json.latitud }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $json.longitud }}"
+            },
+            {
+              "name": "start_date",
+              "value": "={{ $json.fecha_inicio }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $json.fecha_fin }}"
+            },
+            {
+              "name": "daily",
+              "value": "temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,relative_humidity_2m_mean"
+            },
+            {
+              "name": "timezone",
+              "value": "America/Lima"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        400,
+        128
+      ],
+      "id": "67451c2c-a64f-428e-b5b7-242c3dbd6916",
+      "name": "HTTP Request - Open-Meteo archive"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sprint 3 (ADR-012): la agregacion semanal vive en @healthradar/core (agruparPorSemanaEpi).\n// Sin datos → null (nunca NaN ni 0). Valida que los 7 dias sean justo la semana pedida.\nconst { agruparPorSemanaEpi } = require('@healthradar/core');\nconst datos = $('Split In Batches (departamentos)').item.json;\nconst semana = agruparPorSemanaEpi($input.first().json.daily).find(\n  s => s.anio === Number(datos.anio) && s.semana === Number(datos.semana_epidemiologica));\nif (!semana) throw new Error(`Open-Meteo no devolvio la semana completa ${datos.anio}-S${datos.semana_epidemiologica} para ${datos.departamento}`);\nreturn [{ json: {\n  latitud: datos.latitud, longitud: datos.longitud,\n  anio: datos.anio, semana_epidemiologica: datos.semana_epidemiologica,\n  temp_max_promedio: semana.temp_max_promedio, temp_min_promedio: semana.temp_min_promedio,\n  temp_mean_promedio: semana.temp_mean_promedio, precipitacion_total: semana.precipitacion_total,\n  humedad_promedio: semana.humedad_promedio,\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        192
+      ],
+      "id": "6bd4208b-ac5d-4eb4-98fe-89ea36c2c98d",
+      "name": "Agrupar por semana epi real",
+      "notesInFlow": true,
+      "notes": "Sprint 3: adaptador de @healthradar/core"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3104,
+        640
+      ],
+      "id": "6b6113a3-075f-4c14-8a34-af32aca266f9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT b.id_boletin, b.anio, b.semana_epidemiologica, b.url_boletin, b.fecha_publicacion,\n       p.semana_epidemiologica AS semana_previa,\n       p.resumen               AS resumen_previo\nFROM boletin_descubierto b\nLEFT JOIN LATERAL (\n  SELECT x.semana_epidemiologica, x.resumen\n  FROM boletin_descubierto x\n  WHERE x.anio = b.anio\n    AND x.semana_epidemiologica < b.semana_epidemiologica\n    AND x.procesado = TRUE AND btrim(x.resumen) <> ''\n  ORDER BY x.semana_epidemiologica DESC\n  LIMIT 1\n) p ON TRUE\nWHERE b.procesado = FALSE AND btrim(b.resumen) = ''\nORDER BY b.anio ASC, b.semana_epidemiologica ASC\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2880,
+        640
+      ],
+      "id": "05c754f5-f49c-43ee-a101-ed9eb057d681",
+      "name": "Postgres - Obtener pendiente",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sprint 3 (ADR-012): los 25 puntos (Callao y Lima separados) viven en @healthradar/core.\nconst { generarDepartamentos } = require('@healthradar/core');\nreturn generarDepartamentos($input.first().json).map(json => ({ json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        336
+      ],
+      "id": "756c24a3-9505-43b4-8e86-944e217738c6",
+      "name": "Generar 25 departamentos",
+      "notesInFlow": true,
+      "notes": "Sprint 3: adaptador de @healthradar/core"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT fn_insertar_dato_climatico(\n  {{ $json.latitud }},\n  {{ $json.longitud }},\n  {{ $json.anio }},\n  {{ $json.semana_epidemiologica }},\n  {{ $json.temp_max_promedio ?? 'NULL' }},\n  {{ $json.temp_min_promedio ?? 'NULL' }},\n  {{ $json.precipitacion_total ?? 'NULL' }},\n  {{ $json.temp_mean_promedio ?? 'NULL' }},\n  {{ $json.humedad_promedio ?? 'NULL' }}\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        128
+      ],
+      "id": "97642acf-ee2d-4ee9-9584-a73a91fef85f",
+      "name": "Postgres - Insertar clima (fn_insertar_dato_climatico)",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "notes": "Sprint 3: adaptador de @healthradar/core"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-2 (Phoenix): marca la hora de inicio de la cadena LLM (resumen del boletin) para medir latencia.\n// Solo agrega _t0; el prompt sigue leyendo $json.text.\n// Falla claro si falta el prompt externalizado (evita que el modelo responda sin instrucciones).\nif (!$env.SYSTEM_PROMPT_FASE_B) throw new Error('Falta SYSTEM_PROMPT_FASE_B en infrastructure/.env (ver src/ia-ops/prompts)');\nreturn $input.all().map((i, idx) => ({ json: { ...i.json, _t0: Date.now() }, pairedItem: idx }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        800
+      ],
+      "id": "02cfdaa1-9dc1-4060-8470-4b739dd10ff0",
+      "name": "Marcar inicio (traza)",
+      "notesInFlow": true,
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { construirTrazaPhoenix } = require('@healthradar/core');\n// HU-2 (Phoenix): span del resumen de boletin generado y validado.\nconst pend = $('Postgres - Obtener pendiente').first().json;\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\n// Cadena de failover: ultimo agente que se ejecuto = el que respondio (1, 2 o 3)\nlet agente = 1;\ntry { if ($('AI Agent Gemini 3').isExecuted) agente = 3; else if ($('AI Agent Gemini 2').isExecuted) agente = 2; } catch (e) {}\nlet promptChars = 0;\ntry { promptChars = String($('Extract from File').first().json.text || '').length; } catch (e) {}\n// El PDF completo es enorme: en la traza va una referencia al boletin, no el texto entero.\nconst entrada = `Resumir boletin ${pend.id_boletin} (SE ${pend.semana_epidemiologica}, ${pend.anio}) ${pend.url_boletin || ''}`.trim();\nconst NODO_MODELO = { 1: 'Google Gemini Chat Model', 2: 'Google Gemini Chat Model 2', 3: 'Google Gemini Chat Model 3' };\nlet modelo = 'gemini';\ntry { modelo = String($node[NODO_MODELO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {}\nconst base = { nombre: 'boletin.resumen', entrada, modelo, inicioMs: inicio, finMs: Date.now(),\n  sessionId: 'healthradar-faseb', promptChars,\n  metadatos: { flujo: 'Fase B', proveedor: 'google', agente, id_boletin: pend.id_boletin, anio: pend.anio, semana: pend.semana_epidemiologica } };\nconst r = $input.first().json;\nconst traza = construirTrazaPhoenix({ ...base, salida: r.resumen, exito: !!r.resumen, error: r.resumen ? '' : 'Resumen vacio' });\nreturn [{ json: { traza } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        1040
+      ],
+      "id": "9efe75ed-4111-4bb1-ba8c-86ea8aa7be2f",
+      "name": "Armar traza Phoenix",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { construirTrazaPhoenix } = require('@healthradar/core');\n// HU-2 (Phoenix): span de error (fallaron los 3 agentes o el resumen no paso la validacion).\nconst pend = $('Postgres - Obtener pendiente').first().json;\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\n// Cadena de failover: ultimo agente que se ejecuto = el que respondio (1, 2 o 3)\nlet agente = 1;\ntry { if ($('AI Agent Gemini 3').isExecuted) agente = 3; else if ($('AI Agent Gemini 2').isExecuted) agente = 2; } catch (e) {}\nlet promptChars = 0;\ntry { promptChars = String($('Extract from File').first().json.text || '').length; } catch (e) {}\n// El PDF completo es enorme: en la traza va una referencia al boletin, no el texto entero.\nconst entrada = `Resumir boletin ${pend.id_boletin} (SE ${pend.semana_epidemiologica}, ${pend.anio}) ${pend.url_boletin || ''}`.trim();\nconst NODO_MODELO = { 1: 'Google Gemini Chat Model', 2: 'Google Gemini Chat Model 2', 3: 'Google Gemini Chat Model 3' };\nlet modelo = 'gemini';\ntry { modelo = String($node[NODO_MODELO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {}\nconst base = { nombre: 'boletin.resumen', entrada, modelo, inicioMs: inicio, finMs: Date.now(),\n  sessionId: 'healthradar-faseb', promptChars,\n  metadatos: { flujo: 'Fase B', proveedor: 'google', agente, id_boletin: pend.id_boletin, anio: pend.anio, semana: pend.semana_epidemiologica } };\nconst e = $input.first().json;\nconst msg = String((e.error && (e.error.message || e.error)) || e.message || JSON.stringify(e)).slice(0, 500);\nconst traza = construirTrazaPhoenix({ ...base, salida: '', exito: false, error: msg });\nreturn [{ json: { traza } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        1280
+      ],
+      "id": "99326c80-2f45-4d3f-997c-e1fc9a8cb8e5",
+      "name": "Armar traza Phoenix (error)",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.PHOENIX_URL || 'http://phoenix:6006') + '/v1/projects/' + ($env.PHOENIX_PROJECT || 'default') + '/spans' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.traza) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -960,
+        1168
+      ],
+      "id": "56cf7adb-9e76-4852-8426-436c5669d87a",
+      "name": "Enviar traza a Phoenix",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "content": "## HU-2 — Trazas a Phoenix (Fase B)\nSpan `boletin.resumen` por cada boletin procesado.\n- OK: tras `Validar resumen`.\n- Error: si fallan los 3 agentes o la validacion (el flujo se detiene igual que antes).\n- Los tokens son ESTIMADOS (`healthradar.tokens_estimados = true`).\n- Si Phoenix no responde, el flujo NO se rompe (onError continuar).",
+        "height": 220,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        992
+      ],
+      "id": "15785b5d-9fc9-4b53-82f0-e5d54e964dda",
+      "name": "Nota HU-2 (Fase B)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Obtener pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Obtener pendiente": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Descargar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Descargar PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Marcar inicio (traza)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Validar resumen (detiene si falla)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Gemini 2": {
+      "main": [
+        [
+          {
+            "node": "Validar resumen (detiene si falla)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Gemini 3": {
+      "main": [
+        [
+          {
+            "node": "Validar resumen (detiene si falla)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar traza Phoenix (error)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar resumen (detiene si falla)": {
+      "main": [
+        [
+          {
+            "node": "Update row - marcar procesado",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calcular rango de fechas de la semana",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Armar traza Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar traza Phoenix (error)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular rango de fechas de la semana": {
+      "main": [
+        [
+          {
+            "node": "Generar 25 departamentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar 25 departamentos": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (departamentos)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (departamentos)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request - Open-Meteo archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Open-Meteo archive": {
+      "main": [
+        [
+          {
+            "node": "Agrupar por semana epi real",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrupar por semana epi real": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insertar clima (fn_insertar_dato_climatico)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insertar clima (fn_insertar_dato_climatico)": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (departamentos)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar inicio (traza)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar traza Phoenix": {
+      "main": [
+        [
+          {
+            "node": "Enviar traza a Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar traza Phoenix (error)": {
+      "main": [
+        [
+          {
+            "node": "Enviar traza a Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "65b37e6a-8ace-4929-9c73-f34fa8a00092",
+  "meta": {
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
+  },
+  "nodeGroups": [],
+  "id": "2KcfjVvjENgVLIhB",
+  "tags": []
+}

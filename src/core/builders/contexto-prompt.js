@@ -6,6 +6,15 @@
 
 'use strict';
 
+const { quitarMarcadorCifras } = require('../parsers/cifras-boletin');
+
+/** Agrega v al arreglo solo si es un número válido (acepta texto numérico; ignora null, '' y NaN). */
+function agregarNumero(arr, v) {
+  if (v === null || v === undefined || v === '') return;
+  const n = Number(v);
+  if (Number.isFinite(n)) arr.push(n);
+}
+
 /**
  * Construye el contexto textual consolidado para el prompt del AI Agent.
  *
@@ -26,10 +35,13 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
   // Texto de boletines
   let textoBoletines = '';
   for (const b of boletinesOrdenados) {
-    textoBoletines += `\n--- Boletin SE ${b.semana_epidemiologica}-${b.anio} ---\n${b.resumen}\n`;
+    textoBoletines += `\n--- Boletin SE ${b.semana_epidemiologica}-${b.anio} ---\n${quitarMarcadorCifras(b.resumen)}\n`;
   }
 
-  // Promedio nacional de clima por semana (agrupando los 25 departamentos)
+  // Promedio nacional de clima por semana (agrupando los 25 departamentos).
+  // Postgres entrega NUMERIC como texto ('23.10') y las semanas sin dato como null:
+  // se convierte a número y se ignoran los vacíos. Sin esto el promedio daba NaN
+  // (texto concatenado) o quedaba subestimado (null contado como 0).
   const climaPorSemana = {};
   for (const c of (clima || [])) {
     const key = `${c.anio}-${c.semana_epidemiologica}`;
@@ -42,18 +54,19 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
         precipitacion: [],
       };
     }
-    climaPorSemana[key].temp_max.push(c.temp_max_promedio);
-    climaPorSemana[key].temp_min.push(c.temp_min_promedio);
-    climaPorSemana[key].precipitacion.push(c.precipitacion_total);
+    agregarNumero(climaPorSemana[key].temp_max, c.temp_max_promedio);
+    agregarNumero(climaPorSemana[key].temp_min, c.temp_min_promedio);
+    agregarNumero(climaPorSemana[key].precipitacion, c.precipitacion_total);
   }
 
-  const promedio = arr => (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
+  const promedio = arr => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null);
+  const valor = (v, unidad) => (v === null ? 'sin dato' : `${v}${unidad}`);
 
   let textoClima = '';
   const semanasClima = Object.values(climaPorSemana)
     .sort((a, b) => (a.anio - b.anio) || (a.semana - b.semana));
   for (const s of semanasClima) {
-    textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${promedio(s.temp_max)}°C, temp. min promedio ${promedio(s.temp_min)}°C, precipitacion promedio ${promedio(s.precipitacion)}mm\n`;
+    textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${valor(promedio(s.temp_max), '°C')}, temp. min promedio ${valor(promedio(s.temp_min), '°C')}, precipitacion promedio ${valor(promedio(s.precipitacion), 'mm')}\n`;
   }
 
   return {

@@ -1,0 +1,454 @@
+{
+  "name": "Casos por departamentoV3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "departamentos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        240
+      ],
+      "id": "d4baf142-c041-481d-b8cf-3cfbf07a451a",
+      "name": "Webhook",
+      "webhookId": "1d78fbaa-8259-4cda-a3e7-04678156a917"
+    },
+    {
+      "parameters": {
+        "jsCode": "// El body del webhook es entrada NO confiable: se valida con @healthradar/core.\n// Las queries usan parametros ($1) y NUNCA concatenan estos valores.\nconst { validarFiltrosConsulta } = require('@healthradar/core');\nconst r = validarFiltrosConsulta($input.first().json.body);\nreturn [{ json: { body: r.filtros, _valido: r.valido, _error: r.error } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        240
+      ],
+      "id": "1a8719d8-4012-432d-b930-e83dc210d776",
+      "name": "Validar entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dafe34f4-8630-4216-b6d0-729cdd0b643f",
+              "leftValue": "={{ $json._valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        240
+      ],
+      "id": "6ff916a2-a2b1-470e-8009-4f1828e2a2ab",
+      "name": "Entrada valida?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json._error } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        400,
+        448
+      ],
+      "id": "2f6b14c9-78d8-4173-8247-3aeadbd00abc",
+      "name": "Responder 400"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8fb5b515-a505-4623-b02b-aa5d6af90fdf",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "dengue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2afed643-c771-4084-849b-ad0814d724b9",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "eda",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3eb278ed-af30-4f5c-be48-6bdc0b808186",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "efc595ad-7bd1-431b-8a4b-c5099646deef",
+                    "leftValue": "={{ $json.body.tabla }}",
+                    "rightValue": "ira_no_neumonia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        224
+      ],
+      "id": "a258345e-bc26-42fd-b2e3-ccc2c55a7272",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  d.id_departamento AS codigo_departamento,\n  d.nombre AS departamento,\n  COALESCE(x.total_casos, 0)::int AS total_casos\nFROM departamento d\nLEFT JOIN (\n  SELECT LEFT(c.ubigeo, 2) AS cod, COUNT(*) AS total_casos\n  FROM caso_dengue c\n  JOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\n  WHERE ($1::int = 0 OR p.anio = $1::int)\n  GROUP BY LEFT(c.ubigeo, 2)\n) x ON x.cod = d.id_departamento\nORDER BY d.id_departamento;",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.anio ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        848,
+        0
+      ],
+      "id": "810dc9ee-a735-423a-af71-c201f9b34715",
+      "name": "Dengue",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  d.id_departamento AS codigo_departamento,\n  d.nombre AS departamento,\n  COALESCE(x.total_casos, 0)::int AS total_casos\nFROM departamento d\nLEFT JOIN (\n  SELECT LEFT(c.ubigeo, 2) AS cod, SUM(c.episodios) AS total_casos\n  FROM caso_eda c\n  JOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\n  WHERE ($1::int = 0 OR p.anio = $1::int)\n  GROUP BY LEFT(c.ubigeo, 2)\n) x ON x.cod = d.id_departamento\nORDER BY d.id_departamento;",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.anio ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        848,
+        160
+      ],
+      "id": "10bc51f5-55ec-48e8-92d9-182107c385f1",
+      "name": "EDA",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  d.id_departamento AS codigo_departamento,\n  d.nombre AS departamento,\n  COALESCE(x.total_casos, 0)::int AS total_casos\nFROM departamento d\nLEFT JOIN (\n  SELECT LEFT(c.ubigeo, 2) AS cod, SUM(c.casos_neumonia) AS total_casos\n  FROM caso_ira_neumonia c\n  JOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\n  WHERE ($1::int = 0 OR p.anio = $1::int)\n  GROUP BY LEFT(c.ubigeo, 2)\n) x ON x.cod = d.id_departamento\nORDER BY d.id_departamento;",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.anio ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        848,
+        320
+      ],
+      "id": "271a7f0e-a55f-4b5c-a90a-b5de71e7d8e2",
+      "name": "IRA Neumonia",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  d.id_departamento AS codigo_departamento,\n  d.nombre AS departamento,\n  COALESCE(x.total_casos, 0)::int AS total_casos\nFROM departamento d\nLEFT JOIN (\n  SELECT LEFT(c.ubigeo, 2) AS cod, SUM(c.casos) AS total_casos\n  FROM caso_ira_no_neumonia c\n  JOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\n  WHERE ($1::int = 0 OR p.anio = $1::int)\n  GROUP BY LEFT(c.ubigeo, 2)\n) x ON x.cod = d.id_departamento\nORDER BY d.id_departamento;",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.anio ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        848,
+        480
+      ],
+      "id": "1f303acb-bb96-4f7c-98a1-d4fc5695da6f",
+      "name": "IRA No Neumonia",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $input.all().map(item => item.json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1088,
+        240
+      ],
+      "id": "6a2b4d07-18f0-4ad9-818c-de59b787fdcd",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "content": "## Casos por departamento (HU-5 / mapa de calor)\nPOST /webhook/departamentos\nBody: `{ \"tabla\": \"dengue|eda|ira_neumonia|ira_no_neumonia\", \"anio\": 2023 (opcional) }`\nRespuesta: 25 filas `{ codigo_departamento, departamento, total_casos }`.\nSin `anio` = acumulado de todos los años. Datos por departamento solo hasta 2024.",
+        "height": 200,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -80
+      ],
+      "id": "5116b341-8bcf-4152-a533-ce1823e9207c",
+      "name": "Nota"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar entrada": {
+      "main": [
+        [
+          {
+            "node": "Entrada valida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada valida?": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Dengue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "EDA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IRA Neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IRA No Neumonia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dengue": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EDA": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IRA Neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IRA No Neumonia": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "76f65844-610a-47ff-93e6-65eea8b58783",
+  "meta": {
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
+  },
+  "nodeGroups": [],
+  "id": "Gfpe8osQU6rNwZbo",
+  "tags": []
+}

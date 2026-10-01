@@ -1,5 +1,5 @@
 {
-  "name": "Conexion de posgrest",
+  "name": "Conexion de posgrestV3",
   "nodes": [
     {
       "parameters": {
@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -528,
-        272
+        -992,
+        336
       ],
-      "id": "b78cf026-4068-4381-a633-1be169d0970f",
+      "id": "87e0cd63-8917-47bd-bd75-fda34c769272",
       "name": "Webhook",
       "webhookId": "d4f17646-a645-470a-85b5-017cdb13d467"
     },
@@ -27,30 +27,32 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        368,
-        288
+        128,
+        336
       ],
-      "id": "d75d4bfc-9c8b-4d33-b446-90eef0986c56",
+      "id": "4022e486-aea5-4d3c-aded-b14a2451530b",
       "name": "Respond to Webhook"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  c.id_caso_dengue,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.enfermedad,\n  c.diagnostic,\n  c.edad,\n  c.tipo_edad,\n  c.sexo\nFROM caso_dengue c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_dengue\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
-        "options": {}
+        "query": "SELECT\n  c.id_caso_dengue,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.enfermedad,\n  c.diagnostic,\n  c.edad,\n  c.tipo_edad,\n  c.sexo\nFROM caso_dengue c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\n  AND ($2::int = 0 OR p.anio = $2::int)\nORDER BY c.id_caso_dengue\nLIMIT 100 OFFSET (($3::int - 1) * 100);",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio, $json.body.pagina ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        0,
-        0
+        -240,
+        48
       ],
-      "id": "eb83ecb8-963a-4db1-8f7e-f597f464eeae",
+      "id": "c422423a-d4bf-4970-b6ff-e0e98019c38a",
       "name": "Dengue",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -58,21 +60,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  c.id_caso_eda,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.episodios,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_eda c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_eda\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
-        "options": {}
+        "query": "SELECT\n  c.id_caso_eda,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.episodios,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_eda c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\n  AND ($2::int = 0 OR p.anio = $2::int)\nORDER BY c.id_caso_eda\nLIMIT 100 OFFSET (($3::int - 1) * 100);",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio, $json.body.pagina ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        0,
-        208
+        -240,
+        256
       ],
-      "id": "9a8b35ed-a52c-46b9-b1f0-f726f1f7da40",
+      "id": "e20c33c2-91c5-4d30-ae41-9944cdd084f5",
       "name": "EDA",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -80,21 +84,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  c.id_caso_ira,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.casos_neumonia,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_ira_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_ira\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
-        "options": {}
+        "query": "SELECT\n  c.id_caso_ira,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.grupo_etario,\n  c.casos_neumonia,\n  c.hospitalizados,\n  c.defunciones\nFROM caso_ira_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\n  AND ($2::int = 0 OR p.anio = $2::int)\nORDER BY c.id_caso_ira\nLIMIT 100 OFFSET (($3::int - 1) * 100);",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio, $json.body.pagina ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        0,
-        368
+        -240,
+        416
       ],
-      "id": "67008105-506f-4f35-8c3a-85528226eebb",
+      "id": "d878931b-3c8e-4875-bc58-919b26fd8154",
       "name": "ira_neumonia",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -102,21 +108,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  c.id_caso_ira_nn,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.casos\nFROM caso_ira_no_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\n  AND ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nORDER BY c.id_caso_ira_nn\nLIMIT 100 OFFSET {{ (Number($json.body.pagina || 1) - 1) * 100 }};",
-        "options": {}
+        "query": "SELECT\n  c.id_caso_ira_nn,\n  c.ubigeo,\n  p.anio,\n  p.semana,\n  c.id_diresa,\n  c.casos\nFROM caso_ira_no_neumonia c\nJOIN periodo_epidemiologico p ON p.id_periodo = c.id_periodo\nWHERE ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\n  AND ($2::int = 0 OR p.anio = $2::int)\nORDER BY c.id_caso_ira_nn\nLIMIT 100 OFFSET (($3::int - 1) * 100);",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio, $json.body.pagina ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        0,
-        544
+        -240,
+        592
       ],
-      "id": "e12d78db-8d51-410c-a38a-758ef8d30091",
+      "id": "d7cfbbe4-17d3-4088-8b10-7ba6fc9afcf7",
       "name": "ira_no_neumonia",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -223,30 +231,32 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -288,
-        240
+        -496,
+        288
       ],
-      "id": "029b003c-0cec-4a59-9751-65a9b01e2c04",
+      "id": "d1a78669-85aa-4cd8-9a08-62a1064861b8",
       "name": "Switch"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  COUNT(c.id_caso_dengue) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_dengue c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
-        "options": {}
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  COUNT(c.id_caso_dengue) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_dengue c\n  ON c.id_periodo = p.id_periodo\n  AND ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\nWHERE ($2::int = 0 OR p.anio = $2::int)\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        16,
-        832
+        -224,
+        880
       ],
-      "id": "527214b7-ae97-42fc-94c2-9dd54059af68",
+      "id": "4281dc36-bd01-4518-b71b-3637905b5d87",
       "name": "Tendencia Dengue",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -254,21 +264,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.episodios) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_eda c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
-        "options": {}
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.episodios) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_eda c\n  ON c.id_periodo = p.id_periodo\n  AND ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\nWHERE ($2::int = 0 OR p.anio = $2::int)\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        16,
-        1040
+        -224,
+        1088
       ],
-      "id": "b103f045-c003-4d96-9a95-b70e84fe1c17",
+      "id": "b53bb2fd-ec57-49ac-a225-f7a86dd1bbc0",
       "name": "Tendencia EDA",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -276,21 +288,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos_neumonia) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
-        "options": {}
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos_neumonia) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\nWHERE ($2::int = 0 OR p.anio = $2::int)\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        16,
-        1200
+        -224,
+        1248
       ],
-      "id": "07677f46-0a69-44ad-a900-9efd11e84674",
+      "id": "8aaeba1a-7520-4ca0-9ec4-db52748fca7e",
       "name": "Tendencia IRA Neumonia",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -298,21 +312,23 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_no_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ({{ $json.body.departamento ? \"LEFT(c.ubigeo, 2) = '\" + $json.body.departamento + \"'\" : \"1=1\" }})\nWHERE ({{ $json.body.anio ? \"p.anio = \" + Number($json.body.anio) : \"1=1\" }})\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
-        "options": {}
+        "query": "SELECT\n  {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }} AS periodo,\n  SUM(c.casos) AS total_casos\nFROM periodo_epidemiologico p\nLEFT JOIN caso_ira_no_neumonia c\n  ON c.id_periodo = p.id_periodo\n  AND ($1 = '' OR LEFT(c.ubigeo, 2) = $1)\nWHERE ($2::int = 0 OR p.anio = $2::int)\nGROUP BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }}\nORDER BY {{ $json.body.anio ? \"p.semana\" : \"p.anio\" }};",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.departamento, $json.body.anio ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        16,
-        1376
+        -224,
+        1424
       ],
-      "id": "fc202be1-28e9-488e-92a7-b3ccc6c59a60",
+      "id": "5381d4c3-f063-49e9-a832-b922b549aa6f",
       "name": "Tendencia IRA No Neumonia",
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -327,10 +343,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -512,
-        1104
+        -976,
+        1088
       ],
-      "id": "40f9a199-901e-49cd-87f3-ca76893e49d2",
+      "id": "4266c788-b018-423e-926a-12df731480ae",
       "name": "Webhook1",
       "webhookId": "generar-uuid-nuevo-al-importar"
     },
@@ -436,10 +452,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -272,
-        1072
+        -464,
+        1056
       ],
-      "id": "3e4594c6-812d-444f-ac65-2cf66108e1b7",
+      "id": "15dd58b6-d373-488a-9ad5-702686c8aafa",
       "name": "Switch1"
     },
     {
@@ -451,11 +467,183 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        384,
-        1120
+        144,
+        1168
       ],
-      "id": "7f282cf2-abcc-46d8-b8cb-be892b50eb8f",
+      "id": "c10619f7-852a-4829-b03f-748421f41196",
       "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-07: el body del webhook es entrada NO confiable. La validacion vive en @healthradar/core\n// (validarFiltrosConsulta): lista cerrada para tabla/departamento y enteros acotados para anio/pagina.\n// Las queries usan parametros ($1, $2, ...) y NUNCA concatenan estos valores.\nconst { validarFiltrosConsulta } = require('@healthradar/core');\nconst r = validarFiltrosConsulta($input.first().json.body);\nreturn [{ json: { body: r.filtros, _valido: r.valido, _error: r.error } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        336
+      ],
+      "id": "55345968-3bbe-49ba-b892-89006b7bfc63",
+      "name": "Validar entrada",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cc20884e-bfc2-4553-a34c-43e31b0c77e7",
+              "leftValue": "={{ $json._valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        320
+      ],
+      "id": "39405721-a111-44bf-ac14-d8cf150b505c",
+      "name": "Entrada valida?",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json._error } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -592,
+        592
+      ],
+      "id": "c4c00102-e562-439f-a2f4-71ab778000b0",
+      "name": "Responder 400",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-07: el body del webhook es entrada NO confiable. La validacion vive en @healthradar/core\n// (validarFiltrosConsulta): lista cerrada para tabla/departamento y enteros acotados para anio/pagina.\n// Las queries usan parametros ($1, $2, ...) y NUNCA concatenan estos valores.\nconst { validarFiltrosConsulta } = require('@healthradar/core');\nconst r = validarFiltrosConsulta($input.first().json.body);\nreturn [{ json: { body: r.filtros, _valido: r.valido, _error: r.error } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        1104
+      ],
+      "id": "7c742437-c738-4ef9-91cb-ff6cc0182a0c",
+      "name": "Validar entrada (tendencia)",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c9bf676a-51dc-45b9-a899-7e828e5ff03d",
+              "leftValue": "={{ $json._valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        1088
+      ],
+      "id": "a313296e-6818-4a89-94bc-b596c484ed6e",
+      "name": "Entrada valida? (tendencia)",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json._error } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -528,
+        1392
+      ],
+      "id": "c1893355-fc1c-44ac-aae0-afb9a94a6d93",
+      "name": "Responder 400 (tendencia)",
+      "notesInFlow": true,
+      "notes": "HU-07: nuevo"
+    },
+    {
+      "parameters": {
+        "content": "## HU-07: validacion de entrada\nNodos nuevos (correccion de inyeccion SQL).\nValida el body con `validarFiltrosConsulta` de @healthradar/core; si es invalido responde 400. Las queries usan parametros $1, $2, $3.",
+        "height": 400,
+        "width": 250,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        80
+      ],
+      "id": "604b2016-0dee-4d12-92b3-c483e192ad37",
+      "name": "Nota HU-07 historicos"
+    },
+    {
+      "parameters": {
+        "content": "## HU-07: validacion de entrada\nNodos nuevos (correccion de inyeccion SQL).\nMismo validador y respuesta 400. Queries parametrizadas.",
+        "height": 400,
+        "width": 250,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        720
+      ],
+      "id": "76c020b0-2710-454b-9187-5c3ee1ec1757",
+      "name": "Nota HU-07 tendencia"
     }
   ],
   "pinData": {},
@@ -464,7 +652,7 @@
       "main": [
         [
           {
-            "node": "Switch",
+            "node": "Validar entrada",
             "type": "main",
             "index": 0
           }
@@ -595,7 +783,7 @@
       "main": [
         [
           {
-            "node": "Switch1",
+            "node": "Validar entrada (tendencia)",
             "type": "main",
             "index": 0
           }
@@ -633,6 +821,64 @@
           }
         ]
       ]
+    },
+    "Validar entrada": {
+      "main": [
+        [
+          {
+            "node": "Entrada valida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada valida?": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar entrada (tendencia)": {
+      "main": [
+        [
+          {
+            "node": "Entrada valida? (tendencia)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada valida? (tendencia)": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400 (tendencia)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -641,11 +887,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "cc13a42a-4026-462e-841a-579ddcc4abc0",
+  "versionId": "dc276fb3-3fe6-4e73-b4f5-9c54dccbbc06",
   "meta": {
-    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },
   "nodeGroups": [],
-  "id": "Bz68CWPylT14W2jn",
+  "id": "6PkSrBKwehf9eSyn",
   "tags": []
 }
