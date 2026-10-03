@@ -1,5 +1,5 @@
 {
-  "name": "Conexion posgrest",
+  "name": "Conexion posgrest V3",
   "nodes": [
     {
       "parameters": {
@@ -12,9 +12,9 @@
       "typeVersion": 2.1,
       "position": [
         -2240,
-        1056
+        992
       ],
-      "id": "65c5982e-f2fd-467d-8101-9617ee88031f",
+      "id": "9506d0f6-f0da-41f7-963e-10ae13c5875b",
       "name": "Webhook",
       "webhookId": "8b566a4b-0d69-4c66-9cfa-6c4b7c964649"
     },
@@ -26,9 +26,9 @@
       "typeVersion": 2,
       "position": [
         -2032,
-        1056
+        992
       ],
-      "id": "afa88891-0472-4b0c-a153-e58cbeb355aa",
+      "id": "e7907db5-c68a-4d8f-b115-586ec9c09a3e",
       "name": "Detectar periodo en la pregunta"
     },
     {
@@ -41,13 +41,13 @@
       "typeVersion": 2.6,
       "position": [
         -1840,
-        1056
+        992
       ],
-      "id": "423c93c0-b5b3-40d2-84f5-8354fb9e527c",
+      "id": "b1fae905-9b0c-4a81-a3ba-6218bc77f562",
       "name": "Get row(s)1",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -60,9 +60,9 @@
       "typeVersion": 2,
       "position": [
         -1664,
-        1056
+        992
       ],
-      "id": "01d2554d-066a-4ace-8997-b5190839caa1",
+      "id": "3fa95ffb-90c4-41d0-a9a5-0a455f679085",
       "name": "Resolver ventana por defecto (si aplica)"
     },
     {
@@ -73,9 +73,9 @@
       "typeVersion": 2,
       "position": [
         -848,
-        1152
+        1088
       ],
-      "id": "d82c2f76-f488-48c1-b3f5-a3c69e1a1f08",
+      "id": "3eadfd86-f663-4b8c-a65e-da7f753d661c",
       "name": "Filtrar boletines del periodo"
     },
     {
@@ -88,13 +88,13 @@
       "typeVersion": 2.6,
       "position": [
         -1328,
-        1360
+        1296
       ],
-      "id": "91c5f950-6854-4000-a939-a87857b2bf3b",
+      "id": "1ab9fc0f-6fb1-40ae-80b5-0cd66d699792",
       "name": "Get row(s)",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -107,9 +107,9 @@
       "typeVersion": 2,
       "position": [
         -1008,
-        1392
+        1328
       ],
-      "id": "26ed9bfe-0f02-4e90-8bcd-1985c94d61e5",
+      "id": "65c5471c-7b1d-42e3-aea7-334b44eb6ba2",
       "name": "Filtrar clima del periodo"
     },
     {
@@ -120,24 +120,26 @@
       "typeVersion": 2,
       "position": [
         448,
-        1520
+        1456
       ],
-      "id": "d53e8c84-5242-42bf-bc6c-b8e2fa84d277",
+      "id": "5f798bfc-aad1-4de4-9a82-0dd7addb9b7f",
       "name": "Consolidar boletines + clima del periodo"
     },
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "healthradar-conexion"
+        "sessionKey": "={{ String($('Webhook').item.json.body.sessionId || '').slice(0,64) || $execution.id }}"
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.4,
       "position": [
-        480,
-        2176
+        592,
+        2240
       ],
-      "id": "53c5513d-06c5-4f99-938c-366f53666ca3",
-      "name": "Simple Memory"
+      "id": "461060d1-3bd3-4601-bf11-8e8d6b67374a",
+      "name": "Simple Memory",
+      "notes": "Memoria por sesion: usa body.sessionId (lo manda el front); si no viene, una memoria aislada por consulta.",
+      "notesInFlow": true
     },
     {
       "parameters": {
@@ -148,10 +150,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1696,
-        1632
+        2112,
+        1184
       ],
-      "id": "95b3d4d2-5749-4484-bf10-0e0e339c3254",
+      "id": "f24a32b4-6a51-49fb-a980-fc0f0a4ac97e",
       "name": "Respond to Webhook"
     },
     {
@@ -165,9 +167,9 @@
       "typeVersion": 3.2,
       "position": [
         128,
-        1824
+        1760
       ],
-      "id": "5b85b4af-ad01-4451-a728-e8f001d42964",
+      "id": "f5fe52c6-dbd9-4bf7-8bf7-cc0c0be67730",
       "name": "Merge (esperar ambas ramas)",
       "alwaysOutputData": true
     },
@@ -179,9 +181,9 @@
       "typeVersion": 2,
       "position": [
         -1136,
-        832
+        768
       ],
-      "id": "f66e9fdd-bcdc-4665-baca-7cecb909b1e6",
+      "id": "eeb3feb0-680c-4402-b6b3-0eef639b7c77",
       "name": "Detectar departamento en la pregunta"
     },
     {
@@ -192,9 +194,9 @@
       "typeVersion": 2,
       "position": [
         -928,
-        832
+        768
       ],
-      "id": "ac977560-627e-4aa9-835f-bbecfd6d1aee",
+      "id": "dd5f781c-94b9-4d96-909d-6c6374ad14e7",
       "name": "Decidir si activar prediccion (Postgres)"
     },
     {
@@ -224,9 +226,9 @@
       "typeVersion": 2.2,
       "position": [
         -656,
-        816
+        752
       ],
-      "id": "dc807d40-33aa-4b06-8c58-ffde6c634bb2",
+      "id": "f2bd5f4b-a953-4b3c-893a-ef55eb134a01",
       "name": "Hay prediccion que consultar?"
     },
     {
@@ -237,9 +239,9 @@
       "typeVersion": 2,
       "position": [
         1296,
-        880
+        816
       ],
-      "id": "66466909-f518-4ca6-8424-916ad86edb89",
+      "id": "4671ee9a-df4c-44d6-9fb7-8c22a5178ee8",
       "name": "Armar texto de tendencia"
     },
     {
@@ -250,9 +252,9 @@
       "typeVersion": 2,
       "position": [
         -1376,
-        608
+        544
       ],
-      "id": "a67f5f2f-3ca4-4d42-a424-f50934e99cde",
+      "id": "dccbdb42-9fcf-4e6b-8579-bd96e82a56b7",
       "name": "Detectar enfermedad en la pregunta"
     },
     {
@@ -265,13 +267,13 @@
       "typeVersion": 2.6,
       "position": [
         0,
-        64
+        0
       ],
-      "id": "02daaffd-5b12-471b-a139-d5ac076037e0",
+      "id": "73cc80bb-b72d-4b5b-a5ac-ad0cadac85cb",
       "name": "Postgres - tendencia (Dengue)",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -286,13 +288,13 @@
       "typeVersion": 2.6,
       "position": [
         16,
-        272
+        208
       ],
-      "id": "a5095364-63b7-4c20-b1e6-10f1c4a30101",
+      "id": "2097df66-721a-4d77-a36c-8d33112ba341",
       "name": "Postgres - tendencia (EDA)",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -307,13 +309,13 @@
       "typeVersion": 2.6,
       "position": [
         16,
-        496
+        432
       ],
-      "id": "70bde896-826c-4870-a61e-748804d5727b",
+      "id": "d93d804e-660a-4c6f-bc9b-93f675cd0653",
       "name": "Postgres - tendencia (IRA neumonia)",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -328,13 +330,13 @@
       "typeVersion": 2.6,
       "position": [
         32,
-        704
+        640
       ],
-      "id": "aefcc626-2bc6-4dcc-a18d-b8e9e38501ca",
+      "id": "a8066cc2-c82d-4da3-9776-c91d9ef67315",
       "name": "Postgres - tendencia (IRA no neumonia)",
       "credentials": {
         "postgres": {
-          "id": "ygvcEt61nomOLFgw",
+          "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
       }
@@ -347,9 +349,9 @@
       "typeVersion": 3.2,
       "position": [
         1120,
-        880
+        816
       ],
-      "id": "bc48a6c1-7fbd-492f-994e-e95660248c0a",
+      "id": "9746a452-45f8-47c2-b274-472c1a180585",
       "name": "Merge (tendencias por enfermedad)"
     },
     {
@@ -359,45 +361,47 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1440,
-        1616
+        1408,
+        1168
       ],
-      "id": "4912d26b-a9d1-4ee1-b2ba-8ac1226e9b29",
+      "id": "84f74a2e-7b7b-4c80-8da4-cfbc28622abe",
       "name": "Extraer y limpiar nivel de riesgo"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.9,
       "position": [
-        784,
-        2016
+        448,
+        1792
       ],
-      "id": "ad56bc70-a071-4790-b9a7-95d7270b9d10",
+      "id": "f50565e1-63a1-4c93-a245-13e92fa8a2f3",
       "name": "AI Agent Gemini 2",
       "retryOnFail": false,
-      "onError": "continueErrorOutput"
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Sprint 3: prompt (con .env dentro) desde SYSTEM_PROMPT_CONEXION (src/ia-ops/prompts)"
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3.6-flash",
+        "modelName": "models/gemini-3.5-flash-lite",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        768,
-        2352
+        432,
+        2032
       ],
-      "id": "71e8e4fd-fbf0-4b58-bcf1-6ef8946a841f",
+      "id": "0b774ebe-d4a1-45cb-b0ec-aa7e039f035c",
       "name": "Google Gemini Chat Model 2",
       "credentials": {
         "googlePalmApi": {
-          "id": "pSmV0ia7eJr1MB0r",
+          "id": "4mn2oqCt7JCaKPbT",
           "name": "Google Gemini(PaLM) Api account 2"
         }
       }
@@ -405,36 +409,38 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.9,
       "position": [
         1072,
-        2336
+        2272
       ],
-      "id": "17519a7f-9c22-4c13-b9a6-8c5c2c7a42c1",
+      "id": "aa130eb0-c933-4cf2-8610-297ce91d1457",
       "name": "AI Agent Gemini 3",
       "retryOnFail": false,
-      "onError": "continueErrorOutput"
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Sprint 3: prompt (con .env dentro) desde SYSTEM_PROMPT_CONEXION (src/ia-ops/prompts)"
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3.6-flash",
+        "modelName": "models/gemini-3.5-flash-lite",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        1088,
-        2592
+        1040,
+        2496
       ],
-      "id": "27aa87ca-1208-45a4-80fd-01ea1bd8f169",
+      "id": "c5deffa9-855d-44a3-ac29-2ec8d5d32f8b",
       "name": "Google Gemini Chat Model 3",
       "credentials": {
         "googlePalmApi": {
-          "id": "ympCgm5Np00SYAZD",
+          "id": "YXgOFpNMi1nQo8jx",
           "name": "Google Gemini(PaLM) Api account 3"
         }
       }
@@ -442,39 +448,349 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente de vigilancia epidemiologica para el sistema HealthRadar.\n\nEl analista pregunto por el siguiente periodo: {{ $json.criterio_periodo }} ({{ $json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $json.texto_clima }}\n\n{{ $json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}\n\nIMPORTANTE: Si el clima no cubre exactamente las mismas semanas que los boletines, adviertelo explicitamente al inicio de tu respuesta. No mezcles ni presentes ambos datos como si fueran del mismo periodo sin esa advertencia.\n\nResponde de forma clara y en espanol, basandote unicamente en los datos anteriores. Si la pregunta no se puede responder con esta informacion, dilo explicitamente en vez de inventar datos.\n\nSi en esta consulta se te proporciono una 'Tendencia de casos historica' (arriba), analiza si la tendencia es creciente, estable o decreciente comparando las semanas mas recientes contra las anteriores, y determina un nivel de riesgo: alto, medio o bajo. Al final de tu respuesta, en una linea nueva y separada, escribe exactamente este marcador (nada mas en esa linea): [NIVEL_RIESGO: alto] o [NIVEL_RIESGO: medio] o [NIVEL_RIESGO: bajo], segun corresponda. Si NO se te proporciono ninguna tendencia de casos (la consulta no era sobre una enfermedad/periodo con prediccion disponible), NO escribas ningun marcador de riesgo - ni inventes uno ni escribas la linea vacia.",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.9,
       "position": [
-        928,
-        1456
+        800,
+        1232
       ],
-      "id": "7dade8cf-3313-4a84-80bf-5782cb35f122",
+      "id": "d9a1db01-c8ea-4892-acb9-a95ace004ce1",
       "name": "AI Agent1",
       "retryOnFail": false,
-      "onError": "continueErrorOutput"
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Respaldo 1: GLM 5.3 (NVIDIA). Prompt desde SYSTEM_PROMPT_CONEXION"
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3.6-flash",
-        "options": {}
+        "model": {
+          "__rl": true,
+          "value": "z-ai/glm-5.3",
+          "mode": "id"
+        },
+        "options": {
+          "temperature": 0.2,
+          "timeout": 45000,
+          "maxRetries": 1
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
       "position": [
         944,
-        1680
+        1616
       ],
-      "id": "c36ce740-0b62-4236-94ec-ad58988880e7",
-      "name": "Google Gemini Chat Model1",
+      "id": "0b887ca4-8209-4a18-b596-33f0b6b8eb28",
+      "name": "NVIDIA GLM 5.3 (respaldo 1)",
+      "notesInFlow": true,
       "credentials": {
-        "googlePalmApi": {
-          "id": "rilDRiBOcs0dVQlk",
-          "name": "Google Gemini(PaLM) Api account"
+        "openAiApi": {
+          "id": "JulkTzA8jDmwAen7",
+          "name": "OpenAI account"
         }
-      }
+      },
+      "notes": "Credencial OpenAI con la API key de NVIDIA (ver README del cambio). Base URL: https://integrate.api.nvidia.com/v1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-2 (Phoenix): marca la hora de inicio para medir la latencia de toda la consulta.\n// Solo agrega _t0; los demas nodos leen la pregunta con $('Webhook'), no de este item.\n// Falla claro si falta el prompt externalizado (evita que el modelo responda sin instrucciones).\nif (!$env.SYSTEM_PROMPT_CONEXION) throw new Error('Falta SYSTEM_PROMPT_CONEXION en infrastructure/.env (ver src/ia-ops/prompts)');\nreturn $input.all().map(i => ({ json: { ...i.json, _t0: Date.now() } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        1120
+      ],
+      "id": "fb0e9bf5-390b-46d3-b5f2-83d0653d7092",
+      "name": "Marcar inicio (traza)",
+      "notesInFlow": true,
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-2 (Phoenix): arma el span de la consulta con @healthradar/core.\nconst { construirTrazaPhoenix } = require('@healthradar/core');\nconst salida = $('Agregar modelo usado').first().json;\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\n// Modelo/agente ya resueltos por el nodo 'Agregar modelo usado' (core)\nconst { agente, modelo_usado: modelo, proveedor } = salida;\n// Tamano aproximado del contexto enviado al modelo (para estimar tokens de entrada)\nlet promptChars = 0;\ntry { promptChars = JSON.stringify($('Consolidar boletines + clima del periodo').first().json).length; } catch (e) {}\nconst traza = construirTrazaPhoenix({\n  nombre: 'nlq.consulta',\n  entrada: pregunta,\n  salida: salida.output,\n  modelo,\n  inicioMs: inicio,\n  finMs: Date.now(),\n  sessionId: 'healthradar-conexion',\n  exito: !!salida.output,\n  error: salida.output ? '' : 'Respuesta vacia del modelo',\n  promptChars,\n  metadatos: { flujo: 'Conexion', agente, proveedor, nivel_riesgo: salida.nivel_riesgo }\n});\nreturn [{ json: { traza } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        1440
+      ],
+      "id": "0c300a6b-ea91-4766-8e76-fcf09f849173",
+      "name": "Armar traza Phoenix",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.PHOENIX_URL || 'http://phoenix:6006') + '/v1/projects/' + ($env.PHOENIX_PROJECT || 'default') + '/spans' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.traza) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1936,
+        1744
+      ],
+      "id": "5a511741-3584-4a4b-bd93-147989a6f9e3",
+      "name": "Enviar traza a Phoenix",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "HU-2: nuevo"
+    },
+    {
+      "parameters": {
+        "content": "## HU-2: Trazabilidad con Arize Phoenix\nRama nueva que corre DESPUES de responder al analista (si Phoenix falla, la respuesta no se afecta).\n- `Marcar inicio (traza)`: guarda la hora de inicio.\n- `Armar traza Phoenix`: arma el span con @healthradar/core (pregunta, respuesta, modelo, latencia, tokens).\n- `Enviar traza a Phoenix`: POST /v1/projects/{PHOENIX_PROJECT}/spans.\nTokens: estimados (~4 caracteres/token) hasta que el modelo informe el consumo real.",
+        "height": 230,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        1920
+      ],
+      "id": "15402baa-cbc5-46f2-bb57-178d722b53a4",
+      "name": "Nota HU-2 Phoenix"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-11: agrega modelo_usado (el contrato del webhook ya lo define).\n// Agente que respondio = el ultimo de la cadena de failover que se ejecuto:\n// 1 Kimi K3 -> 2 GLM 5.3 -> 3 Gemini -> 4 Gemini\nconst { modeloPorAgente } = require('@healthradar/core');\nlet agente = 1;\ntry {\n  if ($('AI Agent Gemini 3').isExecuted) agente = 4;\n  else if ($('AI Agent Gemini 2').isExecuted) agente = 3;\n  else if ($('AI Agent1').isExecuted) agente = 2;\n} catch (e) {}\nconst m = modeloPorAgente(agente);\n// Los nodos Gemini pueden cambiar de modelo: se lee el real del nodo que respondio\nlet modelo = m.modelo;\nconst NODO = { 3: 'Google Gemini Chat Model 2', 4: 'Google Gemini Chat Model 3' };\nif (NODO[agente]) { try { modelo = String($node[NODO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {} }\nreturn [{ json: { ...$input.first().json, modelo_usado: modelo, proveedor: m.proveedor, agente: m.agente } }];"
+      },
+      "id": "e80641ad-ae81-41ca-9d73-a1ae87575744",
+      "name": "Agregar modelo usado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1152,
+        1584
+      ],
+      "id": "5c8556f2-d503-4acd-b316-65b29c2dce58",
+      "name": "AI Agent Kimi",
+      "retryOnFail": false,
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Principal: Kimi K3 (NVIDIA). Prompt desde SYSTEM_PROMPT_CONEXION"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "moonshotai/kimi-k3",
+          "mode": "id"
+        },
+        "options": {
+          "temperature": 0.2,
+          "timeout": 45000,
+          "maxRetries": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1216,
+        1888
+      ],
+      "id": "8183955c-a51e-4e54-9836-2e88d5f7ffee",
+      "name": "NVIDIA Kimi K3 (principal)",
+      "notesInFlow": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "l5eGNXhVr7KcnMyX",
+          "name": "OpenAI account 2"
+        }
+      },
+      "notes": "Credencial OpenAI aparte con la API key de Kimi (NVIDIA). Base URL https://integrate.api.nvidia.com/v1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-12: fallaron los 4 agentes. Error limpio para el front + traza fallida en Phoenix.\nconst { construirErrorNlq, construirTrazaPhoenix } = require('@healthradar/core');\nconst { cuerpo, mensajeTecnico } = construirErrorNlq($input.first().json.error);\nconst pregunta = $('Webhook').first().json.body?.pregunta || '';\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\nconst traza = construirTrazaPhoenix({\n  nombre: 'nlq.consulta',\n  entrada: pregunta,\n  salida: '',\n  modelo: 'cadena-failover',\n  inicioMs: inicio,\n  finMs: Date.now(),\n  sessionId: 'healthradar-conexion',\n  exito: false,\n  error: mensajeTecnico,\n  promptChars: 0,\n  metadatos: { flujo: 'Conexion', agente: 0, proveedor: 'ninguno', codigo_error: cuerpo.codigo }\n});\nreturn [{ json: { cuerpo, traza } }];"
+      },
+      "id": "82007b08-2d77-4b57-a649-354ab9e697d4",
+      "name": "Armar error NLQ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        2304
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.cuerpo }}",
+        "options": {
+          "responseCode": 503
+        }
+      },
+      "id": "eed91521-0a28-42fe-82ef-60a1b8b7b792",
+      "name": "Responder error (503)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2064,
+        2352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a0ac4322-c219-4f9d-b5bf-175268c5b404",
+              "leftValue": "={{ typeof $json.output === 'string' && $json.output.trim().length >= 20 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        1904
+      ],
+      "id": "de37305e-0077-4e17-822c-12cbde1a97b9",
+      "name": "¿Respuesta con texto? (Kimi)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "672c66a5-5be9-44ea-8b6b-9830cc8a4ade",
+              "leftValue": "={{ typeof $json.output === 'string' && $json.output.trim().length >= 20 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        1312
+      ],
+      "id": "18569284-4c8e-46d0-87d7-edbc42929b8d",
+      "name": "¿Respuesta con texto? (GLM)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6d6def44-63ac-4e2a-81dd-1530ba007780",
+              "leftValue": "={{ typeof $json.output === 'string' && $json.output.trim().length >= 20 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        1872
+      ],
+      "id": "49501881-f6a0-470c-99fc-481330adee2b",
+      "name": "¿Respuesta con texto? (Gemini 2)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b30c24f7-76d5-4740-bea8-3b8513b2f62d",
+              "leftValue": "={{ typeof $json.output === 'string' && $json.output.trim().length >= 20 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        2176
+      ],
+      "id": "6ab9d0b5-be0a-42e8-a8ae-c008ccb43c0d",
+      "name": "¿Respuesta con texto? (Gemini 3)"
     }
   ],
   "pinData": {},
@@ -483,7 +799,7 @@
       "main": [
         [
           {
-            "node": "Detectar periodo en la pregunta",
+            "node": "Marcar inicio (traza)",
             "type": "main",
             "index": 0
           }
@@ -575,7 +891,7 @@
       "main": [
         [
           {
-            "node": "AI Agent1",
+            "node": "AI Agent Kimi",
             "type": "main",
             "index": 0
           }
@@ -597,6 +913,11 @@
           },
           {
             "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent Kimi",
             "type": "ai_memory",
             "index": 0
           }
@@ -739,7 +1060,7 @@
       "main": [
         [
           {
-            "node": "Respond to Webhook",
+            "node": "Agregar modelo usado",
             "type": "main",
             "index": 0
           }
@@ -750,7 +1071,7 @@
       "main": [
         [
           {
-            "node": "Extraer y limpiar nivel de riesgo",
+            "node": "¿Respuesta con texto? (Gemini 2)",
             "type": "main",
             "index": 0
           }
@@ -790,6 +1111,154 @@
       "main": [
         [
           {
+            "node": "¿Respuesta con texto? (GLM)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Gemini 3": {
+      "main": [
+        [
+          {
+            "node": "¿Respuesta con texto? (Gemini 3)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error NLQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar inicio (traza)": {
+      "main": [
+        [
+          {
+            "node": "Detectar periodo en la pregunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar traza Phoenix": {
+      "main": [
+        [
+          {
+            "node": "Enviar traza a Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agregar modelo usado": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Armar traza Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Kimi": {
+      "main": [
+        [
+          {
+            "node": "¿Respuesta con texto? (Kimi)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar error NLQ": {
+      "main": [
+        [
+          {
+            "node": "Responder error (503)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar traza a Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA GLM 5.3 (respaldo 1)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA Kimi K3 (principal)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Kimi",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Respuesta con texto? (Kimi)": {
+      "main": [
+        [
+          {
+            "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Respuesta con texto? (GLM)": {
+      "main": [
+        [
+          {
             "node": "Extraer y limpiar nivel de riesgo",
             "type": "main",
             "index": 0
@@ -804,22 +1273,36 @@
         ]
       ]
     },
-    "Google Gemini Chat Model1": {
-      "ai_languageModel": [
+    "¿Respuesta con texto? (Gemini 2)": {
+      "main": [
         [
           {
-            "node": "AI Agent1",
-            "type": "ai_languageModel",
+            "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 3",
+            "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent Gemini 3": {
+    "¿Respuesta con texto? (Gemini 3)": {
       "main": [
         [
           {
             "node": "Extraer y limpiar nivel de riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error NLQ",
             "type": "main",
             "index": 0
           }
@@ -833,11 +1316,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "8efc8196-f642-4fc1-89ff-e5500171f717",
+  "versionId": "df8bc436-72b5-4e67-8fde-3cdc8aebc1fa",
   "meta": {
-    "instanceId": "591f91a58d6220479358818dcceae64e146b4416561baae79ebb71bd2c9b665d"
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },
   "nodeGroups": [],
-  "id": "5n4pFfXZyHtzx2aU",
+  "id": "sNi1RIhS9gnUARhE",
   "tags": []
 }
