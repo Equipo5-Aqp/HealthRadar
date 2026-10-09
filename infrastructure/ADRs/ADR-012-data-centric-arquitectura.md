@@ -1,7 +1,7 @@
 # ADR-012: Arquitectura Centrada en Datos (Data-Centric) con capa de decisiones pura empaquetada en n8n
 
-**Estado:** Propuesto (2026-09-23)  
-**Relacionado con:** ADR-001 (Orquestación n8n), ADR-002 (PostgreSQL con pgvector), ADR-003 (División de LLMs), ADR-004 (Frontend como capa de seguridad), ADR-008 (Docker Compose), ADR-010 (Arize Phoenix), ADR-011 (Hosting Azure VM)  
+**Estado:** Aceptado (2026-09-23)  
+**Relacionado con:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-008, ADR-010, ADR-011, ADR-013  
 **Refina a:** ADR-001 (precisa el límite de responsabilidad de n8n)
 
 ## Contexto

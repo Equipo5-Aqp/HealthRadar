@@ -1,6 +1,7 @@
-# ADR-006: MINSA/CDC Perú como única fuente de datos epidemiológicos
+# ADR-006: Selección de MINSA/CDC Perú como única fuente de datos epidemiológicos
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-003 (división de LLMs)
+**Estado:** Aceptado (2026-08-16)  
+**Relacionado con:** ADR-001, ADR-003, ADR-007  
 
 ## Contexto
 

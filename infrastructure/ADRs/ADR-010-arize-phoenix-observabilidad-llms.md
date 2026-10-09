@@ -2,7 +2,7 @@
 
 **Estado:** Aceptado (2026-08-19)  
 **Reemplaza a:** [ADR-005](ADR-005-langfuse-observabilidad-llms.md)  
-**Relacionado con:** ADR-001 (Orquestación n8n), ADR-002 (PostgreSQL con pgvector), ADR-003 (División de LLMs), ADR-008 (Docker Compose), ADR-009 (Hosting OCI Always Free)
+**Relacionado con:** ADR-001, ADR-002, ADR-003, ADR-008, ADR-009, ADR-011  
 
 ## Contexto
 
