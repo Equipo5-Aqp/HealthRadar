@@ -1,0 +1,1003 @@
+{
+  "name": "Autenticacion HealthRadarV4",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.cuerpo }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "name": "Responder 200",
+      "position": [
+        1984,
+        432
+      ],
+      "id": "3268e0d9-e72a-406b-ac24-fc438bae1366"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.cuerpo }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "name": "Responder 400",
+      "position": [
+        1984,
+        592
+      ],
+      "id": "a21c7339-5e72-4456-98b3-f936d60c421e"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.cuerpo }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "name": "Responder 401",
+      "position": [
+        1984,
+        752
+      ],
+      "id": "b2652d44-779e-471a-a712-cc25fa68ffb5"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.cuerpo }}",
+        "options": {
+          "responseCode": 503
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "name": "Responder 503",
+      "position": [
+        1984,
+        912
+      ],
+      "id": "edb9f904-f102-4add-8c60-3a30cdddaa81"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "name": "Responder logout (200)",
+      "position": [
+        1984,
+        1072
+      ],
+      "id": "bd221ee5-a33b-4bbd-b2c5-a1e4136685dd"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rechazo unico: nunca dice si fallo el secreto, el correo, la contrasena o el bloqueo.\nconst { RESPUESTA_NO_AUTORIZADO } = require('@healthradar/core');\nconst formato = $input.first().json.estado === 'formato';\nconst cuerpo = formato\n  ? { ok: false, error: true, codigo: 'FORMATO_INVALIDO', mensaje: 'Solicitud invalida' }\n  : RESPUESTA_NO_AUTORIZADO;\nreturn [{ json: { formato, cuerpo } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Armar rechazo",
+      "position": [
+        1392,
+        832
+      ],
+      "id": "f04a3620-6b13-4619-9d02-9e6b38729482"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37c4f128-abfa-4155-8b93-fd480d584ccf",
+              "leftValue": "={{ $json.formato === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Formato inválido?",
+      "position": [
+        1680,
+        832
+      ],
+      "id": "3880db46-9580-43e5-953f-aff938dc799d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fallo de base de datos o del propio flujo: respuesta fija, sin detalles tecnicos.\nconst { RESPUESTA_ERROR_INTERNO } = require('@healthradar/core');\nreturn [{ json: { cuerpo: RESPUESTA_ERROR_INTERNO } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Armar error interno",
+      "position": [
+        1680,
+        992
+      ],
+      "id": "036b6cf5-8b04-4f3f-89a3-533f35aff940"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth-login",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "name": "Webhook login",
+      "webhookId": "53fbb683-e6da-4703-adf0-7d0e08cbf31c",
+      "position": [
+        80,
+        432
+      ],
+      "id": "8a9d86ca-d620-40e5-869d-1a9d54b8d899"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Secreto compartido (mf-consulta -> n8n) + formato de credenciales. Falla cerrado: sin AUTH_WEBHOOK_SECRET nadie entra.\nconst core = require('@healthradar/core');\nconst e = $input.first().json;\nconst h = e.headers || {};\nconst b = e.body || {};\nif (!core.compararSecreto(h['x-auth-secret'], $env.AUTH_WEBHOOK_SECRET)) return [{ json: { estado: 'no_autorizado' } }];\nconst c = core.validarCredenciales(b);\nif (!c.valido) return [{ json: { estado: 'formato' } }];\nconst pol = core.normalizarPolitica({ maxIntentos: $env.AUTH_MAX_INTENTOS, bloqueoMinutos: $env.AUTH_BLOQUEO_MINUTOS });\nreturn [{ json: { estado: 'ok', email: c.email, password: c.password,\n  ip: core.normalizarIp(b.ip) || '', user_agent: core.normalizarUserAgent(b.user_agent) || '', ...pol } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Validar login (core)",
+      "notesInFlow": true,
+      "position": [
+        384,
+        432
+      ],
+      "id": "845184aa-fe06-4f74-8f73-26c7b8e99b86",
+      "notes": "La contrasena pasa por aqui en claro: este flujo NO debe guardar ejecuciones (ver Settings) ni tener nodos Log."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ac08bd1-910c-4835-9733-041063cb032b",
+              "leftValue": "={{ $json.estado === 'ok' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Entrada válida? (login)",
+      "position": [
+        688,
+        432
+      ],
+      "id": "5b278b11-adc9-4a37-9930-d6a2f238837e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM fn_usuario_autenticar($1::text, $2::text);",
+        "options": {
+          "queryReplacement": "={{ [ $json.email, $json.password ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Autenticar (Postgres)",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "position": [
+        992,
+        432
+      ],
+      "id": "954f2155-5166-4654-a7b2-cda05e48a3df",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "bcrypt dentro de Postgres (pgcrypto). 0 filas = credenciales invalidas, cuenta bloqueada o inactiva."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f7b30b31-807d-4a82-b3c9-84e622166b75",
+              "leftValue": "={{ $json.id_usuario !== undefined && $json.id_usuario !== null }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Credenciales correctas?",
+      "position": [
+        1280,
+        432
+      ],
+      "id": "4a26dda8-f3e8-4b72-aadf-e235bfd03c45"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Token opaco de 256 bits; a la base solo va su SHA-256.\nconst core = require('@healthradar/core');\nconst u = $input.first().json;\nconst s = core.generarSesion({ ttlMinutos: $env.AUTH_SESION_MINUTOS });\nreturn [{ json: { ...s, id_usuario: u.id_usuario, email: u.email, rol: u.rol } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Generar sesión (core)",
+      "position": [
+        1584,
+        304
+      ],
+      "id": "a02fb60f-d2b7-4012-8760-05d89fe3e37a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (SELECT * FROM fn_usuario_registrar_exito($1::text)),\n     s AS (SELECT * FROM fn_sesion_crear($2::text, (SELECT id_usuario FROM u), $3::int,\n                                         NULLIF($4::text, ''), NULLIF($5::text, ''))),\n     e AS (INSERT INTO login_evento (id_usuario, email_intento, exito, motivo, ip, user_agent)\n           SELECT u.id_usuario, $1::text, TRUE, 'ok', NULLIF($4::text, ''), NULLIF($5::text, '') FROM u\n           RETURNING id_evento)\nSELECT u.id_usuario, u.email, u.rol, s.expira_at FROM u CROSS JOIN s;",
+        "options": {
+          "queryReplacement": "={{ [ $json.email, $json.token_hash, $json.ttl_minutos, $('Validar login (core)').first().json.ip, $('Validar login (core)').first().json.user_agent ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Registrar éxito y crear sesión (Postgres)",
+      "notesInFlow": true,
+      "position": [
+        1888,
+        304
+      ],
+      "id": "da7954fb-d30a-4e72-ac2b-c8a59ac3693e",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Una sola sentencia: reinicia el contador, crea la sesion y deja el evento en la bitacora."
+    },
+    {
+      "parameters": {
+        "jsCode": "// El token sale solo hacia mf-consulta, que lo pone en una cookie HttpOnly.\nconst core = require('@healthradar/core');\nconst r = $input.first().json;\nif (!r || r.id_usuario === undefined || r.id_usuario === null) throw new Error('sin fila de sesion');\nconst s = $('Generar sesión (core)').first().json;\nreturn [{ json: { cuerpo: core.construirRespuestaLogin({ token: s.token, email: r.email, rol: r.rol, expiraEnSeg: s.expira_en_seg }) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Armar respuesta login",
+      "position": [
+        2192,
+        304
+      ],
+      "id": "5258242c-56d7-4a45-8e7f-d296e9c4e980",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM fn_usuario_registrar_fallo($1::text, $2::int, $3::int);",
+        "options": {
+          "queryReplacement": "={{ [ $('Validar login (core)').first().json.email, $('Validar login (core)').first().json.max_intentos, $('Validar login (core)').first().json.bloqueo_minutos ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Registrar fallo (Postgres)",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "position": [
+        1584,
+        592
+      ],
+      "id": "8e9038b7-77cd-492e-ad61-e53546ef4768",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Suma el intento fallido de forma atomica; 0 filas = el correo no existe."
+    },
+    {
+      "parameters": {
+        "jsCode": "const core = require('@healthradar/core');\nconst v = $('Validar login (core)').first().json;\nconst filas = $input.all().map(i => i.json).filter(f => f && f.id_usuario !== undefined && f.id_usuario !== null);\nreturn [{ json: { motivo: core.motivoFallo(filas), id_usuario: filas[0] ? String(filas[0].id_usuario) : '',\n  email: v.email, ip: v.ip, user_agent: v.user_agent } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Decidir motivo (core)",
+      "position": [
+        1888,
+        592
+      ],
+      "id": "462a03c3-f64a-40d3-819b-472f53ef9a60"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO login_evento (id_usuario, email_intento, exito, motivo, ip, user_agent)\nVALUES (NULLIF($1::text, '')::bigint, $2::text, FALSE, $3::text, NULLIF($4::text, ''), NULLIF($5::text, ''));",
+        "options": {
+          "queryReplacement": "={{ [ $json.id_usuario, $json.email, $json.motivo, $json.ip, $json.user_agent ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Registrar evento fallido (Postgres)",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "position": [
+        2192,
+        592
+      ],
+      "id": "f899186f-b290-4a53-bf68-a4d822343613",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Bitacora: si falla, igual se responde 401. alwaysOutputData: un INSERT no devuelve filas y sin esto el flujo se cortaria aqui."
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth-sesion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "name": "Webhook sesión",
+      "webhookId": "f63c82b5-0ddf-4d49-a3d4-91b554c1a5e6",
+      "position": [
+        80,
+        1232
+      ],
+      "id": "00d041b9-f730-4ae4-9a0e-67fa00bf4f8f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Secreto compartido + formato del token de la cookie. Un token mal formado se trata como sesion invalida (401).\nconst core = require('@healthradar/core');\nconst e = $input.first().json;\nconst h = e.headers || {};\nif (!core.compararSecreto(h['x-auth-secret'], $env.AUTH_WEBHOOK_SECRET)) return [{ json: { estado: 'no_autorizado' } }];\nconst th = core.hashToken((e.body || {}).token);\nif (!th) return [{ json: { estado: 'no_autorizado' } }];\nreturn [{ json: { estado: 'ok', token_hash: th } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Validar sesión (core)",
+      "position": [
+        384,
+        1232
+      ],
+      "id": "8d2b7d73-315c-4809-bf7a-5699b34fed2d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6d9faa3f-e0dd-46ca-a0a0-303a24d974aa",
+              "leftValue": "={{ $json.estado === 'ok' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Entrada válida? (sesión)",
+      "position": [
+        688,
+        1232
+      ],
+      "id": "66c3df26-21a4-4a1b-a2fc-8439973e6f96"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM fn_sesion_validar($1::text);",
+        "options": {
+          "queryReplacement": "={{ [ $json.token_hash ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Validar sesión (Postgres)",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "position": [
+        992,
+        1232
+      ],
+      "id": "78a44d54-d6ae-42e8-8bf6-dbf251f196d3",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Respeta revocada_at, expira_at y usuario.activo."
+    },
+    {
+      "parameters": {
+        "jsCode": "const core = require('@healthradar/core');\nconst r = $input.first().json;\nif (r && r.id_usuario !== undefined && r.id_usuario !== null) {\n  return [{ json: { estado: 'ok', cuerpo: core.construirRespuestaSesion({ email: r.email, rol: r.rol, expiraAt: r.expira_at }) } }];\n}\nreturn [{ json: { estado: 'no_autorizado' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Armar respuesta sesión",
+      "position": [
+        1280,
+        1232
+      ],
+      "id": "6d938df3-a8c4-4e4e-9ada-181369496e91"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f0afab3f-a80a-4661-a07a-0f8ffc547334",
+              "leftValue": "={{ $json.estado === 'ok' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Sesión vigente?",
+      "position": [
+        1584,
+        1232
+      ],
+      "id": "6e6e4c47-9b72-451b-8d3a-0c8d7045e04f"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth-logout",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "name": "Webhook logout",
+      "webhookId": "c145dad0-c301-43ce-acaa-c71baca92c47",
+      "position": [
+        80,
+        1520
+      ],
+      "id": "957f3f56-17de-4cb7-9cce-b779ffb783e2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const core = require('@healthradar/core');\nconst e = $input.first().json;\nconst h = e.headers || {};\nif (!core.compararSecreto(h['x-auth-secret'], $env.AUTH_WEBHOOK_SECRET)) return [{ json: { estado: 'no_autorizado' } }];\nconst th = core.hashToken((e.body || {}).token);\nif (!th) return [{ json: { estado: 'no_autorizado' } }];\nreturn [{ json: { estado: 'ok', token_hash: th } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "name": "Validar logout (core)",
+      "position": [
+        384,
+        1520
+      ],
+      "id": "49fa0a62-a828-45b5-87c0-56c75a488193"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9e171b2-8b37-4e85-ba9e-c4558233b063",
+              "leftValue": "={{ $json.estado === 'ok' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "name": "¿Entrada válida? (logout)",
+      "position": [
+        688,
+        1520
+      ],
+      "id": "13663fa8-809e-4f30-bbd9-1df9343574a9"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT fn_sesion_revocar($1::text) AS revocada;",
+        "options": {
+          "queryReplacement": "={{ [ $json.token_hash ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "name": "Revocar sesión (Postgres)",
+      "notesInFlow": true,
+      "position": [
+        992,
+        1520
+      ],
+      "id": "281e7c8d-c4f0-492c-a6ac-ab791862e4a6",
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Idempotente: si el token ya estaba revocado o no existe, igual se responde 200."
+    },
+    {
+      "parameters": {
+        "content": "## Autenticacion (HU-6)\nTres webhooks, todos POST y todos con cabecera **x-auth-secret** (= $env.AUTH_WEBHOOK_SECRET):\n- **/webhook/auth-login** `{email, password, ip, user_agent}` -> `{ok, token, usuario, expira_en_seg}`\n- **/webhook/auth-sesion** `{token}` -> `{ok, usuario, expira_at}`\n- **/webhook/auth-logout** `{token}` -> `{ok: true}`\nCualquier fallo de credenciales responde **401 generico**. Sin AUTH_WEBHOOK_SECRET todo responde 401 (falla cerrado).\n\n**Este flujo NO guarda ejecuciones** (la contrasena pasa en claro): no cambiar los Settings ni agregar nodos Log/Debug.\nRequiere la migracion 008 y @healthradar/core con `auth/`.",
+        "height": 380,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "name": "Nota Autenticacion",
+      "position": [
+        0,
+        0
+      ],
+      "id": "527643e5-780c-4bed-ab78-0b24bcb66c3d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Armar rechazo": {
+      "main": [
+        [
+          {
+            "node": "¿Formato inválido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Formato inválido?": {
+      "main": [
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar error interno": {
+      "main": [
+        [
+          {
+            "node": "Responder 503",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook login": {
+      "main": [
+        [
+          {
+            "node": "Validar login (core)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar login (core)": {
+      "main": [
+        [
+          {
+            "node": "¿Entrada válida? (login)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Entrada válida? (login)": {
+      "main": [
+        [
+          {
+            "node": "Autenticar (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autenticar (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "¿Credenciales correctas?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Credenciales correctas?": {
+      "main": [
+        [
+          {
+            "node": "Generar sesión (core)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar fallo (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar sesión (core)": {
+      "main": [
+        [
+          {
+            "node": "Registrar éxito y crear sesión (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar éxito y crear sesión (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Armar respuesta login",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar respuesta login": {
+      "main": [
+        [
+          {
+            "node": "Responder 200",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar fallo (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Decidir motivo (core)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir motivo (core)": {
+      "main": [
+        [
+          {
+            "node": "Registrar evento fallido (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar evento fallido (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Armar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook sesión": {
+      "main": [
+        [
+          {
+            "node": "Validar sesión (core)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar sesión (core)": {
+      "main": [
+        [
+          {
+            "node": "¿Entrada válida? (sesión)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Entrada válida? (sesión)": {
+      "main": [
+        [
+          {
+            "node": "Validar sesión (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar sesión (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Armar respuesta sesión",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar respuesta sesión": {
+      "main": [
+        [
+          {
+            "node": "¿Sesión vigente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Sesión vigente?": {
+      "main": [
+        [
+          {
+            "node": "Responder 200",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook logout": {
+      "main": [
+        [
+          {
+            "node": "Validar logout (core)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar logout (core)": {
+      "main": [
+        [
+          {
+            "node": "¿Entrada válida? (logout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Entrada válida? (logout)": {
+      "main": [
+        [
+          {
+            "node": "Revocar sesión (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revocar sesión (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Responder logout (200)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar error interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "versionId": "b1bcd767-e3e3-4a21-a13b-1bfc55479863",
+  "meta": {
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
+  },
+  "nodeGroups": [],
+  "id": "pymps0ZUgQjhqneQ",
+  "tags": []
+}

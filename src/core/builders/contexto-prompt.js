@@ -16,6 +16,17 @@ function agregarNumero(arr, v) {
 }
 
 /**
+ * Aviso que reemplaza a los resúmenes cuando el periodo no tiene boletines con resumen.
+ * Va en texto_boletines, así lo reciben igual el core (Kimi/GLM) y los agentes de Gemini.
+ */
+function avisoSinBoletines(criterio) {
+  const periodo = criterio ? ' (' + criterio + ')' : '';
+  return 'No hay boletin epidemiologico con resumen disponible para este periodo' + periodo + '. ' +
+    'No inventes contenido de boletines: usa solo los datos de clima y tendencia incluidos mas abajo, ' +
+    'y si no alcanzan para responder, di claramente que no hay boletin disponible para ese periodo.';
+}
+
+/**
  * Construye el contexto textual consolidado para el prompt del AI Agent.
  *
  * @param {Array<{anio: number, semana_epidemiologica: number, resumen: string}>} boletines
@@ -34,6 +45,11 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
 
   // Texto de boletines
   let textoBoletines = '';
+  if (boletinesOrdenados.length === 0) {
+    // Sin boletín para el periodo (años < 2025, o semana aún no procesada): se le dice al modelo
+    // de forma explícita para que no invente contenido de boletines ni calle el hecho.
+    textoBoletines = avisoSinBoletines(periodo && periodo.criterio_usado);
+  }
   for (const b of boletinesOrdenados) {
     textoBoletines += `\n--- Boletin SE ${b.semana_epidemiologica}-${b.anio} ---\n${quitarMarcadorCifras(b.resumen)}\n`;
   }
@@ -78,4 +94,4 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
   };
 }
 
-module.exports = { construirContextoPrompt };
+module.exports = { construirContextoPrompt, avisoSinBoletines };

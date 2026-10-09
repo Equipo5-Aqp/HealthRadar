@@ -1,5 +1,5 @@
 {
-  "name": "Procesar 1 Boletin Pendiente (Fase B)V3",
+  "name": "Procesar 1 Boletin Pendiente (Fase B)V4",
   "nodes": [
     {
       "parameters": {
@@ -18,12 +18,15 @@
         -2464,
         640
       ],
-      "id": "f331254a-84d6-49d6-8f42-e71f50764aec",
-      "name": "HTTP Request - Descargar PDF"
+      "id": "0300dc15-9e7a-4aa9-ba7f-17e8772ae3fa",
+      "name": "HTTP Request - Descargar PDF",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
-        "jsCode": "const { validarResumenBoletin } = require('@healthradar/core');\nconst pend = $('Postgres - Obtener pendiente').item.json;\nconst output = $input.first().json.output;\n// Modelo que respondio (solo para nombrar la fuente en los mensajes de error)\nlet agente = 1;\ntry { if ($('AI Agent Gemini 3').isExecuted) agente = 3; else if ($('AI Agent Gemini 2').isExecuted) agente = 2; } catch (e) {}\nconst NODO_MODELO = { 1: 'Google Gemini Chat Model', 2: 'Google Gemini Chat Model 2', 3: 'Google Gemini Chat Model 3' };\nlet modelo = 'gemini';\ntry { modelo = String($node[NODO_MODELO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {}\nconst validado = validarResumenBoletin(output, modelo, pend.semana_epidemiologica, {\n  semanaPrevia: pend.semana_previa,\n  resumenPrevio: pend.resumen_previo,\n  // exigirCifras: true,   // activar cuando SYSTEM_PROMPT_FASE_B ya pida la linea [CIFRAS: ...]\n});\nreturn [{\n  json: {\n    id_boletin: pend.id_boletin,\n    anio: pend.anio,\n    semana_epidemiologica: pend.semana_epidemiologica,\n    resumen: validado.resumen,\n    procesado: true\n  }\n}];"
+        "jsCode": "const { validarResumenBoletin } = require('@healthradar/core');\nconst pend = $('Postgres - Obtener pendiente').item.json;\nconst output = $input.first().json.output;\n// Modelo que respondio (solo para nombrar la fuente en los mensajes de error)\nlet agente = 1;\ntry { if ($('AI Agent Gemini 3').isExecuted) agente = 3; else if ($('AI Agent Gemini 2').isExecuted) agente = 2; } catch (e) {}\nconst NODO_MODELO = { 1: 'Google Gemini Chat Model', 2: 'Google Gemini Chat Model 2', 3: 'Google Gemini Chat Model 3' };\nlet modelo = 'gemini';\ntry { modelo = String($node[NODO_MODELO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {}\n// Texto del PDF: cada valor de [CIFRAS] debe aparecer en el (core v9.9). Si no se puede leer, se omite la verificacion.\nlet textoFuente;\ntry { textoFuente = String($('Extract from File').first().json.text || ''); } catch (e) { textoFuente = ''; }\nconst validado = validarResumenBoletin(output, modelo, pend.semana_epidemiologica, {\n  textoFuente,\n  semanaPrevia: pend.semana_previa,\n  resumenPrevio: pend.resumen_previo,\n  // exigirCifras: true,   // activar cuando SYSTEM_PROMPT_FASE_B ya pida la linea [CIFRAS: ...]\n});\nreturn [{\n  json: {\n    id_boletin: pend.id_boletin,\n    anio: pend.anio,\n    semana_epidemiologica: pend.semana_epidemiologica,\n    resumen: validado.resumen,\n    procesado: true\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -31,15 +34,17 @@
         -1344,
         672
       ],
-      "id": "f3b9a8a4-bb52-4ae2-9560-31e62ded405f",
+      "id": "fef3a6e2-4a32-4b55-91e7-1609cdb9f3f1",
       "name": "Validar resumen (detiene si falla)",
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE boletin_descubierto\nSET procesado = TRUE,\n    resumen = '{{ $json.resumen.replace(/'/g, \"''\") }}'\nWHERE id_boletin = {{ $json.id_boletin }};",
-        "options": {}
+        "query": "UPDATE boletin_descubierto\nSET procesado = TRUE,\n    resumen = $2,\n    embedding = NULL,\n    modelo_embedding = NULL,\n    embedding_creado_en = NULL\nWHERE id_boletin = $1::bigint\n  AND procesado = FALSE;",
+        "options": {
+          "queryReplacement": "={{ [ $json.id_boletin, $json.resumen ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -47,19 +52,21 @@
         -1200,
         496
       ],
-      "id": "f5c17eb1-0246-43bd-9ed8-92e98060c8cc",
+      "id": "2bd79039-4ac4-4763-a1bc-99b32efc4aff",
       "name": "Update row - marcar procesado",
+      "notesInFlow": true,
       "credentials": {
         "postgres": {
           "id": "36eYEDLhmN6EB3Jy",
           "name": "Postgres account"
         }
-      }
+      },
+      "notes": "V4: parametrizado ($1 id, $2 resumen). Limpia el vector (embedding/modelo/fecha) para que el indexador lo regenere si el boletin se reprocesa (migracion 009). No pisa uno ya procesado."
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $json.bloque_cifras }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -68,7 +75,7 @@
         -2032,
         640
       ],
-      "id": "d1813a47-9999-4b42-9d59-2af3ab74ba14",
+      "id": "0e4dd0c4-d197-400d-b947-d9e163b96a54",
       "name": "AI Agent",
       "retryOnFail": false,
       "notesInFlow": true,
@@ -77,7 +84,7 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3.7-flash",
+        "modelName": "models/gemini-3.5-flash-lite",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
@@ -86,7 +93,7 @@
         -2016,
         816
       ],
-      "id": "fb926975-8cfd-4917-95f7-e87cc4e4d4d4",
+      "id": "bcad36a9-5861-42ec-89f8-37f523235827",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
@@ -98,7 +105,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $json.bloque_cifras }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -107,7 +114,7 @@
         -1776,
         880
       ],
-      "id": "6ccfbecf-ab1c-47d9-836a-44a1ee0fd5b1",
+      "id": "a7e508ff-86cf-4a89-af58-8a9f1ef6eaa8",
       "name": "AI Agent Gemini 2",
       "retryOnFail": false,
       "notesInFlow": true,
@@ -116,7 +123,7 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3.8-flash",
+        "modelName": "models/gemini-3.5-flash-lite",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
@@ -125,7 +132,7 @@
         -1776,
         1072
       ],
-      "id": "608fe811-4947-48f6-a160-e80a34a56c32",
+      "id": "10a06953-93d5-4e7d-b94a-7f0af7187a30",
       "name": "Google Gemini Chat Model 2",
       "credentials": {
         "googlePalmApi": {
@@ -137,7 +144,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
+        "text": "=Analiza el siguiente boletin epidemiologico (texto extraido del PDF):\n\n{{ $json.text }}\n\n{{ $json.bloque_cifras }}\n\n{{ $env.SYSTEM_PROMPT_FASE_B }}\n\nAl inicio de tu respuesta incluye la linea exacta:\nSEMANA EPIDEMIOLOGICA: {{ $('Postgres - Obtener pendiente').item.json.semana_epidemiologica }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -146,7 +153,7 @@
         -1728,
         1280
       ],
-      "id": "f73df436-660f-4766-b2fe-df26c768cd73",
+      "id": "3c05c452-1586-4548-ab73-363c927bbc6f",
       "name": "AI Agent Gemini 3",
       "retryOnFail": false,
       "notesInFlow": true,
@@ -164,7 +171,7 @@
         -1744,
         1488
       ],
-      "id": "0e83debe-1149-4249-93fb-d44df79f60e0",
+      "id": "c3ce0f1d-aea0-4446-802c-47d84500ffd2",
       "name": "Google Gemini Chat Model 3",
       "credentials": {
         "googlePalmApi": {
@@ -184,7 +191,7 @@
         -2240,
         640
       ],
-      "id": "2f826de7-9491-44e5-a3df-78aadb275ef5",
+      "id": "ca6219ae-7f02-48ac-a2f9-4121b3845143",
       "name": "Extract from File"
     },
     {
@@ -197,7 +204,7 @@
         -976,
         672
       ],
-      "id": "3a08d899-d5d8-4011-9482-ed749d403c9e",
+      "id": "3d073de6-b8be-42b7-b56f-8b41ef808ef3",
       "name": "Calcular rango de fechas de la semana",
       "notesInFlow": true,
       "notes": "Sprint 3: adaptador de @healthradar/core"
@@ -212,7 +219,7 @@
         0,
         0
       ],
-      "id": "2b29ca34-cbd6-4b9c-a0d1-e93571470774",
+      "id": "abd45360-a1df-4751-9d74-0ec1af4bec38",
       "name": "Split In Batches (departamentos)"
     },
     {
@@ -255,8 +262,11 @@
         400,
         128
       ],
-      "id": "67451c2c-a64f-428e-b5b7-242c3dbd6916",
-      "name": "HTTP Request - Open-Meteo archive"
+      "id": "e76b1b7e-4706-4a1e-8f92-dcd5ac50b14a",
+      "name": "HTTP Request - Open-Meteo archive",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -268,7 +278,7 @@
         592,
         192
       ],
-      "id": "6bd4208b-ac5d-4eb4-98fe-89ea36c2c98d",
+      "id": "3614a999-0a83-415f-bd03-9b17f1855c8d",
       "name": "Agrupar por semana epi real",
       "notesInFlow": true,
       "notes": "Sprint 3: adaptador de @healthradar/core"
@@ -290,7 +300,7 @@
         -3104,
         640
       ],
-      "id": "6b6113a3-075f-4c14-8a34-af32aca266f9",
+      "id": "835d3965-1151-47cf-86ef-4a45440acad6",
       "name": "Schedule Trigger"
     },
     {
@@ -305,7 +315,7 @@
         -2880,
         640
       ],
-      "id": "05c754f5-f49c-43ee-a101-ed9eb057d681",
+      "id": "13328f99-c2ee-4d42-816e-fc670dd476aa",
       "name": "Postgres - Obtener pendiente",
       "credentials": {
         "postgres": {
@@ -324,7 +334,7 @@
         -208,
         336
       ],
-      "id": "756c24a3-9505-43b4-8e86-944e217738c6",
+      "id": "983012e2-671c-4a2e-aecf-39a0504375d6",
       "name": "Generar 25 departamentos",
       "notesInFlow": true,
       "notes": "Sprint 3: adaptador de @healthradar/core"
@@ -332,8 +342,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT fn_insertar_dato_climatico(\n  {{ $json.latitud }},\n  {{ $json.longitud }},\n  {{ $json.anio }},\n  {{ $json.semana_epidemiologica }},\n  {{ $json.temp_max_promedio ?? 'NULL' }},\n  {{ $json.temp_min_promedio ?? 'NULL' }},\n  {{ $json.precipitacion_total ?? 'NULL' }},\n  {{ $json.temp_mean_promedio ?? 'NULL' }},\n  {{ $json.humedad_promedio ?? 'NULL' }}\n);",
-        "options": {}
+        "query": "SELECT fn_insertar_dato_climatico(\n  $1::numeric, $2::numeric, $3::int, $4::int,\n  NULLIF($5::text, '')::numeric, NULLIF($6::text, '')::numeric, NULLIF($7::text, '')::numeric,\n  NULLIF($8::text, '')::numeric, NULLIF($9::text, '')::numeric\n);",
+        "options": {
+          "queryReplacement": "={{ [ $json.latitud, $json.longitud, $json.anio, $json.semana_epidemiologica, $json.temp_max_promedio ?? '', $json.temp_min_promedio ?? '', $json.precipitacion_total ?? '', $json.temp_mean_promedio ?? '', $json.humedad_promedio ?? '' ] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -341,7 +353,7 @@
         800,
         128
       ],
-      "id": "97642acf-ee2d-4ee9-9584-a73a91fef85f",
+      "id": "9199e235-081d-4dcf-8686-30cc112b284a",
       "name": "Postgres - Insertar clima (fn_insertar_dato_climatico)",
       "notesInFlow": true,
       "credentials": {
@@ -350,11 +362,11 @@
           "name": "Postgres account"
         }
       },
-      "notes": "Sprint 3: adaptador de @healthradar/core"
+      "notes": "Sprint 3: adaptador de @healthradar/core. V4: parametrizado; un valor sin dato viaja como texto vacio y NULLIF lo convierte en NULL (nunca 0 ni NaN)."
     },
     {
       "parameters": {
-        "jsCode": "// HU-2 (Phoenix): marca la hora de inicio de la cadena LLM (resumen del boletin) para medir latencia.\n// Solo agrega _t0; el prompt sigue leyendo $json.text.\n// Falla claro si falta el prompt externalizado (evita que el modelo responda sin instrucciones).\nif (!$env.SYSTEM_PROMPT_FASE_B) throw new Error('Falta SYSTEM_PROMPT_FASE_B en infrastructure/.env (ver src/ia-ops/prompts)');\nreturn $input.all().map((i, idx) => ({ json: { ...i.json, _t0: Date.now() }, pairedItem: idx }));"
+        "jsCode": "// HU-2 (Phoenix): marca la hora de inicio de la cadena LLM (resumen del boletin) para medir latencia.\n// Solo agrega _t0; el prompt sigue leyendo $json.text.\n// Falla claro si falta el prompt externalizado (evita que el modelo responda sin instrucciones).\nif (!$env.SYSTEM_PROMPT_FASE_B) throw new Error('Falta SYSTEM_PROMPT_FASE_B en infrastructure/.env (ver src/ia-ops/prompts)');\n// V7: cifras de las tablas leidas por codigo; el LLM las recibe ya verificadas (core v9.9). Si falla, el flujo sigue sin bloque.\nconst { extraerCifrasTablas, bloqueCifrasVerificadas } = require('@healthradar/core');\nreturn $input.all().map((i, idx) => {\n  let bloque = '';\n  try { bloque = bloqueCifrasVerificadas(extraerCifrasTablas(String(i.json.text || ''))); } catch (e) {}\n  return { json: { ...i.json, _t0: Date.now(), bloque_cifras: bloque }, pairedItem: idx };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -362,7 +374,7 @@
         -2144,
         800
       ],
-      "id": "02cfdaa1-9dc1-4060-8470-4b739dd10ff0",
+      "id": "75895c6a-0e79-40cd-99ec-a2ed36ec3e94",
       "name": "Marcar inicio (traza)",
       "notesInFlow": true,
       "notes": "HU-2: nuevo"
@@ -377,7 +389,7 @@
         -1184,
         1040
       ],
-      "id": "9efe75ed-4111-4bb1-ba8c-86ea8aa7be2f",
+      "id": "3524af59-7986-4b8f-a6de-e71fd4c9c75a",
       "name": "Armar traza Phoenix",
       "notesInFlow": true,
       "onError": "continueRegularOutput",
@@ -393,7 +405,7 @@
         -1184,
         1280
       ],
-      "id": "99326c80-2f45-4d3f-997c-e1fc9a8cb8e5",
+      "id": "3ce697cc-cb43-44ac-823a-be51fbbcd3a5",
       "name": "Armar traza Phoenix (error)",
       "notesInFlow": true,
       "onError": "continueRegularOutput",
@@ -416,7 +428,7 @@
         -960,
         1168
       ],
-      "id": "56cf7adb-9e76-4852-8426-436c5669d87a",
+      "id": "38d9a28c-875c-45bb-986c-ced2f0b74af2",
       "name": "Enviar traza a Phoenix",
       "notesInFlow": true,
       "onError": "continueRegularOutput",
@@ -434,8 +446,46 @@
         -256,
         992
       ],
-      "id": "15785b5d-9fc9-4b53-82f0-e5d54e964dda",
+      "id": "fb387b37-399d-4eed-b054-31aff743de1e",
       "name": "Nota HU-2 (Fase B)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Semana (con boletin descubierto) mas antigua cuyo clima esta incompleto.\n-- Independiente del resumen: no mira 'procesado'. Solo semanas ya cerradas y con margen de 5 dias\n-- (el archivo de Open-Meteo tarda unos dias en tener la semana completa).\nSELECT b.anio, b.semana_epidemiologica\nFROM boletin_descubierto b\nLEFT JOIN periodo_epidemiologico p\n       ON p.anio = b.anio AND p.semana = b.semana_epidemiologica\nWHERE (SELECT count(*) FROM dato_climatico d WHERE d.id_periodo = p.id_periodo)\n      < (SELECT count(*) FROM departamento WHERE latitud IS NOT NULL)\n  AND fn_dge_domingo(b.anio, b.semana_epidemiologica) + 6 <= CURRENT_DATE - 5\nORDER BY b.anio ASC, b.semana_epidemiologica ASC\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2880,
+        1008
+      ],
+      "id": "28b04fc8-347d-459d-ab9c-7a98b04ce578",
+      "name": "Postgres - Semana sin clima",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "notes": "V5: fuente propia del clima (independiente del resumen). Sin filas = no hay nada que completar y la rama termina."
+    },
+    {
+      "parameters": {
+        "content": "## V5 — Clima independiente del resumen\nDos ramas en el mismo flujo, mismo Schedule:\n- **Resumen:** Obtener pendiente → PDF → IA → Validar → marcar procesado.\n- **Clima:** 'Semana sin clima' → rango → 25 departamentos → Open-Meteo → insertar clima.\nLa rama del clima toma la semana MAS ANTIGUA con boletin descubierto y menos filas de clima que departamentos (sin mirar si el resumen esta procesado), asi que:\n- si el resumen falla, el clima se completa igual;\n- si el clima falla, se reintenta en la siguiente corrida (ya no queda una semana sin clima para siempre);\n- tambien rellena las semanas que quedaron sin clima antes (p. ej. SE 20-2025).\nRequiere fn_dge_domingo (migracion 007).",
+        "height": 300,
+        "width": 520
+      },
+      "name": "Nota V5 (clima independiente)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "id": "bd5ca1f2-1d1b-4a4f-885c-a2ea2171703c",
+      "position": [
+        -2880,
+        1248
+      ]
     }
   ],
   "pinData": {},
@@ -445,6 +495,11 @@
         [
           {
             "node": "Postgres - Obtener pendiente",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres - Semana sin clima",
             "type": "main",
             "index": 0
           }
@@ -580,11 +635,6 @@
             "index": 0
           },
           {
-            "node": "Calcular rango de fechas de la semana",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Armar traza Phoenix",
             "type": "main",
             "index": 0
@@ -698,6 +748,17 @@
           }
         ]
       ]
+    },
+    "Postgres - Semana sin clima": {
+      "main": [
+        [
+          {
+            "node": "Calcular rango de fechas de la semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -706,11 +767,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "65b37e6a-8ace-4929-9c73-f34fa8a00092",
+  "versionId": "9934b939-ed94-4830-b4d8-86a9ae6308ca",
   "meta": {
     "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },
   "nodeGroups": [],
-  "id": "2KcfjVvjENgVLIhB",
+  "id": "EFFj2syWzLPBOFZK",
   "tags": []
 }

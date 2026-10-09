@@ -8,6 +8,7 @@ const { detectarPeriodo, resolverVentana } = require('./parsers/periodo');
 const { detectarDepartamento } = require('./parsers/departamento');
 const { detectarEnfermedad } = require('./parsers/enfermedad');
 const { extraerNivelRiesgo } = require('./parsers/riesgo');
+const { extraerRespuestaLlm } = require('./parsers/respuesta-llm');
 const { extraerLinksBoletines } = require('./parsers/boletines-dge');
 
 // Decisions — reglas de activación
@@ -22,6 +23,11 @@ const { filtrarNuevos } = require('./filters/boletines-nuevos');
 const { construirContextoPrompt } = require('./builders/contexto-prompt');
 const { armarTextoTendencia } = require('./builders/tendencia');
 const { construirTrazaPhoenix, estimarTokens } = require('./builders/traza-phoenix');
+const mensajesChat = require('./builders/mensajes-chat');
+const contextoRag = require('./builders/contexto-rag');
+const authCredenciales = require('./auth/credenciales');
+const authSesion = require('./auth/sesion');
+const authPolitica = require('./auth/politica');
 const { generarListaAnios } = require('./builders/lista-anios');
 const { calcularRangoFechasSemana } = require('./builders/rango-semana');
 const { construirErrorNlq } = require('./builders/error-nlq');
@@ -31,6 +37,9 @@ const { agruparPorSemanaEpi } = require('./builders/clima-semanal');
 // Validators — validación de outputs de LLM
 const { validarResumenBoletin, detectarInconsistenciasCifras } = require('./validators/resumen-boletin');
 const { extraerCifras, quitarMarcadorCifras } = require('./parsers/cifras-boletin');
+const { verificarCifras } = require('./validators/cifras-respuesta');
+const { verificarCifrasContraFuente } = require('./validators/cifras-en-fuente');
+const { extraerCifrasTablas, bloqueCifrasVerificadas } = require('./parsers/tablas-boletin');
 const { validarFiltrosConsulta } = require('./validators/filtros-consulta');
 
 // Presentación — constantes compartidas con el frontend
@@ -51,6 +60,7 @@ module.exports = {
   detectarEnfermedad,
   extraerNivelRiesgo,
   extraerLinksBoletines,
+  extraerRespuestaLlm,
 
   // Decisions
   decidirPrediccion,
@@ -70,12 +80,37 @@ module.exports = {
   calcularRangoFechasSemana,
   generarDepartamentos,
   agruparPorSemanaEpi,
+  normalizarSessionId: mensajesChat.normalizarSessionId,
+  normalizarHistorial: mensajesChat.normalizarHistorial,
+  construirMensajesChat: mensajesChat.construirMensajesChat,
+  construirContextoRag: contextoRag.construirContextoRag,
+  construirExclusionBoletines: contextoRag.construirExclusionBoletines,
+  construirCuerpoChat: mensajesChat.construirCuerpoChat,
+  prepararGuardadoHistorial: mensajesChat.prepararGuardadoHistorial,
+
+  // Autenticación (HU-6)
+  validarCredenciales: authCredenciales.validarCredenciales,
+  normalizarIp: authCredenciales.normalizarIp,
+  normalizarUserAgent: authCredenciales.normalizarUserAgent,
+  generarSesion: authSesion.generarSesion,
+  hashToken: authSesion.hashToken,
+  motivoFallo: authPolitica.motivoFallo,
+  normalizarPolitica: authPolitica.normalizarPolitica,
+  compararSecreto: authPolitica.compararSecreto,
+  construirRespuestaLogin: authPolitica.construirRespuestaLogin,
+  construirRespuestaSesion: authPolitica.construirRespuestaSesion,
+  RESPUESTA_NO_AUTORIZADO: authPolitica.RESPUESTA_NO_AUTORIZADO,
+  RESPUESTA_ERROR_INTERNO: authPolitica.RESPUESTA_ERROR_INTERNO,
 
   // Validators
   validarResumenBoletin,
+  verificarCifrasContraFuente,
+  extraerCifrasTablas,
+  bloqueCifrasVerificadas,
   detectarInconsistenciasCifras,
   extraerCifras,
   quitarMarcadorCifras,
+  verificarCifras,
   validarFiltrosConsulta,
 
   // Presentación

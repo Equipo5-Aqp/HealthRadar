@@ -1,0 +1,307 @@
+{
+  "name": "Indexar embeddings de boletinesV4",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Cada 30 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "id": "45258d22-8856-432e-8727-e1d2f9caf5b9",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Ejecutar a mano (backfill)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "76fc134e-209e-4331-be73-28ce6e4812b9",
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id_boletin, anio, semana_epidemiologica, resumen\nFROM boletin_descubierto\nWHERE procesado = TRUE AND btrim(resumen) <> '' AND embedding IS NULL\nORDER BY anio, semana_epidemiologica\nLIMIT 20;",
+        "options": {}
+      },
+      "name": "Postgres - Boletines por indexar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "notesInFlow": true,
+      "id": "15d834d4-4ce6-41fb-bc82-0ce184433b3c",
+      "position": [
+        304,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "notes": "Solo resúmenes reales (procesado + no vacío) sin vector. LIMIT 20 por corrida: acota la tasa de Gemini."
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-3: arma el cuerpo de embedContent para cada boletin.\n// Modelo y dimensiones FIJOS en el nodo (si cambian, hay que reindexar todo: ver migracion 009).\nconst MODELO = 'gemini-embedding-001';\nconst DIMS = 768;\nconst MAX_CHARS = 6000; // limite del modelo: 2048 tokens (~1500-2000 tokens en espanol)\nconst t0 = Date.now();\nreturn $input.all().map((it, idx) => {\n  const texto = String(it.json.resumen || '');\n  return {\n    json: {\n      id_boletin: it.json.id_boletin,\n      anio: it.json.anio,\n      semana: it.json.semana_epidemiologica,\n      truncado: texto.length > MAX_CHARS,\n      _t0: t0,\n      body: {\n        model: 'models/' + MODELO,\n        content: { parts: [{ text: texto.slice(0, MAX_CHARS) }] },\n        taskType: 'RETRIEVAL_DOCUMENT',   // los boletines son los \"documentos\"; la pregunta usara RETRIEVAL_QUERY\n        outputDimensionality: DIMS,\n      },\n    },\n    pairedItem: idx,\n  };\n});"
+      },
+      "name": "Preparar solicitud de embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "3371ee7b-d4a3-44e3-9e1d-68c2457dc934",
+      "position": [
+        560,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "HTTP - Gemini embedContent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "notesInFlow": true,
+      "id": "ee7a7e78-1c78-4379-ba89-dae6191211a9",
+      "position": [
+        832,
+        112
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Una llamada por boletin, 1,5 s entre llamadas (free tier). Reintenta 3 veces ante 429/5xx. Si sigue fallando, el boletin queda pendiente para la proxima corrida."
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-3: valida la dimension y normaliza (L2). Un vector malo NO llega al UPDATE (la fila sigue pendiente).\n// gemini-embedding-001 con outputDimensionality distinto de 3072 requiere normalizar a mano.\nconst MODELO = 'gemini-embedding-001';\nconst DIMS = 768;\nconst pedidos = $('Preparar solicitud de embedding').all();\nreturn $input.all().map((it, idx) => {\n  const ped = (pedidos[idx] && pedidos[idx].json) || {};\n  const vec = it.json && it.json.embedding && it.json.embedding.values;\n  let ok = Array.isArray(vec) && vec.length === DIMS && vec.every(Number.isFinite);\n  let norma = 0;\n  if (ok) { norma = Math.sqrt(vec.reduce((s, x) => s + x * x, 0)); ok = norma > 0; }\n  const motivo = ok ? '' : (it.json && it.json.error\n      ? 'HTTP/red: ' + String((it.json.error.message || it.json.error)).slice(0, 120)\n      : (Array.isArray(vec) ? 'dimension ' + vec.length + ' != ' + DIMS : 'respuesta sin embedding'));\n  return {\n    json: {\n      id_boletin: ped.id_boletin, anio: ped.anio, semana: ped.semana, truncado: !!ped.truncado, _t0: ped._t0,\n      ok,\n      embedding: ok ? JSON.stringify(vec.map(x => x / norma)) : null,   // $2\n      modelo: ok ? MODELO : null,                                        // $3\n      motivo,\n    },\n    pairedItem: idx,\n  };\n});"
+      },
+      "name": "Validar y normalizar vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "ec3381e6-6a0c-4d25-b9f0-dacafb208f33",
+      "position": [
+        1088,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE boletin_descubierto\nSET embedding = $2::vector,\n    modelo_embedding = $3,\n    embedding_creado_en = now()\nWHERE id_boletin = $1::bigint\n  AND embedding IS NULL\n  AND $4::boolean\nRETURNING id_boletin;",
+        "options": {
+          "queryBatching": "independently",
+          "queryReplacement": "={{ [ $json.id_boletin, $json.embedding, $json.modelo, $json.ok ] }}"
+        }
+      },
+      "name": "Postgres - Guardar embedding",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "id": "8943509e-a3c7-49bd-9b31-50e4e774ca13",
+      "position": [
+        1344,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "notes": "embedding + modelo + fecha SIEMPRE juntos (CHECK chk_boletin_embedding_modelo). WHERE embedding IS NULL: no pisa uno que otro proceso ya completo. Con $4 = false no actualiza nada."
+    },
+    {
+      "parameters": {
+        "jsCode": "const { construirTrazaPhoenix } = require('@healthradar/core');\n// HU-3 (Phoenix): un span por corrida del indexador (cuantos boletines se indexaron y cuantos fallaron).\nconst evaluados = $('Validar y normalizar vector').all().map(i => i.json);\nconst guardados = $input.all().filter(i => i.json && i.json.id_boletin !== undefined && i.json.id_boletin !== null).length;\nconst fallidos = evaluados.filter(e => !e.ok);\nconst inicio = evaluados.length ? evaluados[0]._t0 : undefined;\nconst resumen = `Indexados ${guardados} de ${evaluados.length} boletines`\n  + (fallidos.length ? `; ${fallidos.length} pendientes (${[...new Set(fallidos.map(f => f.motivo))].join(' | ').slice(0, 300)})` : '');\nconst traza = construirTrazaPhoenix({\n  nombre: 'boletin.embedding',\n  entrada: `Indexar embeddings (${evaluados.length} boletines: ${evaluados.map(e => e.anio + '-S' + e.semana).join(', ').slice(0, 300)})`,\n  salida: resumen,\n  modelo: 'gemini-embedding-001',\n  inicioMs: inicio, finMs: Date.now(),\n  sessionId: 'healthradar-embeddings',\n  exito: fallidos.length === 0,\n  error: fallidos.length ? resumen : '',\n  metadatos: { flujo: 'Indexar embeddings', proveedor: 'google', tarea: 'embedding', evaluados: evaluados.length, guardados, fallidos: fallidos.length, truncados: evaluados.filter(e => e.truncado).length },\n});\nreturn [{ json: { traza } }];"
+      },
+      "name": "Armar traza Phoenix",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "dbd1db68-5a7c-469e-8859-579a0090b5d0",
+      "position": [
+        1600,
+        112
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.PHOENIX_URL || 'http://phoenix:6006') + '/v1/projects/' + ($env.PHOENIX_PROJECT || 'default') + '/spans' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.traza) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "name": "Enviar traza a Phoenix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "id": "4faff412-c063-4ae5-8104-2161e847cd1a",
+      "position": [
+        1872,
+        112
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## HU-3 — Indexador de embeddings (pgvector)\nIndependiente de Fase B: si Gemini falla aqui, el resumen del boletin NO se pierde.\n- Toma hasta 20 boletines con resumen y sin vector; los embebe (gemini-embedding-001, 768 dims, normalizado) y guarda vector + modelo + fecha.\n- Cada 30 min, o a mano (`Ejecutar a mano`) para el backfill inicial.\n- Un vector invalido o una llamada fallida deja la fila pendiente; se reintenta en la proxima corrida.\n- Requiere `GEMINI_API_KEY` en el entorno de n8n y la migracion 009 aplicada.\n- Si se cambia de modelo o de dimension hay que reindexar todo (ver migracion 009).",
+        "height": 260,
+        "width": 460
+      },
+      "name": "Nota HU-3 (embeddings)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "id": "c3288fd2-94da-4947-a2b0-896a8dc02b10",
+      "position": [
+        304,
+        336
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cada 30 minutos": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Boletines por indexar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar a mano (backfill)": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Boletines por indexar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Boletines por indexar": {
+      "main": [
+        [
+          {
+            "node": "Preparar solicitud de embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar solicitud de embedding": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Gemini embedContent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Gemini embedContent": {
+      "main": [
+        [
+          {
+            "node": "Validar y normalizar vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar y normalizar vector": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Guardar embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Guardar embedding": {
+      "main": [
+        [
+          {
+            "node": "Armar traza Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar traza Phoenix": {
+      "main": [
+        [
+          {
+            "node": "Enviar traza a Phoenix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ff54efdf-10c2-4df6-b3d1-a8173309f2a1",
+  "meta": {
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
+  },
+  "nodeGroups": [],
+  "id": "vZSaXfF0xK4yGYhf",
+  "tags": []
+}

@@ -9,6 +9,50 @@ describe('detectarPeriodo', () => {
     expect(r.criterio_usado).toContain('rango');
   });
 
+  test.each([
+    ['que brotes hubo en la semana 5 del 2025', 2025],
+    ['semana 5 de 2025', 2025],
+    ['semana 5 en el 2025', 2025],
+    ['semana 5 del año 2025', 2025],
+    ['semana 5 en 2025', 2025],
+    ['SE 5 2025', 2025],
+    ['SE 5-2025', 2025],
+    ['SE5/2025', 2025],
+    ['semana 5, 2025', 2025],
+    ['la semana 12 de 2024', 2024],
+  ])('semana con año y conector: "%s" → año %i', (pregunta, anio) => {
+    const r = detectarPeriodo(pregunta);
+    expect(r.anio).toBe(anio);
+    expect(r.semana_desde).toBe(Number(pregunta.match(/\d+/)[0]));
+    expect(r.semana_desde).toBe(r.semana_hasta);
+    expect(r.criterio_usado).toBe(`semana especifica: SE ${r.semana_desde}-${anio}`);
+  });
+
+  test('año antes que la semana: "casos del 2025 en la semana 5"', () => {
+    const r = detectarPeriodo('casos de dengue del 2025 en la semana 5');
+    expect(r.anio).toBe(2025);
+    expect(r.semana_desde).toBe(5);
+    expect(r.criterio_usado).toBe('semana especifica: SE 5-2025');
+  });
+
+  test('el año junto a la semana manda sobre otro año suelto de la pregunta', () => {
+    expect(detectarPeriodo('comparado con 2024, semana 5 del 2025').anio).toBe(2025);
+  });
+
+  test('semana sin año usa el año actual', () => {
+    expect(detectarPeriodo('semana 5').anio).toBe(new Date().getFullYear());
+  });
+
+  test('"se" o "semana" dentro de otra palabra no se toma como semana', () => {
+    expect(detectarPeriodo('el pase 12 de la base 3').criterio_usado).toMatch(/sin periodo/);
+  });
+
+  test('un número sin relación después de la semana no se confunde con el año', () => {
+    const r = detectarPeriodo('semana 5 con 120 casos');
+    expect(r.semana_desde).toBe(5);
+    expect(r.anio).toBe(new Date().getFullYear());
+  });
+
   test('detecta semana explícita', () => {
     const r = detectarPeriodo('semana 15');
     expect(r.semana_desde).toBe(15);

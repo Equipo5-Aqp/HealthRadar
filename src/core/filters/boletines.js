@@ -22,6 +22,7 @@ function tieneResumenReal(resumen) {
  * @param {object} periodo - Output de resolverVentana
  * @param {Array<{anio: number, semana_epidemiologica: number, resumen: string}>} boletines
  * @returns {Array} Boletines filtrados, o [{_sin_boletines: true}] si no hay resultados
+ *          (años < 2025: sin cobertura; periodo ≥ 2025 sin boletín procesado: motivo 'sin_boletin_en_periodo')
  */
 function filtrarBoletines(periodo, boletines) {
   const filasConResumen = (boletines || []).filter(f => tieneResumenReal(f.resumen));
@@ -49,10 +50,11 @@ function filtrarBoletines(periodo, boletines) {
       return anioFila === anioNum && semanaFila >= semanaDesde && semanaFila <= semanaHasta;
     });
 
+    // Sin boletín con resumen para ese periodo (p. ej. aún no procesado): NO es un error del
+    // sistema. El chat sigue con lo demás (cifras por SQL, clima, tendencia) y el prompt avisa
+    // al modelo que no hay boletín (construirContextoPrompt), para que no invente.
     if (filtradas.length === 0) {
-      throw new Error(
-        'No se encontraron boletines con resumen para el periodo solicitado: ' + periodo.criterio_usado
-      );
+      return [{ _sin_boletines: true, motivo: 'sin_boletin_en_periodo' }];
     }
   } else {
     const anioDesde = parseInt(periodo.anio_desde, 10);

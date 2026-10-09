@@ -1,5 +1,5 @@
 // Tests — builders/contexto-prompt.js
-const { construirContextoPrompt } = require('../contexto-prompt');
+const { construirContextoPrompt, avisoSinBoletines } = require('../contexto-prompt');
 
 describe('construirContextoPrompt', () => {
   test('construye contexto con boletines y clima', () => {
@@ -24,10 +24,23 @@ describe('construirContextoPrompt', () => {
     expect(r.criterio_periodo).toBe('test period');
   });
 
-  test('maneja boletines vacíos', () => {
-    const r = construirContextoPrompt([], [], { criterio_usado: 'test' }, '');
+  test('sin boletines: texto_boletines trae un aviso explícito (no queda vacío)', () => {
+    const r = construirContextoPrompt([], [], { criterio_usado: 'semana especifica: SE 5-2026' }, '');
     expect(r.cantidad_boletines).toBe(0);
-    expect(r.texto_boletines).toBe('');
+    expect(r.texto_boletines).toBe(avisoSinBoletines('semana especifica: SE 5-2026'));
+    expect(r.texto_boletines).toContain('No hay boletin epidemiologico con resumen disponible');
+    expect(r.texto_boletines).toContain('SE 5-2026');
+    expect(r.texto_boletines).toContain('No inventes');
+  });
+
+  test('avisoSinBoletines funciona sin criterio o sin periodo', () => {
+    expect(avisoSinBoletines()).toMatch(/para este periodo\. No inventes/);
+    expect(construirContextoPrompt([], [], {}, '').texto_boletines).toBe(avisoSinBoletines());
+  });
+
+  test('con boletines NO aparece el aviso', () => {
+    const r = construirContextoPrompt([{ anio: 2025, semana_epidemiologica: 5, resumen: 'Texto.' }], [], { criterio_usado: 'x' }, '');
+    expect(r.texto_boletines).not.toContain('No hay boletin');
   });
 
   test('incluye texto de tendencia si se provee', () => {

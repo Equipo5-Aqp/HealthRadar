@@ -29,9 +29,21 @@ describe('filtrarBoletines', () => {
     expect(r).toEqual([{ _sin_boletines: true }]);
   });
 
-  test('lanza error si no hay boletines para periodo explícito ≥2025', () => {
+  test('periodo explícito ≥2025 sin boletines: NO lanza error, devuelve _sin_boletines con motivo', () => {
     const periodo = { anio: 2025, semana_desde: 1, semana_hasta: 5, criterio_usado: 'test' };
-    expect(() => filtrarBoletines(periodo, boletines)).toThrow('No se encontraron boletines');
+    expect(filtrarBoletines(periodo, boletines)).toEqual([{ _sin_boletines: true, motivo: 'sin_boletin_en_periodo' }]);
+  });
+
+  test('periodo explícito ≥2025 con boletines pero fuera del rango: tampoco lanza', () => {
+    const periodo = { anio: 2026, semana_desde: 40, semana_hasta: 45, criterio_usado: 'test' };
+    expect(() => filtrarBoletines(periodo, boletines)).not.toThrow();
+    expect(filtrarBoletines(periodo, boletines)[0]._sin_boletines).toBe(true);
+  });
+
+  test('sin ninguna fila de boletines y periodo ≥2025: _sin_boletines', () => {
+    const periodo = { anio: 2026, semana_desde: 5, semana_hasta: 5, criterio_usado: 'test' };
+    expect(filtrarBoletines(periodo, [])[0]._sin_boletines).toBe(true);
+    expect(filtrarBoletines(periodo, undefined)[0]._sin_boletines).toBe(true);
   });
 
   test('filtra por ventana multi-año', () => {
