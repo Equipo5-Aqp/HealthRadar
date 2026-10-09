@@ -21,13 +21,13 @@ El host dispone de solo 4 GiB de RAM. **Está terminantemente prohibido agregar 
 
 | Contenedor | Servicio Compose | IP Interna | Límite RAM | Puertos | Propósito | ADR |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `healthradar-nginx-shell` | `nginx-shell` | `172.20.0.2` | **64 MB** | **`3000:3000` (Público)** | Único punto de entrada perimetral (Shell Router). Enruta a los 3 microfrontends. | [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md) |
-| `healthradar-n8n` | `n8n` | `172.20.0.3` | **1536 MB** | `5678` (Interno) | Orquestador de eventos (EDA) con `@healthradar/core` embebido en su imagen Docker. | [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md), [ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md) |
+| `healthradar-nginx-shell` | `nginx-shell` | `172.20.0.2` | **64 MB** | **`3000:3000` (Público)** | Único punto de entrada perimetral (Shell Router). Enruta a los 3 microfrontends. | [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) |
+| `healthradar-n8n` | `n8n` | `172.20.0.3` | **1536 MB** | `5678` (Interno) | Orquestador de eventos (EDA) con `@healthradar/core` embebido en su imagen Docker. | [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md), [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md) |
 | `healthradar-postgres` | `postgres` | `172.20.0.4` | **768 MB** | `5432` (Interno) | Base de datos relacional + extensión `pgvector` habilitada. | [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md) |
 | `healthradar-phoenix` | `phoenix` | `172.20.0.5` | **512 MB** | `6006`, `4317`, `4318` (Interno) | Arize Phoenix Self-Hosted para observabilidad de llamadas a LLM y trazas OTel. | [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md) |
-| `healthradar-mf-consulta` | `mf-consulta` | `172.20.0.6` | **192 MB** | `3000` (Interno) | Microfrontend de Asistencia NLQ conversacional bajo `/consulta`. | [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md), [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md) |
-| `healthradar-mf-historicos`| `mf-historicos` | `172.20.0.7` | **192 MB** | `3000` (Interno) | Microfrontend de Análisis Tabular y Mapa de Calor bajo `/historicos`. | [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md) |
-| `healthradar-mf-dashboard` | `mf-dashboard` | `172.20.0.8` | **192 MB** | `3000` (Interno) | Microfrontend de Panorama General, Landing y KPIs bajo `/`. | [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md) |
+| `healthradar-mf-consulta` | `mf-consulta` | `172.20.0.6` | **192 MB** | `3000` (Interno) | Microfrontend de Asistencia NLQ conversacional bajo `/consulta`. | [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md), [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) |
+| `healthradar-mf-historicos`| `mf-historicos` | `172.20.0.7` | **192 MB** | `3000` (Interno) | Microfrontend de Análisis Tabular y Mapa de Calor bajo `/historicos`. | [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) |
+| `healthradar-mf-dashboard` | `mf-dashboard` | `172.20.0.8` | **192 MB** | `3000` (Interno) | Microfrontend de Panorama General, Landing y KPIs bajo `/`. | [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) |
 
 > **Regla de Red Perimetral:** Ningún contenedor expone puertos al host exterior salvo `nginx-shell` (puerto `3000`). PostgreSQL, n8n y Phoenix **NUNCA** deben tener la cláusula `ports:` pública en Compose.
 
@@ -35,7 +35,7 @@ El host dispone de solo 4 GiB de RAM. **Está terminantemente prohibido agregar 
 
 ## 3. Arquitectura del Frontend: Microservicios Frontend (Microfrontends)
 
-HealthRadar implementa **Microfrontends con Next.js Multi-Zones** ([ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md)):
+HealthRadar implementa **Microfrontends con Next.js Multi-Zones** ([ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md)):
 
 1. **Estructura en `src/`:**
    - `src/mf-dashboard/`: Next.js 14 standalone, atiende la raíz `/` (`basePath: ''`).
@@ -52,7 +52,7 @@ HealthRadar implementa **Microfrontends con Next.js Multi-Zones** ([ADR-013](inf
 
 ## 4. Arquitectura del Backend: Basada en Eventos (EDA) y Núcleo Puro
 
-El backend sigue una **Arquitectura Basada en Eventos (EDA)** ([ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md)):
+El backend sigue una **Arquitectura Basada en Eventos (EDA)** ([ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md)):
 
 1. **n8n como Event-Driven Orchestrator ([ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md)):**
    - Reacciona a eventos del usuario mediante **Webhook Triggers**:

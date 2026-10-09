@@ -170,8 +170,8 @@ Cada decisión técnica relevante del proyecto está documentada en `infrastruct
 | [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                    | Reemplazadp por ADR-011 |
 | [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad  | Vigente                 |
 | [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting   | Vigente                 |
-| [ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md)              | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente                 |
-| [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md)       | Microservicios Frontend (Microfrontends) con Next.js y Nginx  | Vigente                 |
+| [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md)          | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente                 |
+| [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) | Microservicios Frontend (Microfrontends) con Next.js y Nginx  | Vigente                 |
 
 ---
 
