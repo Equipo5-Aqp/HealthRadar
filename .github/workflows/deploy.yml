@@ -2,8 +2,7 @@ name: Deploy CD
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -32,15 +31,18 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           # VM B2als_v2 (2 vCPU, 4 GB) puede tardar >10min en build + recreate + healthchecks
           command_timeout: 20m
-          script: |
-            set -e
+            script: |
             cd /home/azureuser/HealthRadar
             echo "📥 Actualizando código..."
             git fetch origin main
             git reset --hard origin/main
             cd infrastructure
-            echo "🐳 Reconstruyendo y desplegando contenedores..."
-            docker compose up -d --build
+            echo "🔨 Compilando microfrontends uno por uno (protección de RAM en VM)..."
+            docker compose build mf-consulta
+            docker compose build mf-historicos
+            docker compose build mf-dashboard
+            echo "🐳 Levantando contenedores actualizados..."
+            docker compose up -d
             echo "✅ Verificando estado de los servicios..."
             docker compose ps
 
