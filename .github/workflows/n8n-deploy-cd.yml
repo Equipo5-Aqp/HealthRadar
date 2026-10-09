@@ -2,8 +2,7 @@ name: n8n Deploy CD
 
 # Se activa SOLO al publicar un tag de versión (v*.*.*) o manualmente.
 # Requiere aprobación manual vía el Environment "production" (Settings → Environments).
-# El CI de validación (n8n-validate-ci.yml) ya corrió en el PR hacia develop/main,
-# y el gate de staging (staging-smoke-test.yml) ya corrió en el PR hacia develop.
+# El CI de validación (n8n-validate-ci.yml) ya corrió en el PR hacia main.
 
 on:
   push:

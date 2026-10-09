@@ -2,7 +2,7 @@ name: QA Postman CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 jobs:
   changes:

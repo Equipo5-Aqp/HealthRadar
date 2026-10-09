@@ -2,7 +2,7 @@ name: Data Testing CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 jobs:
   changes:
