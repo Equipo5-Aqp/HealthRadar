@@ -31,7 +31,7 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           # VM B2als_v2 (2 vCPU, 4 GB) puede tardar >10min en build + recreate + healthchecks
           command_timeout: 20m
-            script: |
+          script: |
             cd /home/azureuser/HealthRadar
             echo "📥 Actualizando código..."
             git fetch origin main
