@@ -89,6 +89,16 @@ services:
       - SYSTEM_PROMPT_FASE_B=${SYSTEM_PROMPT_FASE_B:-}
       # ADR-012: Habilitar require('@healthradar/core') desde nodos Code de n8n
       - NODE_FUNCTION_ALLOW_EXTERNAL=@healthradar/core
+      # Limita el Heap a 1280 MB para que el GC recolecte basura antes del techo de Docker (1536 MB)
+      - NODE_OPTIONS=--max-old-space-size=1280
+      # Manejo de archivos binarios en disco (evita cargar PDFs en la RAM volátil)
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      # Purga automática de datos de ejecución en PostgreSQL/Memoria
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=72
+      - EXECUTIONS_DATA_PRUNE_MAX_COUNT=500
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
     volumes:
       - n8n_data:/home/node/.n8n
     networks:
@@ -112,10 +122,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
-    # ADR-012: Límite de RAM — Node.js + workflows + @healthradar/core embebido
+    # ADR-012: Límite de RAM de silicio (1536 MB)
     mem_limit: 1536m
-    memswap_limit: 1536m
-    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    # memswap_limit omitido deliberadamente para permitir que n8n utilice
+    # la memoria Swap de respaldo (2-4 GB en SSD) de la VM ante picos imprevistos (Anti-OOM)
+    # Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
     logging:
       driver: json-file
       options:
@@ -145,17 +156,17 @@ services:
     # La imagen declara 4317 (OTLP gRPC), 6006 (UI) y 9090 (métricas); es comportamiento esperado.
     # ports:
     #   - "6006:6006"
-    # HU-203: Healthcheck — la imagen no incluye wget/curl; se verifica la UI (6006) con python
+    # Healthcheck — la imagen no incluye wget/curl; se verifica la UI (6006) con python
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:6006/healthz').status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    # HU-203: Límite de RAM — observabilidad no crítica, puede ser apretado
+    # Límite de RAM — observabilidad no crítica, puede ser apretado
     mem_limit: 512m
     memswap_limit: 512m
-    # HU-203: Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
+    # Rotación de logs — máx 10 MB × 3 archivos = 30 MB en disco
     logging:
       driver: json-file
       options:
@@ -181,7 +192,7 @@ services:
         condition: service_healthy
     networks:
       healthradar-net:
-        ipv4_address: 172.20.0.2     # misma IP que tenía frontend
+        ipv4_address: 172.20.0.2
     mem_limit: 64m
     memswap_limit: 64m
     healthcheck:
