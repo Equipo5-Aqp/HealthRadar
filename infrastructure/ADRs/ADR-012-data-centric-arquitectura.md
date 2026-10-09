@@ -1,109 +1,59 @@
-# ADR-012: Arquitectura Centrada en Datos (Data-Centric) con capa de decisiones pura empaquetada en n8n
+# ADR-012: Arquitectura Basada en Eventos (EDA) para la Orquestación Backend en n8n con Núcleo de Dominio Desacoplado
 
 **Estado:** Aceptado (2026-09-23)  
 **Relacionado con:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-008, ADR-010, ADR-011, ADR-013  
-**Refina a:** ADR-001 (precisa el límite de responsabilidad de n8n)
+**Refina a:** ADR-001 (delimita el rol reactivo de n8n frente a la lógica de negocio)
 
 ## Contexto
 
-El sistema creció y la dispersión de la lógica de dominio se volvió el principal riesgo técnico:
+El sistema HealthRadar creció y la interacción del analista de salud pública con la plataforma requería desacoplar la capa de presentación de la ejecución de procesos complejos. Inicialmente, las peticiones se concebían como llamadas directas y monolíticas, concentrando en el backend múltiples responsabilidades:
+- Detección de periodo, departamento y enfermedad ante consultas en lenguaje natural (NLQ).
+- Ingesta y procesamiento asíncrono de boletines epidemiológicos y datos climáticos.
+- Ejecución de inferencia analítica con conmutación por error (failover) entre modelos LLM.
 
-- El workflow NLQ (`Conexion posgrest.json`) alcanzó **28 nodos** y concentra detección de periodo/departamento/enfermedad, ventanas por defecto, activación de predicción, tendencias, cálculo de nivel de riesgo y failover de 3 cuentas Gemini — todo en JSON, **sin cobertura de pruebas unitarias** (los pytest actuales son caja negra contra webhooks).
-- La ingesta se dividió en Fases A/B con la tabla `boletin_descubierto` como cola (migración `006`), y reglas de dominio comenzaron a vivir en funciones SQL (`fn_insertar_dato_climatico`, `fn_semana_epi_dge`, vista `v_clima_actual` — migración `007`).
-- La lógica de decisión está hoy dispersa en **tres runtime distintos**: nodos Code/JS de n8n, funciones SQL y componentes del frontend.
+La cátedra y las directrices arquitectónicas exigen implementar un estilo de **Arquitectura Basada en Eventos (EDA)** en el backend: cada acción realizada por el analista en la plataforma web debe responder a un evento de dominio capturado y procesado por flujos especializados de n8n.
 
-Se evaluó y **se descartó migrar a microservicios** (ADR-008/011: host único de 4 GiB RAM sin autoescalado; ADR-002: base de datos única compartida; la complejidad creciente es interna al código, no de despliegue). Al evaluar la opción **data-centric** se constató que Clean Architecture no prohíbe una base de datos "inteligente": prohíbe que el _núcleo de decisiones_ dependa de la BD y de frameworks. La distinción operativa es:
-
-- **Reglas de integridad y operaciones atómicas** → correctas en la base de datos (único Write Path).
-- **Reglas de decisión / casos de uso** → deben vivir en una capa pura y testeable, sin conocer la BD ni n8n.
-
-Restricción de infraestructura adicional: el stack ya asigna **2560 MB** de los 4096 MB del host (postgres 768m + n8n 1024m + phoenix 512m + frontend 256m), por lo que la capa de decisiones **no puede consumir RAM adicional**.
+A su vez, persistía un desafío técnico fundamental: el workflow NLQ llegó a concentrar 28 nodos en JSON, mezclando la orquestación de eventos con reglas de dominio complejas (cálculo de riesgo, ventanas epidemiológicas, failover de modelos) sin cobertura de pruebas unitarias. Se requería un mecanismo para que los eventos fuesen gestionados reactivamente por n8n pero sin convertir sus nodos en un repositorio desgobernado de lógica de negocio, y todo bajo la estricta restricción de recursos del host Azure de 4 GiB de RAM (ADR-011).
 
 ## Decisión
 
-Se adopta una **arquitectura centrada en datos (Data-Centric)**: PostgreSQL + pgvector (ADR-002) es el corazón del sistema (modelo, integridad, derivadas y single source of truth), complementada por una **capa de aplicación de decisiones** pura y unit-testeable, y con n8n y el frontend rebajados a adaptadores delgados.
+Se adopta formalmente una **Arquitectura Basada en Eventos (Event-Driven Architecture - EDA)** para el backend, estructurada bajo los siguientes principios:
 
-### Capas y límites de responsabilidad
+### 1. n8n como Motor Orquestador Basado en Eventos (Event-Driven Orchestrator)
+n8n actúa como el centro de recepción, enrutamiento y procesamiento reactivo de eventos del sistema:
+- **Eventos de Interacción de Usuario:** Cada interacción del analista en los microfrontends dispara un evento específico que es escuchado por un Webhook Trigger dedicado en n8n:
+  - Evento `QueryRequested` (`/webhook/consulta`): Disparado cuando el analista formula una pregunta en lenguaje natural.
+  - Evento `TrendRequested` (`/webhook/tendencia`): Disparado para inferir proyecciones y tendencias epidemiológicas.
+  - Evento `HistoricalFiltered` (`/webhook/historicos`): Disparado para consultar y filtrar cortes históricos de datos.
+- **Eventos Temporales (Scheduled Events):** Procesos batch gobernados por eventos de tiempo mediante Cron Triggers:
+  - Evento `EpidemiologicalWeekClosed`: Dispara la detección y descarga automática de nuevos boletines epidemiológicos del MINSA/CDC (Fase A) y datos climáticos de Open-Meteo.
+  - Evento `IngestionBatchTriggered`: Dispara el procesamiento, extracción multimodal e inserción analítica de los boletines pendientes (Fase B).
 
-1. **Núcleo de datos — PostgreSQL + pgvector (ADR-002).**
-   Contrato único de verdad del sistema. Aquí viven exclusivamente:
-   - Constraints, FKs, checks y claves naturales.
-   - Funciones de integridad/atomicidad de escritura única (`fn_insertar_dato_climatico`, `fn_semana_epi_dge`).
-   - Vistas derivadas de lectura (`v_clima_actual`), índices e índice HNSW para pgvector.
-   - Regla de gobernanza: **NO** se implementan stored procedures extensos de decisión; las funciones SQL se mantienen pequeñas, versionadas en migraciones numeradas e idempotentes.
+### 2. Capa de Aplicación y Dominio Desacoplada: Biblioteca `@healthradar/core`
+Para evitar acoplar las reglas de negocio al motor de eventos:
+- n8n **no contiene lógica de dominio hardcodeada**. Su función es capturar el evento, coordinar el flujo y delegar las decisiones analíticas a la biblioteca interna **`@healthradar/core`** (`src/core/`).
+- Esta biblioteca es Node.js puro, modular y 100% testeable mediante pruebas unitarias en el pipeline de CI/CD.
+- Se encarga de:
+  - Normalización y resolución de entidades epidemiológicas en las consultas.
+  - Reglas de ventanas temporales y umbrales de alerta sanitaria.
+  - Lógica de selección y failover entre proveedores de LLM.
+- **Mecanismo de ejecución y zero overhead de memoria:** `@healthradar/core` se compila e inyecta directamente dentro de la imagen de Docker de n8n mediante `NODE_FUNCTION_ALLOW_EXTERNAL=@healthradar/core`. No se añade ningún contenedor ni proceso HTTP adicional, respetando el límite asignado a n8n en `docker-compose.yml` (ADR-008).
 
-2. **Capa de aplicación de decisiones — biblioteca `@healthradar/core` (Node.js puro, en `src/core/`).**
-   Reglas de decisión puras y unit-testeables, sin acceso directo a PostgreSQL ni acoplamiento a n8n:
-   - Detección de periodo/departamento/enfermedad en la pregunta del analista.
-   - Selección de ventana por defecto y resolución de periodos.
-   - Activación de predicción y armado de tendencias.
-   - Cálculo de nivel de riesgo y normalización de salidas.
-   - Lógica de failover entre modelos y construcción de consultas SQL.
-   - Depende únicamente de **contratos** (esquemas JSON versionados).
-
-3. **Capa de orquestación — n8n (ADR-001, con límite de responsabilidad reducido).**
-   Orquestador delgado: recibe webhooks, invoca `@healthradar/core` desde nodos Code, ejecuta llamadas a LLM (ADR-003) y persiste exclusivamente vía las funciones SQL del núcleo. Los nodos Code/JS se reducen al mínimo; n8n deja de ser repositorio de dominio.
-
-4. **Capa de presentación — Next.js (ADR-004).**
-   Presentación pura: las rutas `/api/*` permanecen como BFF/capa de seguridad. **No contiene lógica de decisión** (medidor/colores de riesgo, etiquetas de modelo, mapeo de errores de proveedor → se migran a `@healthradar/core`). Centraliza el cliente HTTP a n8n usando `N8N_INTERNAL_URL`.
-
-5. **Actores externos — LLMs (ADR-003) y Arize Phoenix (ADR-010).**
-   Invocados desde n8n según contrato; nunca desde el navegador.
-
-### Restricción de recursos (RAM) y mecanismo de despliegue
-
-- La capa de decisiones se ejecuta **dentro del proceso Node.js del contenedor n8n existente**: `@healthradar/core` es una **biblioteca pura, sin framework web** (no se levanta ningún servidor HTTP), instalada en la imagen de n8n mediante **Dockerfile propio**:
-
-  ```dockerfile
-  FROM n8nio/n8n:2.35.7
-  COPY src/core/ /opt/healthradar-core/
-  RUN cd /opt/healthradar-core && npm ci
-  ENV NODE_FUNCTION_ALLOW_EXTERNAL=@healthradar/core
-  ```
-
-  La variable `NODE_FUNCTION_ALLOW_EXTERNAL=@healthradar/core` habilita el `require('@healthradar/core')` desde los nodos Code con lista blanca controlada.
-
-- **No se añaden procesos ni contenedores** al stack Docker Compose (ADR-008): Δ RAM = 0 (solo ~10–15 MB en disco de imagen).
-- El `mem_limit` de n8n se ajusta de `1024m` a **1536m (1.5 GiB)** como techo planificado de la nueva etapa. Presupuesto resultante del stack: **3072 MB** (postgres 768m + n8n 1536m + phoenix 512m + frontend 256m) sobre 4096 MB del host Azure (ADR-011), con margen libre.
-- El CI/CD de n8n (`n8n-deploy-cd.yml`) se extiende para reconstruir esta imagen y versionar la biblioteca junto con los workflows.
-- Alternativas rechazadas por esta restricción:
-  - _(a)_ **Contenedor `core` aparte** → proceso y RAM adicionales en una VM de 4 GiB ya comprometida.
-  - _(b)_ **Lógica de decisión en Next.js** → viola ADR-004 (frontend = capa de presentación/seguridad, no de dominio).
-  - _(c)_ **Microservicios** → rechazados (ADR-008/011: host único; ADR-002: BD única compartida).
-
-### Contratos entre capas
-
-Esquemas JSON versionados como Anti-Corruption Layer: contrato de webhooks (NLQ/tendencia/históricos), contrato de funciones SQL y contrato de respuestas al frontend. Ninguna capa consume otra sin pasar por su contrato.
-
-### Regla de dependencia
-
-Núcleo de datos → no depende de nada. `@healthradar/core` → depende solo de contratos. n8n y frontend → dependen de `@healthradar/core`. Las decisiones **nunca** se duplican en SQL extenso, nodos JS de negocio o componentes de UI.
+### 3. Contratos de Eventos Desacoplados
+Cada flujo reactivo se rige por contratos JSON estrictos y versionados entre los emisores de eventos (BFF de los microfrontends) y los receptores en n8n, garantizando la independencia y trazabilidad de cada transición.
 
 ## Consecuencias
 
 **Beneficios:**
-
-- Lógica gobernada y testeable: decisiones con pruebas unitarias en CI; integridad en un único Write Path SQL.
-- Single source of truth preservado (ADR-002): el modelo de datos sigue siendo el contrato central.
-- n8n deja de concentrar dominio (desactiva el riesgo del "responsable único" de 28 nodos) y se vuelve orquestador delgado.
-- Sin incremento de infraestructura: siguen siendo 4 contenedores y un solo host; Δ RAM = 0 por la nueva capa.
+- **Modelo Reactivo Consistente:** Cada interacción del usuario y cada ciclo temporal opera como un evento autónomo y trazable dentro de n8n.
+- **Desacoplamiento Operativo:** El frontend no conoce cómo se ejecutan las consultas ni los modelos de IA; únicamente publica eventos hacia los webhooks del orquestador.
+- **Mantenibilidad y Calidad:** La lógica de negocio abandona los nodos visuales y pasa a `@healthradar/core`, permitiendo testing unitario automatizado antes de desplegar flujos.
+- **Eficiencia de Recursos:** Se logra una arquitectura orientada a eventos completa dentro del contenedor de n8n sin el consumo de memoria que requeriría un bus externo pesado.
 
 **Riesgos:**
-
-- Extraer lógica de n8n puede romper workflows activos si no se definen primero los contratos JSON.
-- Sin gobernanza, la capa SQL podría crecer hacia "stored procedures enterprise" (nueva deuda).
-- El versionado conjunto biblioteca + workflow requiere disciplina (el `package.json` de `@healthradar/core` y los JSON de n8n deben desplegarse juntos).
-- El techo elevado de n8n (1536m) acelera el OOM del host si Phoenix o Postgres crecen sin vigilancia.
+- Si un contrato de evento se modifica sin sincronizar n8n y `@healthradar/core`, el flujo reactivo puede interrumpirse.
+- Crecimiento desmedido en la concurrencia de eventos en un único contenedor n8n.
 
 **Mitigación:**
-
-- Los contratos JSON se definen y versionan **antes** de cada migración de lógica.
-- Migración incremental por workflow, con puerta de calidad en cada paso: los pytest actuales de caja negra pasan a ser pruebas de integración contra la capa de decisiones.
-- Se documentan límites de tamaño para funciones SQL (integridad/atomicidad/derivadas únicamente) y se revisan en PR (plantilla `_PR_TEMPLATE`).
-- Phoenix (ADR-010) continúa monitoreando trazas; se añade alerta de memoria del host al checklist operativo de Azure (ADR-011).
-
-**Impacto en ADRs vigentes:**
-
-- ADR-001: refinado — n8n conserva la orquestación, pierde la titularidad de las reglas de decisión.
-- ADR-002, ADR-003, ADR-004, ADR-008, ADR-010, ADR-011: sin cambios.
-- Microservicios: rechazados formalmente (este ADR documenta la elección data-centric vs microservicios).
+- Versionado estricto de los esquemas JSON de los contratos de eventos.
+- Monitoreo continuo del procesamiento de trazas y latencias de cada evento en Arize Phoenix (ADR-010).

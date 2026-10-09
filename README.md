@@ -15,30 +15,29 @@ Analista de Salud
       │
       ▼
 nginx-shell                 ← única interfaz pública, puerto 3000 (ADR-008, ADR-013)
-      │  /historicos → mf-historicos:3000
-      │  /           → mf-consulta:3000
+      │  /           → mf-dashboard:3000   (Landing & Panorama general)
+      │  /consulta   → mf-consulta:3000    (Asistente NLQ conversacional)
+      │  /historicos → mf-historicos:3000  (Datos Históricos y Mapa)
       ▼
-Microfrontends (Next.js)    ← Next.js Multi-Zones independientes
-      │  /api/consulta, /historicos/api/historicos (server-side proxies)
+Microfrontends (Next.js)    ← 3 Microservicios Frontend independientes (Next.js Multi-Zones)
+      │  BFF Server-Side: /api/* (ADR-004) despachan eventos vía HTTP interno
       ▼
-n8n Self-Hosted             ← orquestador único de toda la lógica (ADR-001)
+n8n Self-Hosted             ← Event-Driven Orchestrator con @healthradar/core (ADR-001, ADR-012)
       │
-      ├── Workflow de Ingesta (semanal, automático)
+      ├── Eventos de Ingesta (Cron Semanal, batch)
       │       ├── Descarga PDF boletín MINSA/CDC Perú (ADR-006)
       │       ├── Open-Meteo → variables climáticas por coordenadas (ADR-007)
-      │       ├── Google Gemini Flash → extracción multimodal JSON estructurado (ADR-003)
-      │       ├── Validación de esquema JSON
-      │       ├── Inserción en PostgreSQL (ADR-002)
-      │       └── Traza enviada a Arize Phoenix (ADR-010)
+      │       ├── Google Gemini Flash (3 llaves rotativas) → extracción JSON (ADR-003)
+      │       ├── Validación de esquema e inserción atómica en PostgreSQL (ADR-002)
+      │       └── Traza OTel enviada a Arize Phoenix (ADR-010)
       │
-      └── Workflow de Consulta NLQ (por webhook)
-              ├── Consulta PostgreSQL (datos + vectores)
-              ├── Claude Haiku (Anthropic) → reporte analítico en lenguaje natural (ADR-003)
-              ├── Traza enviada a Arize Phoenix (ADR-010)
-              └── Respuesta al Frontend
-
-PostgreSQL 16 + pgvector    ← base de datos única (tabular + vectorial) (ADR-002)
-Arize Phoenix Self-Hosted   ← observabilidad pasiva y evaluación de LLMs (ADR-010)
+      └── Eventos de Interacción de Usuario (Webhooks reactivos)
+              ├── POST /webhook/consulta   (Evento QueryRequested)
+              ├── POST /webhook/tendencia  (Evento TrendRequested)
+              ├── POST /webhook/historicos (Evento HistoricalFiltered)
+              ├── NVIDIA Catalog (Kimi/GLM) / OpenRouter → reporte NLQ analítico (ADR-003)
+              ├── Traza OTel enviada a Arize Phoenix (ADR-010)
+              └── Respuesta estructurada al Microfrontend
 ```
 
 **Regla crítica de arquitectura:** el Frontend no accede directamente a la base de datos ni a ninguna API de IA. Todo pasa por n8n.
@@ -171,8 +170,8 @@ Cada decisión técnica relevante del proyecto está documentada en `infrastruct
 | [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                    | Reemplazadp por ADR-011 |
 | [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad  | Vigente                 |
 | [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting   | Vigente                 |
-| [ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md)              | Arquitectura centrada en datos con capa de decisiones en n8n | Propuesto               |
-| [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md)       | Migración a Microfrontend con Next.js Multi-Zones y Nginx     | Vigente                 |
+| [ADR-012](infrastructure/ADRs/ADR-012-data-centric-arquitectura.md)              | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente                 |
+| [ADR-013](infrastructure/ADRs/ADR-013-microfrontend-nextjs-multizones.md)       | Microservicios Frontend (Microfrontends) con Next.js y Nginx  | Vigente                 |
 
 ---
 
@@ -190,11 +189,11 @@ cd infrastructure
 cp infrastructure/.env.example infrastructure/.env
 # Editar infrastructure/.env con las credenciales propias
 
-# 3. Levantar los 4 servicios
+# 3. Levantar los 7 servicios
 cd infrastructure
 docker compose up -d
 
-# 4. Verificar que todos los contenedores están activos
+# 4. Verificar que todos los contenedores están activos (7/7 Up)
 docker compose ps
 ```
 
@@ -204,13 +203,16 @@ Para el despliegue en producción en la nube, consultar el [Manual de Despliegue
 ### Desarrollo local de Microfrontends (sin Docker)
 
 ```bash
-# Terminal 1 — mf-consulta:
+# Terminal 1 — mf-dashboard (Panorama general):
+cd src/mf-dashboard && npm run dev     # http://localhost:3000
+
+# Terminal 2 — mf-consulta (Chat NLQ):
 cd src/mf-consulta && npm run dev      # http://localhost:3001
 
-# Terminal 2 — mf-historicos:
+# Terminal 3 — mf-historicos (Datos históricos):
 cd src/mf-historicos && npm run dev    # http://localhost:3002
 ```
-> **Nota de navegación:** Los enlaces cross-zone (`/historicos` y `/`) resuelven a través de `nginx-shell` (puerto 3000). En desarrollo local sin Nginx, abrir manualmente el puerto correspondiente de cada MF.
+> **Nota de navegación:** Los enlaces cross-zone (`/`, `/consulta`, `/historicos`) resuelven a través de `nginx-shell` (puerto 3000). En desarrollo local sin Nginx, abrir manualmente el puerto correspondiente de cada MF.
 
 
 ---
@@ -219,20 +221,22 @@ cd src/mf-historicos && npm run dev    # http://localhost:3002
 
 ```
 /
+├── AGENTS.md                    # Guía de arquitectura y gobernanza para agentes de IA
 ├── .github/
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/               # Pipelines de CI/CD
 ├── infrastructure/
 │   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-013)
-│   ├── diagrams/                # Diagramas C4 en Draw.io XML (L1, L2, L3)
-│   ├── manuals/                 # Manuales de despliegue y redes (Azure / OCI)
+│   ├── manuals/                 # Manuales de despliegue y redes (Azure)
 │   ├── scripts-poc-arquitectura/ # Scripts de verificación y PoCs de arquitectura
 │   ├── nginx/                   # Configuración de Nginx Shell Router (ADR-013)
-│   ├── docker-compose.yml       # Orquestación de contenedores
+│   ├── docker-compose.yml       # Orquestación de los 7 contenedores (ADR-008)
 │   └── .env.example             # Plantilla de variables de entorno
 ├── src/
-│   ├── mf-consulta/             # Microfrontend 1: Chat NLQ y tendencias
-│   ├── mf-historicos/           # Microfrontend 2: Datos históricos
+│   ├── core/                    # Biblioteca pura @healthradar/core (ADR-012)
+│   ├── mf-dashboard/            # Microfrontend 1: Panorama general y KPIs (ADR-013)
+│   ├── mf-consulta/             # Microfrontend 2: Chat NLQ y tendencias (ADR-004, ADR-013)
+│   ├── mf-historicos/           # Microfrontend 3: Datos históricos y mapa (ADR-013)
 │   ├── n8n-workflows/           # Workflows de n8n (JSON versionados)
 │   ├── database/
 │   │   ├── migrations/          # Migraciones SQL numeradas

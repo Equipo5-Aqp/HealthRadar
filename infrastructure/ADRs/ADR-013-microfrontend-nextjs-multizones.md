@@ -1,59 +1,69 @@
-# ADR-013: Migración a Arquitectura Microfrontend con Next.js Multi-Zones y Shell Router Nginx
+# ADR-013: Migración a Arquitectura de Microservicios Frontend (Microfrontends) con Next.js Multi-Zones y Shell Router Nginx
 
 **Estado:** Aceptado (2026-10-06)  
 **Relacionado con:** ADR-004, ADR-008, ADR-011, ADR-012  
-**Refina a:** ADR-004  
+**Refina a:** ADR-004 (desacopla el frontend monolítico en microservicios visuales autónomos)
 
 ## Contexto
 
-El frontend original de HealthRadar consistía en una única aplicación monolítica en Next.js alojada en un único contenedor (`src/frontend/`), compuesta por dos páginas principales:
-- `src/frontend/src/app/page.js`: Consulta epidemiológica en lenguaje natural (NLQ) y visualización de tendencias (~405 líneas).
-- `src/frontend/src/app/historicos/page.js`: Exploración y filtrado de datasets históricos de Dengue, EDA e IRA (~277 líneas).
+El frontend original de HealthRadar consistía en una única aplicación monolítica en Next.js (`src/frontend/`), agrupando en una sola base de código la vista de bienvenida, el chat analítico NLQ y el explorador de datasets históricos.
 
-Aunque ambas funcionalidades compartían la identidad visual de la aplicación, su evolución, dependencias y ciclo de despliegue debían ser desacoplados para permitir desarrollo y despliegues independientes sin riesgo de afectar el servicio completo ante fallos de una zona particular.
+Esta estructura presentaba limitaciones directas para el trabajo en equipo y el ciclo de vida del software:
+- Un cambio en la interfaz del chat exigía reconstruir y redesplegar todo el frontend.
+- Fallos o sobrecargas de procesamiento en una funcionalidad afectaban la disponibilidad general del portal.
+- Se contraponía al lineamiento de arquitectura establecido por la cátedra, el cual requiere una **Arquitectura de Microservicios en el Frontend (Microfrontends)** donde cada módulo de la interfaz opere como un servicio autónomo e independiente conectado a su respectivo flujo de eventos en el backend.
 
-Se evaluaron y descartaron las siguientes alternativas:
-- **Module Federation (Webpack/Rspack):** Descartado debido a la complejidad de configuración y la sobrecarga innecesaria de memoria RAM sobre el presupuesto de 4 GiB de la VM.
-- **Despliegue mixto en Vercel:** Descartado porque Vercel requeriría exponer los webhooks internos de n8n a internet público, violando la regla crítica de seguridad y aislamiento de red privada de ADR-004 y ADR-008.
-- **Frontend modular intra-proceso (Ruta única Next.js en un solo contenedor):** Descartado porque no constituye una arquitectura de microfrontends real: carece de builds, pipelines de CI/CD y despliegues independientes en contenedores aislados.
+Se evaluaron alternativas como Module Federation en Webpack/Rspack (descartado por excesiva complejidad y sobrecarga de memoria RAM) y despliegues serverless externos como Vercel (descartado porque expondría los webhooks internos a la red pública, violando el aislamiento estricto de ADR-004 y ADR-008).
 
 ## Decisión
 
-Se adopta el patrón oficial **Next.js Multi-Zone** soportado por un contenedor **nginx-shell** como Shell Router en el puerto público 3000:
+Se adopta la arquitectura de **Microservicios Frontend (Microfrontends)** implementada bajo el patrón **Next.js Multi-Zones** y coordinada por un **Shell Router Nginx** en el perímetro:
 
-1. **Desacoplamiento en dos Microfrontends (MFs):**
-   - **`mf-consulta`**: Maneja la ruta raíz `/` (Chat NLQ y tendencias). Escucha internamente en `PORT=3000` con `basePath: ''`.
-   - **`mf-historicos`**: Maneja el subdominio de rutas `/historicos` (exploración tabular y filtros). Escucha internamente en `PORT=3000` con `basePath: '/historicos'`.
+### 1. Desacoplamiento en Tres Microfrontends Autónomos (Microservicios UI)
+Cada dominio funcional se convierte en un microfrontend aislado con su propio contenedor Docker, dependencias, variables de entorno y pipeline de CI/CD:
+- **`mf-dashboard` (Microfrontend 1 - Panorama General):**
+  - Maneja la ruta raíz `/` (Landing page, KPIs epidemiológicos de Dengue/EDA/IRA, semáforo de riesgo y accesos rápidos).
+  - Escucha internamente en `PORT=3000` con `basePath: ''`.
+  - Contenedor: `healthradar-mf-dashboard` (192 MB RAM, IP `172.20.0.8`).
+- **`mf-consulta` (Microfrontend 2 - Asistente NLQ):**
+  - Maneja la subruta `/consulta` (Interfaz conversacional de lenguaje natural, proyección de tendencias y recomendaciones sanitarias).
+  - Escucha internamente en `PORT=3000` con `basePath: '/consulta'`.
+  - Contenedor: `healthradar-mf-consulta` (192 MB RAM, IP `172.20.0.6`).
+- **`mf-historicos` (Microfrontend 3 - Datos Históricos):**
+  - Maneja la subruta `/historicos` (Tabla exploratoria tabular, filtros por departamento/semana y mapa epidemiológico del Perú).
+  - Escucha internamente en `PORT=3000` con `basePath: '/historicos'`.
+  - Contenedor: `healthradar-mf-historicos` (192 MB RAM, IP `172.20.0.7`).
 
-2. **Shell Router (Nginx):**
-   - Imagen ligera `nginx:1.27-alpine` (~64 MB RAM) expuesta al host en `3000:3000`.
-   - Mapea `location /historicos` hacia `http://mf-historicos:3000` y `location /` hacia `http://mf-consulta:3000`.
+### 2. Shell Router Perimetral (Nginx)
+Un contenedor ligero `nginx:1.27-alpine` (`healthradar-nginx-shell`, 64 MB RAM, IP `172.20.0.2`) opera como el único punto de entrada público expuesto al host en `3000:3000`:
+- Enruta el tráfico HTTP según la ruta solicitada:
+  - `location /` y activos de dashboard ➔ upstream `mf_dashboard`.
+  - `location /consulta` y activos de consulta ➔ upstream `mf_consulta`.
+  - `location /historicos` y activos de históricos ➔ upstream `mf_historicos`.
+- Mantiene los 3 microfrontends y el resto del stack confinados de manera segura en la red interna privada `healthradar-net`.
 
-3. **Resolución de API y BasePath en Cliente:**
-   - En `mf-historicos`, las rutas API de Next.js se sirven bajo `/historicos/api/historicos`.
-   - En el cliente (`n8nHistoricosAdapter.js`), la llamada usa una constante literal `const BASE = '/historicos'`. No se utiliza `NEXT_PUBLIC_*` en variables de entorno de runtime porque Next.js inlinea dichas variables en tiempo de compilación (`next build`), lo que provocaría discrepancias o fallos 404 al servirse tras el proxy.
+### 3. Emisión de Eventos hacia el Backend (Conexión 1 a 1 con EDA)
+Cada microfrontend contiene su propia capa BFF (`/api/*`) que transforma las interacciones del usuario en eventos y los despacha hacia los webhooks de n8n (ADR-012) usando `N8N_INTERNAL_URL`:
+- `mf-consulta` emite eventos hacia `/webhook/consulta` y `/webhook/tendencia`.
+- `mf-historicos` emite eventos hacia `/webhook/historicos`.
+- `mf-dashboard` consulta vistas consolidadas.
 
-4. **Reglas de Gobernanza de Arquitectura:**
-   - **Regla 1 (Aislamiento de dependencias):** Prohibido importar código entre microfrontends o directamente hacia `@healthradar/core`. Cada MF es autónomo y desacoplado.
-   - **Regla 2 (Shared puro):** La carpeta interna `modules/shared/constants/` solo contiene constantes puras (datos planos), sin estado, hooks, fetch ni dependencias de React.
-   - **Regla 3 (Estilos autocontenidos):** Cada componente define sus propios estilos `const styles = { ... }`. Los ensambladores gestionan el layout estructural y `globals.css` solo provee reset y tokens tipográficos.
-   - **Regla 4 (Navegación cross-zone):** La navegación entre diferentes zonas (`/` y `/historicos`) se realiza estrictamente con etiquetas `<a href="...">` nativas, nunca con `<Link>` de `next/link`, para evitar que el `basePath` interfiera en el enrutamiento inter-zona.
+### 4. Reglas de Gobernanza
+- **Aislamiento absoluto:** Prohibido compartir estado en memoria o importar código fuente directo entre microfrontends.
+- **Navegación Cross-Zone:** La transición entre zonas (`/`, `/consulta`, `/historicos`) se realiza mediante etiquetas HTML `<a>` nativas, evitando que el enrutador cliente de Next.js colisione con el `basePath` de otra zona.
+- **Límites de Recursos:** Cada microfrontend tiene un techo innegociable de 192 MB de RAM (`mem_limit` en Compose), totalizando 576 MB entre los 3 servicios.
 
 ## Consecuencias
 
 **Beneficios:**
-
-- **Despliegues 100% independientes:** Es posible actualizar o reiniciar `mf-consulta` (`docker compose up -d --build mf-consulta`) sin interrumpir la operación de `mf-historicos` ni del Shell Router.
-- **CI/CD optimizado:** Pipelines independientes en GitHub Actions activados por detección de cambios en carpetas (`paths-filter`).
-- **Aislamiento de fallos:** Un error crítico de runtime en una zona no colapsa el servidor de la otra zona.
+- **Independencia de Desarrollo y Despliegue:** Cada microfrontend puede compilarse, probarse y desplegarse de manera 100% aislada sin riesgo de caída transversal del portal.
+- **Alineación con la Arquitectura de Microservicios:** Cumple a cabalidad con la segregación modular del frontend requerida por la cátedra.
+- **Aislamiento de Fallos:** Si el servicio de consulta NLQ experimenta alta demanda o falla temporalmente, el dashboard y el visor histórico continúan operando normalmente.
 
 **Riesgos:**
-
-- **Consumo de memoria (+192 MB):** Se añade un contenedor Next.js standalone adicional (192 MB) y nginx (64 MB). El presupuesto total estimado es:
-  `PostgreSQL (768 MB) + n8n (1536 MB) + Phoenix (512 MB) + Nginx (64 MB) + mf-consulta (192 MB) + mf-historicos (192 MB) = 3264 MB`, dejando un margen (~832 MB) para el sistema operativo en la VM de 4 GiB (ADR-011).
-- **Sobrecarga de dos procesos V8:** Se debe vigilar el consumo de CPU y memoria periódicamente mediante métricas y `docker stats`.
+- Sobrecarga de memoria de 3 runtimes Node.js independientes (+576 MB en total).
+- Duplicación de dependencias básicas (React/Next.js) en cada imagen Docker.
 
 **Mitigación:**
-
-- Se configuran límites estrictos de memoria (`mem_limit` y `memswap_limit` de 192 MB) en `docker-compose.yml` para cada microfrontend, evitando que saturen la memoria de la VM.
-- Se implementan healthchecks dedicados por microfrontend en Docker Compose y se monitorea el estado del stack post-despliegue mediante `docker stats`.
+- Uso estricto del modo `output: 'standalone'` en `next.config.js` e imágenes base `alpine` optimizadas.
+- Presupuesto global de memoria controlado en 3,456 MB de los 4,096 MB de la VM de Azure (ADR-008, ADR-011).
