@@ -1,6 +1,7 @@
-# ADR-007: Open-Meteo como fuente de datos climáticos históricos y semanales
+# ADR-007: Selección de Open-Meteo como fuente de datos climáticos históricos y semanales
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-003 (división de LLMs)
+**Estado:** Aceptado (2026-08-17)  
+**Relacionado con:** ADR-001, ADR-003, ADR-006  
 
 ## Contexto
 

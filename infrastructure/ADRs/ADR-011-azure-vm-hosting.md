@@ -2,7 +2,7 @@
 
 **Estado:** Aceptado (2026-08-21)  
 **Reemplaza a:** [ADR-009](ADR-009-oci-always-free-hosting.md)  
-**Relacionado con:** ADR-001 (Orquestación n8n), ADR-002 (PostgreSQL con pgvector), ADR-004 (Next.js Frontend), ADR-008 (Docker Compose), ADR-010 (Observabilidad Arize Phoenix)
+**Relacionado con:** ADR-001, ADR-002, ADR-004, ADR-008, ADR-010, ADR-012, ADR-013  
 
 ## Contexto
 

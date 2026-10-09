@@ -1,8 +1,8 @@
 # ADR-009: Oracle Cloud Infrastructure (OCI) Always Free como proveedor de hosting para el host único de Docker Compose
 
 **Estado:** Superado por [ADR-011](ADR-011-azure-vm-hosting.md) (2026-08-21)  
-**Superado por:** [ADR-011](ADR-011-azure-vm-hosting.md) — Adopción de Microsoft Azure Virtual Machines  
-**Relacionado con:** ADR-001 (orquestación n8n), ADR-010 (observabilidad Arize Phoenix), ADR-008 (Docker Compose), ADR-011 (Hosting Azure VM)
+**Superado por:** [ADR-011](ADR-011-azure-vm-hosting.md)  
+**Relacionado con:** ADR-001, ADR-008, ADR-010, ADR-011  
 
 ## Contexto
 

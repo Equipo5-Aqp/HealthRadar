@@ -1,126 +1,61 @@
-# ADR-008: Docker Compose como estrategia de despliegue self-hosted
+# ADR-008: Adopción de Docker Compose como estrategia de despliegue self-hosted
 
-Relacionado con: ADR-001 (orquestación n8n), ADR-004 (Next.js Frontend), ADR-010 (Arize Phoenix)
+**Estado:** Aceptado (2026-08-18)  
+**Relacionado con:** ADR-001, ADR-004, ADR-010, ADR-011, ADR-013
 
 ## Contexto
 
-HealthRadar está compuesto por cuatro contenedores internos: el Frontend
-(Next.js), el orquestador de workflows (n8n), la base de datos
-(PostgreSQL + pgvector) y la plataforma de observabilidad (Arize Phoenix).
-Los ADR-001 y ADR-010 ya mencionan que n8n y Phoenix se despliegan
-"con Docker", pero ninguno de los ADRs existentes define formalmente
-la estrategia de despliegue del sistema completo, ni resuelve dónde
-vive el contenedor del Frontend ni cómo se comunican entre sí los
-cuatro contenedores.
+HealthRadar requiere desplegar un conjunto heterogéneo de componentes que cooperan de forma coordinada: base de datos relacional y vectorial, orquestador de flujos, plataforma de observabilidad de LLMs, proxy inverso perimetral y múltiples zonas de microfrontend.
 
-Dejar esta decisión implícita genera un riesgo real: si cada
-contenedor se despliega por separado y con criterios distintos (por
-ejemplo, el Frontend en un servicio gestionado como Vercel y el resto
-autohospedado), se rompe la premisa de self-hosted establecida en
-ADR-001, se multiplican los puntos de configuración de red y
-credenciales, y se dificulta la reproducibilidad del entorno completo
-para efectos de evaluación y auditoría técnica.
+Dejar la estrategia de despliegue abierta o dispersa genera riesgos críticos:
 
-Se evaluaron tres alternativas de orquestación de despliegue:
+- **Dispersión en servicios gestionados independientes (SaaS):** Desplegar el frontend en Vercel, la base en Supabase y n8n en n8n Cloud destruiría la premisa obligatoria de _Self-Hosted_ y soberanía de datos (ADR-001), multiplicaría la latencia de red y expondría webhooks internos a internet público, vulnerando la seguridad perimetral de ADR-004.
+- **Sobrecarga de Kubernetes:** Introducir un clúster k8s (control plane, ingress controllers, almacenamiento distribuido) requeriría recursos de cómputo inalcanzables dentro del presupuesto de una máquina virtual de recursos acotados (4 GB de RAM en Azure, ADR-011).
 
-- **Kubernetes:** provee orquestación multi-nodo, autoescalado y
-  recuperación avanzada ante fallos, pero introduce una complejidad
-  operacional (control plane, manifiestos YAML, gestión de clúster)
-  desproporcionada para un sistema de cuatro contenedores en un solo
-  host, sin necesidad real de escalado horizontal en el alcance actual
-  del proyecto.
-- **Servicios gestionados por separado** (Vercel para el Frontend,
-  n8n Cloud, una base de datos como servicio, etc.): elimina el
-  control sobre la infraestructura, contradice directamente la decisión
-  de self-hosted de ADR-001, y obliga a exponer credenciales y URLs de
-  integración entre proveedores distintos, aumentando la superficie de
-  riesgo de seguridad que ADR-004 buscaba minimizar.
-- **Docker Compose de un solo host:** orquesta los cuatro contenedores
-  en una única máquina, con un solo archivo de definición versionable,
-  sin necesidad de gestionar un clúster.
+Se requiere una solución de orquestación de contenedores unificada, ligera, versionable en Git y capaz de operar de forma determinista en un único host virtual.
 
 ## Decisión
 
-Se utilizará **Docker Compose** como única estrategia de despliegue de
-HealthRadar, en un solo host. Los cuatro contenedores del sistema —
-Frontend (Next.js), Orquestador (n8n), Base de Datos (PostgreSQL +
-pgvector) y Observabilidad (Arize Phoenix) — se definen en un mismo archivo
-`docker-compose.yml` en la raíz del repositorio.
+Se adopta **Docker Compose** como la **única estrategia de despliegue self-hosted** para HealthRadar, gestionado mediante un archivo centralizado [`infrastructure/docker-compose.yml`]
 
-Reglas de la estrategia de despliegue:
+### Topología de los 7 Servicios del Stack
 
-- **Red interna:** los cuatro contenedores se comunican entre sí a
-  través de la red interna de Docker Compose, usando el nombre del
-  servicio como hostname (por ejemplo, n8n se conecta a PostgreSQL
-  mediante el hostname `postgres`, no mediante una IP pública). Ningún
-  contenedor expone puertos innecesarios al host.
-- **Puertos expuestos al host:** únicamente el Frontend (Next.js)
-  expone un puerto público, ya que es el único contenedor que debe ser
-  accesible desde fuera de la red interna. n8n, PostgreSQL y Phoenix
-  no exponen puertos públicos; solo son alcanzables entre sí dentro de
-  la red interna de Docker Compose.
-- **Variables de entorno y credenciales:** todas las credenciales
-  (tokens de webhook de n8n, claves de conexión a PostgreSQL, secretos
-  de Phoenix) se inyectan mediante un archivo `.env` en la raíz del
-  repositorio, nunca escritas directamente en el `docker-compose.yml`
-  ni en el código, conforme a la regla crítica de "cero credenciales
-  expuestas" (`mi_rol_arquitecto.md`, sección 6).
-- **Persistencia de datos:** PostgreSQL y Phoenix usan volúmenes
-  nombrados de Docker (`postgres_data`, `phoenix_data`) para persistir
-  datos entre reinicios de los contenedores. n8n usa un volumen
-  (`n8n_data`) para persistir los workflows y credenciales configuradas
-  en su interfaz.
-- **Política de reinicio:** todos los servicios usan
-  `restart: unless-stopped`, de modo que ante una caída del host o de
-  un contenedor individual, Docker los reinicia automáticamente sin
-  intervención manual, en línea con la mitigación de riesgo de punto
-  único de falla ya identificada en ADR-001.
+El archivo orquesta exactamente **siete contenedores**, aislados en la red interna bridge **`healthradar-net`** (`172.20.0.0/16`) con asignación de IP estática:
+
+| Servicio           | Contenedor                  | IP Fija      | `mem_limit`  | Exposición de Puertos      | Propósito                                                       |
+| ------------------ | --------------------------- | ------------ | ------------ | -------------------------- | --------------------------------------------------------------- |
+| **postgres**       | `healthradar-postgres`      | `172.20.0.4` | `768m`       | Interno (5432)             | BD relacional + pgvector (ADR-002)                              |
+| **n8n**            | `healthradar-n8n`           | `172.20.0.3` | `1536m`      | Interno (5678)             | Orquestador con `@healthradar/core` embebido (ADR-001, ADR-012) |
+| **phoenix**        | `healthradar-phoenix`       | `172.20.0.5` | `512m`       | Interno (6006, 4317, 4318) | Observabilidad LLM (ADR-010)                                    |
+| **nginx-shell**    | `healthradar-nginx-shell`   | `172.20.0.2` | `64m`        | **`3000:3000` (Público)**  | Shell Router perimetral y reverse proxy (ADR-013)               |
+| **mf-dashboard**   | `healthradar-mf-dashboard`  | `172.20.0.8` | `192m`       | Interno (3000)             | MF-1: Landing page y Panorama en `/` (ADR-013)                  |
+| **mf-consulta**    | `healthradar-mf-consulta`   | `172.20.0.6` | `192m`       | Interno (3000)             | MF-2: Chat NLQ asistencial en `/consulta` (ADR-004, ADR-013)    |
+| **mf-historicos**  | `healthradar-mf-historicos` | `172.20.0.7` | `192m`       | Interno (3000)             | MF-3: Tabla y Mapa de calor en `/historicos` (ADR-013)          |
+| **Total Asignado** | —                           | —            | **3,456 MB** | —                          | **84.4 % de la RAM de la VM (4,096 MB)**                        |
+
+### Reglas de Implementación y Seguridad
+
+1. **Aislamiento perimetral estricto (ADR-004):** Únicamente `nginx-shell` mapea puertos hacia el host exterior (`3000:3000`). Los demás 6 contenedores permanecen inaccesibles desde internet y solo se comunican entre sí a través de la red privada `healthradar-net`.
+2. **Inyección de credenciales seguras:** Ninguna contraseña, llave de API de LLM ni clave criptográfica se escribe en `docker-compose.yml`. Todas se inyectan en tiempo de ejecución desde `infrastructure/.env` (versionando únicamente `.env.example`).
+3. **Persistencia de estado:** Se configuran tres volúmenes nombrados gestionados por Docker para sobrevivir a recreaciones de contenedores: `postgres_data`, `n8n_data` y `phoenix_data`.
+4. **Resiliencia y arranque ordenado:** Todos los servicios configuran `restart: unless-stopped`. Se implementan `healthcheck` específicos en cada contenedor y directivas `depends_on: { condition: service_healthy }` para asegurar que n8n espere a Postgres, y Nginx espere a que los microfrontends estén saludables antes de admitir tráfico.
+5. **Rotación obligatoria de logs en disco:** Cada servicio restringe su salida mediante el driver `json-file` con `max-size: "10m"` y `max-file: "3"`, acotando el crecimiento de logs a un máximo de 30 MB por servicio para proteger el almacenamiento del servidor.
 
 ## Consecuencias
 
 **Beneficios:**
 
-- Reproducibilidad total del entorno: cualquier persona del equipo (o
-  el evaluador del proyecto) puede levantar el sistema completo con un
-  solo comando (`docker compose up`), sin configuración manual
-  dispersa entre proveedores.
-- Consistencia con la decisión de self-hosted de ADR-001: ningún
-  contenedor depende de un servicio gestionado externo para operar.
-- Simplicidad operacional: no se requiere gestionar un clúster ni
-  aprender una herramienta de orquestación adicional para un sistema
-  de cuatro contenedores en un solo host.
-- Superficie de ataque reducida: solo el Frontend expone un puerto
-  público; n8n, PostgreSQL y Phoenix permanecen inaccesibles desde
-  fuera de la red interna de Docker, incluso si sus credenciales se
-  vieran comprometidas por otra vía.
-- Un único archivo `docker-compose.yml` es versionable en el
-  repositorio y auditable como parte del proceso de revisión de PRs.
+- **Reproducibilidad determinista:** El stack completo se inicializa y destruye con comandos estándar (`docker compose up -d`), permitiendo idéntico comportamiento en entornos locales y en la VM de Azure.
+- **Cumplimiento estricto de memoria:** El techo de 3,456 MB asegura un margen libre de **640 MB (15.6%)** reservado para el kernel de Linux, SSH daemon y Docker runtime.
+- **Seguridad perimetral simplificada:** Al cerrar los puertos de Postgres, n8n y Phoenix hacia el exterior, se reduce a cero la superficie de ataque sobre los motores de base de datos y orquestación.
 
 **Riesgos:**
 
-- **Single point of failure de infraestructura:** al estar todo en un
-  solo host, si ese host cae, todo el sistema —incluyendo el
-  Frontend— deja de estar disponible. Esto amplía el riesgo ya
-  identificado en ADR-001 (antes limitado a n8n) a los cuatro
-  contenedores.
-- Docker Compose no ofrece autoescalado ni balanceo de carga. Si el
-  volumen de consultas NLQ creciera significativamente, esta
-  arquitectura de despliegue no soporta ese crecimiento sin
-  rediseño.
-- Un error en la configuración de red interna de Docker Compose podría
-  exponer accidentalmente un puerto de PostgreSQL o n8n al host,
-  rompiendo la regla de "cero accesos directos indebidos"
-  (`mi_rol_arquitecto.md`, sección 7).
+- **Host único como punto único de fallo (SPOF):** La caída de la máquina virtual anfitriona detiene la totalidad del ecosistema.
+- **Sobrecarga de RAM durante compilaciones paralelas:** Si el proceso de despliegue compila múltiples microfrontends Next.js en paralelo (`docker compose up -d --build`), la demanda momentánea de RAM puede superar los 4 GB de la VM y disparar el OOM Killer.
 
 **Mitigación:**
 
-- El Arquitecto valida en cada PR que modifique el `docker-compose.yml`
-  que únicamente el servicio del Frontend declare un mapeo de puertos
-  hacia el host.
-- El archivo `.env` se excluye explícitamente del control de versiones
-  mediante `.gitignore`, y se documenta un `.env.example` sin valores
-  reales como referencia para el equipo.
-- Si en una fase futura el volumen de uso lo justifica, este ADR queda
-  documentado como punto de partida para evaluar una migración a
-  Kubernetes u otra estrategia de orquestación multi-nodo, sin que eso
-  invalide la decisión actual para el alcance presente del proyecto.
+- **Compilación secuencial en CD (`deploy.yml`):** El pipeline de despliegue compila las imágenes de los microfrontends una a una (`docker compose build mf-consulta`, `build mf-historicos`, `build mf-dashboard`) antes de invocar `docker compose up -d`.
+- **Configuración de memoria Swap en el host:** La máquina virtual dispone de un archivo swap de respaldo (2 a 4 GB) para absorber picos temporales del compilador y el daemon de Docker.
+- **Monitoreo post-despliegue:** Se verifica la estabilidad del consumo de memoria en reposo mediante `docker stats --no-stream`.
