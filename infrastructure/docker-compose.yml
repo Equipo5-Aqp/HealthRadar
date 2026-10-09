@@ -1,7 +1,7 @@
 # ADR-008: Docker Compose como estrategia de despliegue self-hosted
 # Todos los servicios en la red interna healthradar-net.
 # Únicamente nginx-shell expone puerto público al host (3000).
-# RAM total: postgres 768 + n8n 1536 + phoenix 512 + nginx 64 + mf-consulta 192 + mf-historicos 192 = 3264 MB / 4096 MB (ADR-011, ADR-012)
+# RAM total: postgres 768 + n8n 1536 + phoenix 512 + nginx 64 + mf-dashboard 192 + mf-consulta 192 + mf-historicos 192 = 3456 MB / 4096 MB (ADR-011, ADR-012)
 
 networks:
   healthradar-net:
@@ -162,7 +162,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Shell Router: nginx reenvía /historicos → mf-historicos y / → mf-consulta
+  # Shell Router: nginx reenvía /historicos → mf-historicos, /consulta → mf-consulta y / → mf-dashboard
   nginx-shell:
     image: nginx:1.27-alpine
     container_name: healthradar-nginx-shell
@@ -173,6 +173,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
+      mf-dashboard:
+        condition: service_healthy
       mf-consulta:
         condition: service_healthy
       mf-historicos:
@@ -192,7 +194,7 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
-  # Microfrontend 1: Chat NLQ (Next.js standalone, basePath vacío)
+  # Microfrontend 2: Chat NLQ (Next.js standalone, basePath '/consulta')
   mf-consulta:
     build:
       context: ../src/mf-consulta
@@ -212,7 +214,7 @@ services:
     mem_limit: 192m
     memswap_limit: 192m
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/consulta"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -221,7 +223,7 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
-  # Microfrontend 2: Datos históricos (basePath '/historicos')
+  # Microfrontend 3: Datos históricos (basePath '/historicos')
   mf-historicos:
     build:
       context: ../src/mf-historicos
@@ -247,6 +249,34 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s 
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Microfrontend 1: Dashboard Panorama — landing page en / (basePath vacío)
+  mf-dashboard:
+    build:
+      context: ../src/mf-dashboard
+      dockerfile: Dockerfile
+    container_name: healthradar-mf-dashboard
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - N8N_INTERNAL_URL=http://n8n:5678
+    networks:
+      healthradar-net:
+        ipv4_address: 172.20.0.8
+    depends_on:
+      n8n:
+        condition: service_healthy
+    mem_limit: 192m
+    memswap_limit: 192m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
