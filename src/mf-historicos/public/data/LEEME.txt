@@ -1,0 +1,15 @@
+peru_departamentos.geojson — contorno de los 25 departamentos del Perú (Callao incluido).
+
+Fuente: Natural Earth, "Admin 1 – States, Provinces" (ne_10m_admin_1_states_provinces), escala 1:10 m.
+  https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-1-states-provinces/
+Licencia: dominio público (Natural Earth no exige permiso ni atribución; se cita por transparencia).
+  https://www.naturalearthdata.com/about/terms-of-use/
+
+Transformaciones aplicadas:
+  - Se conservaron solo los polígonos de Perú.
+  - "Lima" y "Lima Province" se unieron en un solo departamento (código 15), porque en la base de datos
+    el departamento Lima incluye a Lima Metropolitana (ubigeo 15xx).
+  - Simplificación de geometría (tolerancia 0,004°) y 3 decimales de precisión, para pasar de ~40 MB a ~75 KB.
+  - Propiedades: { codigo: "01".."25" (ubigeo INEI, igual a departamento.id_departamento), nombre }.
+
+No es un mapa oficial ni apto para trámites: sirve solo para visualización.

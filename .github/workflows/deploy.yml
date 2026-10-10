@@ -50,6 +50,7 @@ jobs:
             docker compose build mf-historicos
             echo "🐳 Levantando contenedores actualizados..."
             docker compose up -d
+            docker compose restart nginx-shell
             echo "✅ Verificando estado de los servicios..."
             docker compose ps
 

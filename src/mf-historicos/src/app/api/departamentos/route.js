@@ -1,4 +1,4 @@
-// BFF (ADR-004): el navegador solo habla con esta ruta; la URL de n8n no sale del servidor.
+// BFF (ADR-004) → webhook /departamentos (HU-5): casos por cada uno de los 25 departamentos.
 export const dynamic = 'force-dynamic'
 const JSON_HDR = { 'Content-Type': 'application/json' }
 
@@ -6,7 +6,7 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const n8nUrl = process.env.N8N_INTERNAL_URL || 'http://n8n:5678'
-    const res = await fetch(`${n8nUrl}/webhook/historicos`, {
+    const res = await fetch(`${n8nUrl}/webhook/departamentos`, {
       method: 'POST',
       headers: JSON_HDR,
       body: JSON.stringify(body),
