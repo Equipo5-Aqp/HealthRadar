@@ -2,7 +2,7 @@ name: Frontend CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 jobs:
   changes:
@@ -10,6 +10,7 @@ jobs:
     outputs:
       mf_consulta:   ${{ steps.filter.outputs.mf_consulta }}
       mf_historicos: ${{ steps.filter.outputs.mf_historicos }}
+      mf_dashboard: ${{ steps.filter.outputs.mf_dashboard }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -20,6 +21,8 @@ jobs:
               - 'src/mf-consulta/**'
             mf_historicos:
               - 'src/mf-historicos/**'
+            mf_dashboard:
+              - 'src/mf-dashboard/**'
 
   build-mf-consulta:
     needs: changes
@@ -55,4 +58,26 @@ jobs:
         run: npm ci
       - name: Build
         working-directory: src/mf-historicos
+        run: npm run build
+
+  build-mf-dashboard:
+    name: Build mf-dashboard
+    needs: changes
+    if: needs.changes.outputs.mf_dashboard == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/mf-dashboard/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: src/mf-dashboard
+        run: npm ci
+
+      - name: Compilar (next build)
+        working-directory: src/mf-dashboard
         run: npm run build

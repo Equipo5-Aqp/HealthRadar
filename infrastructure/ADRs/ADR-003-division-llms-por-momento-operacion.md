@@ -1,68 +1,49 @@
-# ADR-003: División de LLMs por momento de operación
+# ADR-003: Selección y división de LLMs por momento de operación (Gemini Flash y NVIDIA Kimi/GLM con failover)
+
+**Estado:** Aceptado (2026-08-12)  
+**Relacionado con:** ADR-001, ADR-006, ADR-010, ADR-012  
 
 ## Contexto
 
-HealthRadar requiere dos capacidades distintas de inteligencia artificial:
-procesar PDFs de boletines epidemiológicos del MINSA para extraer datos
-estructurados, y responder consultas en lenguaje natural de analistas de
-salud pública sobre datos históricos y recientes. Usar un único modelo
-para ambas tareas implica un costo mayor, riesgo de saturación de cuotas
-y acopla innecesariamente dos responsabilidades con naturalezas distintas.
+HealthRadar requiere dos capacidades de inteligencia artificial con perfiles operativos muy distintos:
+1. **Extracción pesada multimodal de boletines (Fase Ingesta):** Procesar documentos PDF de hasta 50 páginas del MINSA para extraer tablas y texto epidemiológico sin OCR intermedio propenso a errores. Es un proceso por lotes (batch), predecible en frecuencia pero con alta densidad de tokens de entrada.
+2. **Síntesis interactiva NLQ (Fase Consulta):** Responder consultas en lenguaje natural de analistas sobre datos estructurados ya extraídos. Es un flujo interactivo en tiempo real con alta variabilidad de tráfico, sensible a latencia y susceptible a agotar cuotas (Rate Limits por minuto o por día).
 
-Se evaluaron modelos especializados para cada caso:
-- Para extracción de PDFs: Se requiere alta capacidad multimodal y ventana
-  de contexto amplia para leer documentos de hasta 50 páginas sin necesidad
-  de OCR previo propenso a errores en tablas.
-- Para consultas NLQ: Se requiere precisión de seguimiento de instrucciones,
-  síntesis analítica y redacción en español para salud pública, operando sobre
-  datos ya estructurados provistos por PostgreSQL.
+Utilizar un único proveedor o modelo para ambas tareas concentra el riesgo de fallos, agota rápidamente las cuotas y eleva los costos operativos.
 
 ## Decisión
 
-Se utilizarán dos modelos de lenguaje distintos de proveedores independientes
-(Google y Anthropic), cada uno operando en un momento diferente del sistema,
-sin solapamiento:
+Se adopta una **estrategia multi-modelo y multi-proveedor desacoplada por momento de operación**, orquestada exclusivamente desde n8n:
 
-- **Google Gemini Flash (Google AI Studio)** opera exclusivamente durante el
-  flujo de ingesta semanal. Su responsabilidad es leer el contenido nativo
-  y tablas de los PDFs de boletines epidemiológicos y devolver un JSON
-  estructurado y normalizado. Opera bajo el tier gratuito permanente (Free Tier),
-  garantizando costo $0 en la tarea de mayor volumen de tokens. Nunca interactúa
-  con el analista ni accede directamente a PostgreSQL.
+### 1. Ingesta de Boletines — Google Gemini Flash con Rotación de 3 Cuentas
+- **Proveedor:** Google AI Studio (Gemini Flash).
+- **Rol:** Lectura nativa multimodal de PDFs epidemiológicos y generación de JSON estructurado normalizado.
+- **Estrategia de respaldo:** Se configuran **3 API keys independientes** inyectadas por variables de entorno (`GEMINI_API_KEY`, `GEMINI_API_KEY_2`, `GEMINI_API_KEY_3`).
+- **Comportamiento:** Si una clave alcanza el límite de solicitudes por minuto o día, el flujo de n8n conmuta automáticamente a la siguiente clave mediante la lógica de failover en `@healthradar/core`. Dado que la ingesta ocurre semanalmente en lotes acotados, esta estrategia garantiza un costo de **$0.00** sin interrupciones por cuota.
 
-- **Claude Haiku (Anthropic)** opera exclusivamente durante el flujo de
-  consulta NLQ. Su responsabilidad es recibir datos ya estructurados desde
-  PostgreSQL (provistos por n8n) e interpretarlos para generar un reporte
-  analítico en lenguaje natural dirigido al analista. Nunca recibe PDFs ni datos
-  crudos en bruto, lo que reduce el consumo a menos de ~1,000 tokens por consulta
-  y mantiene el costo operativo marginal (< $1.50/mes).
+### 2. Consulta NLQ — NVIDIA API (Kimi / GLM) con Failover a Gemini
+- **Proveedor principal:** **NVIDIA API** (`NVIDIA_API_KEY`, `NVIDIA_API_KEY_KIMI`).
+- **Modelos seleccionados:** Modelos de alto rendimiento y bajo costo disponibles en la plataforma como **Kimi (Moonshot Kimi K3)** y **GLM (GLM-4 / GLM-5-3)**.
+- **Rol:** Recibir la consulta del analista junto al contexto depurado de PostgreSQL, deducir la intención epidemiológica, sintetizar análisis y redactar reportes ejecutivos en español.
+- **Failover automático:** Si la API de NVIDIA experimenta indisponibilidad, error 429 o saturación, el workflow de consulta conmuta de inmediato hacia las **3 claves de Google Gemini Flash** como respaldo de continuidad operativa.
 
-Ambos modelos son invocados únicamente desde n8n, respetando la regla
-crítica de que ningún componente del sistema interactúa directamente con
-una API de IA sin pasar por la capa de orquestación.
+Ningún modelo es invocado directamente desde el navegador; todas las llamadas son privadas y mediadas por n8n (ADR-001) y auditadas en Arize Phoenix (ADR-010).
 
 ## Consecuencias
 
 **Beneficios:**
 
-- Optimización extrema de costos: Extracción pesada a costo $0.00 con Gemini Flash
-  y consultas interactivas a costo marginal con Claude Haiku.
-- Eliminación de pipelines de OCR intermedios gracias a la capacidad
-  multimodal nativa de Gemini sobre PDFs.
-- Separación clara de responsabilidades y desacoplamiento de cuotas de consumo.
-- Diversidad de proveedores (Google + Anthropic), evitando Vendor Lock-in y
-  habilitando estrategias de contingencia (fallback) en n8n.
+- **Costo operativo marginal y resiliencia:** Extracción pesada gratuita mediante la rotación de 3 cuentas Gemini, combinada con inferencia ágil para NLQ vía NVIDIA.
+- **Continuidad de servicio (Cero caídas por proveedor):** La conmutación automática entre NVIDIA y las 3 cuentas de Google asegura que una caída de API externa no bloquee a los analistas.
+- **Independencia de proveedores (Anti Vendor Lock-in):** Permite cambiar modelos o endpoints sin refactorizar la lógica central del sistema.
 
 **Riesgos:**
 
-- Dependencia de dos proveedores distintos (Google y Anthropic). Si uno
-  cambia su API o pricing, se debe actualizar el nodo correspondiente en n8n.
-- Si Gemini extrae datos incorrectamente del PDF, Haiku generará reportes
-  basados en datos erróneos sin saberlo.
+- **Agotamiento acelerado de cuotas en NLQ:** A diferencia de la ingesta, el asistente NLQ es interactivo y continuo. Múltiples analistas consultando en paralelo pueden consumir rápidamente las cuotas de tokens por minuto o agotar créditos en NVIDIA.
+- **Discrepancia de formato entre modelos:** Respuestas de modelos distintos (Kimi vs Gemini) pueden diferir en el seguimiento de esquemas JSON si no están fuertemente validados.
 
 **Mitigación:**
 
-- Agregar un nodo de validación de esquema JSON en n8n entre la extracción
-  de Gemini y la inserción en PostgreSQL.
-- Monitorear la calidad de extracción y posibles derivas (Data Drift / Prompt Drift)
-  utilizando Arize Phoenix (ADR-010).
+- **Integración de Contingencia vía OpenCode / OpenRouter:** Como vía de mitigación arquitectónica ante saturación extrema de cuotas en NLQ, el sistema contempla el uso de proveedores agregadores como **OpenCode u OpenRouter** (habilitando modelos alternativos como DeepSeek, Qwen o Nous Research) bajo la misma interfaz estándar compatible con OpenAI.
+- **Normalización estricta de salidas:** La biblioteca `@healthradar/core` implementa un validador de contratos (shape-check) sobre las respuestas de los LLMs antes de retornarlas al frontend, asegurando una estructura uniforme sin importar qué modelo respondió la consulta.
+- **Monitoreo de Drift y Tokens:** Arize Phoenix (ADR-010) audita la latencia, consumo de tokens y tasa de fallos de cada proveedor en tiempo real.

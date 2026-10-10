@@ -19,7 +19,7 @@ name: Consolidar Reporte MLOps
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [ main ]
 
 permissions:
   checks: read
