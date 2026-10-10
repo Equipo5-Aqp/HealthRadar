@@ -71,11 +71,19 @@ function detectarPeriodo(pregunta) {
   }
 
   // 2. "SEMANA N" o "SE N" explícita
-  const regexSemana = /(?:semana|se)\s*(\d{1,2})(?:\s*-?\s*(\d{4}))?/i;
+  // El año puede ir pegado ("SE 5 2025", "SE5-2025", "5/2025") o con conector
+  // ("semana 5 del 2025", "de 2025", "en el 2025", "del año 2025"). \b evita falsos positivos
+  // dentro de otras palabras ("pase 12", "base 3").
+  const regexSemana = /\b(?:semana|se)\s*(\d{1,2})(?:\s*(?:[-\/,]|del?|en(?:\s+el)?)?\s*(?:a[nñ]o\s+)?(\d{4}))?/i;
   const matchSemana = texto.match(regexSemana);
   if (matchSemana) {
     const semana = Number(matchSemana[1]);
-    const anio = matchSemana[2] ? Number(matchSemana[2]) : new Date().getFullYear();
+    // Año: el que acompaña a la semana; si no hay, un año suelto en cualquier parte de la pregunta
+    // ("casos del 2025 en la semana 5"); si tampoco, el año actual.
+    const anioSuelto = texto.match(/\b(20[1-2]\d)\b/);
+    const anio = matchSemana[2] ? Number(matchSemana[2])
+      : anioSuelto ? Number(anioSuelto[1])
+      : new Date().getFullYear();
     return {
       anio,
       semana_desde: semana,

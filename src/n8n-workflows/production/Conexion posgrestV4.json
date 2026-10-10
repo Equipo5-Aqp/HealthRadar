@@ -1,5 +1,5 @@
 {
-  "name": "Conexion posgrest V3",
+  "name": "Conexion posgrestV4",
   "nodes": [
     {
       "parameters": {
@@ -14,7 +14,7 @@
         -2240,
         992
       ],
-      "id": "9506d0f6-f0da-41f7-963e-10ae13c5875b",
+      "id": "3b115e1e-0ae5-4862-b963-95b35108d9ec",
       "name": "Webhook",
       "webhookId": "8b566a4b-0d69-4c66-9cfa-6c4b7c964649"
     },
@@ -28,7 +28,7 @@
         -2032,
         992
       ],
-      "id": "e7907db5-c68a-4d8f-b115-586ec9c09a3e",
+      "id": "92b08d0a-dd2d-4222-957f-2086df2c26e0",
       "name": "Detectar periodo en la pregunta"
     },
     {
@@ -43,7 +43,7 @@
         -1840,
         992
       ],
-      "id": "b1fae905-9b0c-4a81-a3ba-6218bc77f562",
+      "id": "5773234d-5c91-4ce8-8347-102e94f2dbda",
       "name": "Get row(s)1",
       "credentials": {
         "postgres": {
@@ -62,7 +62,7 @@
         -1664,
         992
       ],
-      "id": "3fa95ffb-90c4-41d0-a9a5-0a455f679085",
+      "id": "2e2b1402-111b-4a60-9e0b-d1276a614f40",
       "name": "Resolver ventana por defecto (si aplica)"
     },
     {
@@ -75,7 +75,7 @@
         -848,
         1088
       ],
-      "id": "3eadfd86-f663-4b8c-a65e-da7f753d661c",
+      "id": "4115a9c5-b600-4ec7-892d-d98bebda4d1f",
       "name": "Filtrar boletines del periodo"
     },
     {
@@ -90,7 +90,7 @@
         -1328,
         1296
       ],
-      "id": "1ab9fc0f-6fb1-40ae-80b5-0cd66d699792",
+      "id": "ad93dce1-cce7-4fd1-850a-ab6160110b69",
       "name": "Get row(s)",
       "credentials": {
         "postgres": {
@@ -109,7 +109,7 @@
         -1008,
         1328
       ],
-      "id": "65c5471c-7b1d-42e3-aea7-334b44eb6ba2",
+      "id": "fcc1bcb0-0431-4e22-ae7b-c5b4e7df18c7",
       "name": "Filtrar clima del periodo"
     },
     {
@@ -122,7 +122,7 @@
         448,
         1456
       ],
-      "id": "5f798bfc-aad1-4de4-9a82-0dd7addb9b7f",
+      "id": "d2c0ad4d-f197-42aa-8a7b-20627466053d",
       "name": "Consolidar boletines + clima del periodo"
     },
     {
@@ -136,15 +136,15 @@
         592,
         2240
       ],
-      "id": "461060d1-3bd3-4601-bf11-8e8d6b67374a",
+      "id": "884057c3-d950-4ae6-97c2-a43e139f9d54",
       "name": "Simple Memory",
-      "notes": "Memoria por sesion: usa body.sessionId (lo manda el front); si no viene, una memoria aislada por consulta.",
-      "notesInFlow": true
+      "notesInFlow": true,
+      "notes": "Memoria por sesion SOLO para los agentes de Gemini (respaldo). Kimi y GLM usan la tabla chat_mensaje."
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json }}",
+        "responseBody": "={{ Object.fromEntries(Object.entries($json).filter(([k]) => k !== '_verificacion')) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
@@ -153,7 +153,7 @@
         2112,
         1184
       ],
-      "id": "f24a32b4-6a51-49fb-a980-fc0f0a4ac97e",
+      "id": "be660529-a58f-4bcb-a5a1-3a3913d8442b",
       "name": "Respond to Webhook"
     },
     {
@@ -169,7 +169,7 @@
         128,
         1760
       ],
-      "id": "f5fe52c6-dbd9-4bf7-8bf7-cc0c0be67730",
+      "id": "a63c861e-f443-4cf1-8a2a-318bb4241e00",
       "name": "Merge (esperar ambas ramas)",
       "alwaysOutputData": true
     },
@@ -183,7 +183,7 @@
         -1136,
         768
       ],
-      "id": "eeb3feb0-680c-4402-b6b3-0eef639b7c77",
+      "id": "4d6b9455-2b6e-410c-a44c-7c3ee9611320",
       "name": "Detectar departamento en la pregunta"
     },
     {
@@ -196,7 +196,7 @@
         -928,
         768
       ],
-      "id": "dd5f781c-94b9-4d96-909d-6c6374ad14e7",
+      "id": "d258e4db-d5f7-45ed-b1b9-80684eb6d394",
       "name": "Decidir si activar prediccion (Postgres)"
     },
     {
@@ -228,7 +228,7 @@
         -656,
         752
       ],
-      "id": "f2bd5f4b-a953-4b3c-893a-ef55eb134a01",
+      "id": "1bdc642a-8dca-4a02-8e74-333ab2bd2964",
       "name": "Hay prediccion que consultar?"
     },
     {
@@ -241,7 +241,7 @@
         1296,
         816
       ],
-      "id": "4671ee9a-df4c-44d6-9fb7-8c22a5178ee8",
+      "id": "4c902d62-4011-472d-a75c-6eb95f84801c",
       "name": "Armar texto de tendencia"
     },
     {
@@ -254,7 +254,7 @@
         -1376,
         544
       ],
-      "id": "dccbdb42-9fcf-4e6b-8579-bd96e82a56b7",
+      "id": "99a8ecc4-90d0-4108-a381-01499018ff18",
       "name": "Detectar enfermedad en la pregunta"
     },
     {
@@ -269,7 +269,7 @@
         0,
         0
       ],
-      "id": "73cc80bb-b72d-4b5b-a5ac-ad0cadac85cb",
+      "id": "8803f9c1-a962-4325-b688-332b94a34d9f",
       "name": "Postgres - tendencia (Dengue)",
       "credentials": {
         "postgres": {
@@ -290,7 +290,7 @@
         16,
         208
       ],
-      "id": "2097df66-721a-4d77-a36c-8d33112ba341",
+      "id": "22c286fb-8826-4dbd-9f05-1bdcca5b2837",
       "name": "Postgres - tendencia (EDA)",
       "credentials": {
         "postgres": {
@@ -311,7 +311,7 @@
         16,
         432
       ],
-      "id": "d93d804e-660a-4c6f-bc9b-93f675cd0653",
+      "id": "02f74896-de99-41c2-88af-02e7e7ab5dc9",
       "name": "Postgres - tendencia (IRA neumonia)",
       "credentials": {
         "postgres": {
@@ -332,7 +332,7 @@
         32,
         640
       ],
-      "id": "a8066cc2-c82d-4da3-9776-c91d9ef67315",
+      "id": "debcf3f9-9bf0-4334-910c-f239e5f90d4d",
       "name": "Postgres - tendencia (IRA no neumonia)",
       "credentials": {
         "postgres": {
@@ -351,7 +351,7 @@
         1120,
         816
       ],
-      "id": "9746a452-45f8-47c2-b274-472c1a180585",
+      "id": "4e6c5e4a-8207-4577-873e-82a3787eada5",
       "name": "Merge (tendencias por enfermedad)"
     },
     {
@@ -364,13 +364,13 @@
         1408,
         1168
       ],
-      "id": "84f74a2e-7b7b-4c80-8da4-cfbc28622abe",
+      "id": "ce66cb44-ea59-46df-a225-eb42bc39e174",
       "name": "Extraer y limpiar nivel de riesgo"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}{{ (() => { try { const t = String($('Armar contexto RAG').first().json.texto_rag || '').trim(); return t ? '\\n\\nBoletines de OTROS periodos relacionados con la pregunta (busqueda semantica). Usalos solo como contexto adicional; indica de que semana es cada cifra y no la mezcles con las del periodo consultado:\\n' + t : ''; } catch (e) { return ''; } })() }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -379,7 +379,7 @@
         448,
         1792
       ],
-      "id": "f50565e1-63a1-4c93-a245-13e92fa8a2f3",
+      "id": "842580ad-3dd2-44f4-a8f2-f7e5e006f1a7",
       "name": "AI Agent Gemini 2",
       "retryOnFail": false,
       "notesInFlow": true,
@@ -397,7 +397,7 @@
         432,
         2032
       ],
-      "id": "0b774ebe-d4a1-45cb-b0ec-aa7e039f035c",
+      "id": "c06da52a-2371-4842-aee5-df695d324822",
       "name": "Google Gemini Chat Model 2",
       "credentials": {
         "googlePalmApi": {
@@ -409,7 +409,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
+        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}{{ (() => { try { const t = String($('Armar contexto RAG').first().json.texto_rag || '').trim(); return t ? '\\n\\nBoletines de OTROS periodos relacionados con la pregunta (busqueda semantica). Usalos solo como contexto adicional; indica de que semana es cada cifra y no la mezcles con las del periodo consultado:\\n' + t : ''; } catch (e) { return ''; } })() }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -418,7 +418,7 @@
         1072,
         2272
       ],
-      "id": "aa130eb0-c933-4cf2-8610-297ce91d1457",
+      "id": "bbb7e37f-0869-4564-8c1a-8c0e390b6fcd",
       "name": "AI Agent Gemini 3",
       "retryOnFail": false,
       "notesInFlow": true,
@@ -436,7 +436,7 @@
         1040,
         2496
       ],
-      "id": "c5deffa9-855d-44a3-ac29-2ec8d5d32f8b",
+      "id": "f541fdf4-6296-46dc-8218-d5fcd5aa2e8d",
       "name": "Google Gemini Chat Model 3",
       "credentials": {
         "googlePalmApi": {
@@ -444,55 +444,6 @@
           "name": "Google Gemini(PaLM) Api account 3"
         }
       }
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.9,
-      "position": [
-        800,
-        1232
-      ],
-      "id": "d9a1db01-c8ea-4892-acb9-a95ace004ce1",
-      "name": "AI Agent1",
-      "retryOnFail": false,
-      "notesInFlow": true,
-      "onError": "continueErrorOutput",
-      "notes": "Respaldo 1: GLM 5.3 (NVIDIA). Prompt desde SYSTEM_PROMPT_CONEXION"
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "z-ai/glm-5.3",
-          "mode": "id"
-        },
-        "options": {
-          "temperature": 0.2,
-          "timeout": 45000,
-          "maxRetries": 1
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        944,
-        1616
-      ],
-      "id": "0b887ca4-8209-4a18-b596-33f0b6b8eb28",
-      "name": "NVIDIA GLM 5.3 (respaldo 1)",
-      "notesInFlow": true,
-      "credentials": {
-        "openAiApi": {
-          "id": "JulkTzA8jDmwAen7",
-          "name": "OpenAI account"
-        }
-      },
-      "notes": "Credencial OpenAI con la API key de NVIDIA (ver README del cambio). Base URL: https://integrate.api.nvidia.com/v1"
     },
     {
       "parameters": {
@@ -504,14 +455,14 @@
         -2144,
         1120
       ],
-      "id": "fb0e9bf5-390b-46d3-b5f2-83d0653d7092",
+      "id": "65fa07e6-df2a-4c47-8125-df574f8807ec",
       "name": "Marcar inicio (traza)",
       "notesInFlow": true,
       "notes": "HU-2: nuevo"
     },
     {
       "parameters": {
-        "jsCode": "// HU-2 (Phoenix): arma el span de la consulta con @healthradar/core.\nconst { construirTrazaPhoenix } = require('@healthradar/core');\nconst salida = $('Agregar modelo usado').first().json;\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\n// Modelo/agente ya resueltos por el nodo 'Agregar modelo usado' (core)\nconst { agente, modelo_usado: modelo, proveedor } = salida;\n// Tamano aproximado del contexto enviado al modelo (para estimar tokens de entrada)\nlet promptChars = 0;\ntry { promptChars = JSON.stringify($('Consolidar boletines + clima del periodo').first().json).length; } catch (e) {}\nconst traza = construirTrazaPhoenix({\n  nombre: 'nlq.consulta',\n  entrada: pregunta,\n  salida: salida.output,\n  modelo,\n  inicioMs: inicio,\n  finMs: Date.now(),\n  sessionId: 'healthradar-conexion',\n  exito: !!salida.output,\n  error: salida.output ? '' : 'Respuesta vacia del modelo',\n  promptChars,\n  metadatos: { flujo: 'Conexion', agente, proveedor, nivel_riesgo: salida.nivel_riesgo }\n});\nreturn [{ json: { traza } }];"
+        "jsCode": "// HU-2 (Phoenix): arma el span de la consulta con @healthradar/core.\nconst { construirTrazaPhoenix, extraerRespuestaLlm } = require('@healthradar/core');\nconst salida = $('Verificar cifras').first().json;\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\n// Modelo/agente ya resueltos por el nodo 'Agregar modelo usado' (core)\nconst { agente, modelo_usado: modelo, proveedor } = salida;\n// HU-3: datos de la busqueda semantica (para calibrar k y la distancia maxima en Phoenix)\nlet rag = {};\ntry {\n  const r = $('Armar contexto RAG').first().json;\n  rag = { rag_ok: r.rag_ok, rag_encontrados: r.rag_encontrados, rag_k: r.rag_k, rag_max_distancia: r.rag_max_distancia, rag_ms: r.rag_ms,\n    rag_boletines: (r.rag_boletines || []).map(b => 'SE' + b.semana + '-' + b.anio + ':' + b.distancia).join(','),\n    ...(r.rag_ok ? {} : { rag_motivo: r.rag_motivo }) };\n} catch (e) {}\n// RAG paso 3: resultado de la verificacion de cifras (para auditar falsos positivos en Phoenix)\nconst ver = salida._verificacion || {};\nconst cifras = { cifras_revisadas: ver.revisadas, cifras_sin_respaldo: ver.sin_respaldo, cifras_advertencia: !!salida.advertencia_cifras };\n// Tamano aproximado del contexto enviado al modelo (para estimar tokens de entrada)\nlet promptChars = 0;\ntry { promptChars = JSON.stringify($('Consolidar boletines + clima del periodo').first().json).length; } catch (e) {}\ntry { promptChars += String($('Armar contexto RAG').first().json.texto_rag || '').length; } catch (e) {}\n// Tokens REALES cuando respondio Kimi o GLM por HTTP (usage de la respuesta); Gemini sigue estimado\nlet tokens;\ntry {\n  const nodo = agente === 1 ? 'HTTP Kimi' : agente === 2 ? 'HTTP GLM' : null;\n  if (nodo) tokens = extraerRespuestaLlm($(nodo).first().json).tokens || undefined;\n} catch (e) {}\nconst traza = construirTrazaPhoenix({\n  nombre: 'nlq.consulta',\n  entrada: pregunta,\n  salida: salida.output,\n  modelo,\n  inicioMs: inicio,\n  finMs: Date.now(),\n  sessionId: 'healthradar-conexion',\n  exito: !!salida.output,\n  error: salida.output ? '' : 'Respuesta vacia del modelo',\n  promptChars,\n  tokens,\n  metadatos: { flujo: 'Conexion', agente, proveedor, nivel_riesgo: salida.nivel_riesgo, ...rag, ...cifras }\n});\nreturn [{ json: { traza } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -519,7 +470,7 @@
         1840,
         1440
       ],
-      "id": "0c300a6b-ea91-4766-8e76-fcf09f849173",
+      "id": "098c592b-7dda-46ca-ac1f-eac024f328ec",
       "name": "Armar traza Phoenix",
       "notesInFlow": true,
       "onError": "continueRegularOutput",
@@ -542,7 +493,7 @@
         1936,
         1744
       ],
-      "id": "5a511741-3584-4a4b-bd93-147989a6f9e3",
+      "id": "de05075e-5096-4f6b-8d29-5e6609023e2e",
       "name": "Enviar traza a Phoenix",
       "notesInFlow": true,
       "onError": "continueRegularOutput",
@@ -558,17 +509,17 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2544,
-        1920
+        2816,
+        1600
       ],
-      "id": "15402baa-cbc5-46f2-bb57-178d722b53a4",
+      "id": "2657ecd1-0cb3-47cf-af52-e5eab849333d",
       "name": "Nota HU-2 Phoenix"
     },
     {
       "parameters": {
-        "jsCode": "// HU-11: agrega modelo_usado (el contrato del webhook ya lo define).\n// Agente que respondio = el ultimo de la cadena de failover que se ejecuto:\n// 1 Kimi K3 -> 2 GLM 5.3 -> 3 Gemini -> 4 Gemini\nconst { modeloPorAgente } = require('@healthradar/core');\nlet agente = 1;\ntry {\n  if ($('AI Agent Gemini 3').isExecuted) agente = 4;\n  else if ($('AI Agent Gemini 2').isExecuted) agente = 3;\n  else if ($('AI Agent1').isExecuted) agente = 2;\n} catch (e) {}\nconst m = modeloPorAgente(agente);\n// Los nodos Gemini pueden cambiar de modelo: se lee el real del nodo que respondio\nlet modelo = m.modelo;\nconst NODO = { 3: 'Google Gemini Chat Model 2', 4: 'Google Gemini Chat Model 3' };\nif (NODO[agente]) { try { modelo = String($node[NODO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {} }\nreturn [{ json: { ...$input.first().json, modelo_usado: modelo, proveedor: m.proveedor, agente: m.agente } }];"
+        "jsCode": "// HU-11: agrega modelo_usado (el contrato del webhook ya lo define).\n// Agente que respondio = el ultimo de la cadena de failover que se ejecuto:\n// 1 Kimi K3 -> 2 GLM 5.3 -> 3 Gemini -> 4 Gemini\nconst { modeloPorAgente } = require('@healthradar/core');\nlet agente = 1;\ntry {\n  if ($('AI Agent Gemini 3').isExecuted) agente = 4;\n  else if ($('AI Agent Gemini 2').isExecuted) agente = 3;\n  else if ($('HTTP GLM').isExecuted) agente = 2;\n} catch (e) {}\nconst m = modeloPorAgente(agente);\n// Los nodos Gemini pueden cambiar de modelo: se lee el real del nodo que respondio\nlet modelo = m.modelo;\nconst NODO = { 3: 'Google Gemini Chat Model 2', 4: 'Google Gemini Chat Model 3' };\nif (NODO[agente]) { try { modelo = String($node[NODO[agente]].parameter.modelName).replace(/^models\\//, ''); } catch (e) {} }\nreturn [{ json: { ...$input.first().json, modelo_usado: modelo, proveedor: m.proveedor, agente: m.agente } }];"
       },
-      "id": "e80641ad-ae81-41ca-9d73-a1ae87575744",
+      "id": "42d17ca8-3f8f-46b6-bf86-3f0882f42668",
       "name": "Agregar modelo usado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -579,58 +530,9 @@
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "={{ $env.SYSTEM_PROMPT_CONEXION }}\n\nEl analista pregunto por el siguiente periodo: {{ $('Consolidar boletines + clima del periodo').first().json.criterio_periodo }} ({{ $('Consolidar boletines + clima del periodo').first().json.cantidad_boletines }} boletin(es) encontrados para ese periodo).\n\nResumenes de los boletines epidemiologicos de ese periodo:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_boletines }}\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_clima }}\n\n{{ $('Consolidar boletines + clima del periodo').first().json.texto_tendencia ? 'Tendencia de casos historica para el departamento mencionado:\\n' + $('Consolidar boletines + clima del periodo').first().json.texto_tendencia + '\\n\\n' : '' }}El analista pregunta lo siguiente:\n{{ $('Webhook').item.json.body.pregunta }}",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.9,
-      "position": [
-        1152,
-        1584
-      ],
-      "id": "5c8556f2-d503-4acd-b316-65b29c2dce58",
-      "name": "AI Agent Kimi",
-      "retryOnFail": false,
-      "notesInFlow": true,
-      "onError": "continueErrorOutput",
-      "notes": "Principal: Kimi K3 (NVIDIA). Prompt desde SYSTEM_PROMPT_CONEXION"
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "moonshotai/kimi-k3",
-          "mode": "id"
-        },
-        "options": {
-          "temperature": 0.2,
-          "timeout": 45000,
-          "maxRetries": 1
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        1216,
-        1888
-      ],
-      "id": "8183955c-a51e-4e54-9836-2e88d5f7ffee",
-      "name": "NVIDIA Kimi K3 (principal)",
-      "notesInFlow": true,
-      "credentials": {
-        "openAiApi": {
-          "id": "l5eGNXhVr7KcnMyX",
-          "name": "OpenAI account 2"
-        }
-      },
-      "notes": "Credencial OpenAI aparte con la API key de Kimi (NVIDIA). Base URL https://integrate.api.nvidia.com/v1"
-    },
-    {
-      "parameters": {
         "jsCode": "// HU-12: fallaron los 4 agentes. Error limpio para el front + traza fallida en Phoenix.\nconst { construirErrorNlq, construirTrazaPhoenix } = require('@healthradar/core');\nconst { cuerpo, mensajeTecnico } = construirErrorNlq($input.first().json.error);\nconst pregunta = $('Webhook').first().json.body?.pregunta || '';\nlet inicio; try { inicio = $('Marcar inicio (traza)').first().json._t0; } catch (e) {}\nconst traza = construirTrazaPhoenix({\n  nombre: 'nlq.consulta',\n  entrada: pregunta,\n  salida: '',\n  modelo: 'cadena-failover',\n  inicioMs: inicio,\n  finMs: Date.now(),\n  sessionId: 'healthradar-conexion',\n  exito: false,\n  error: mensajeTecnico,\n  promptChars: 0,\n  metadatos: { flujo: 'Conexion', agente: 0, proveedor: 'ninguno', codigo_error: cuerpo.codigo }\n});\nreturn [{ json: { cuerpo, traza } }];"
       },
-      "id": "82007b08-2d77-4b57-a649-354ab9e697d4",
+      "id": "161761f3-4671-4c0e-93cc-a0a67950f14a",
       "name": "Armar error NLQ",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -647,7 +549,7 @@
           "responseCode": 503
         }
       },
-      "id": "eed91521-0a28-42fe-82ef-60a1b8b7b792",
+      "id": "37c4d18c-2c9c-497b-883e-92b3784a3515",
       "name": "Responder error (503)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
@@ -687,7 +589,7 @@
         1584,
         1904
       ],
-      "id": "de37305e-0077-4e17-822c-12cbde1a97b9",
+      "id": "2ff1b8d1-a7c8-4cd5-8df8-5d1ff36f3a05",
       "name": "¿Respuesta con texto? (Kimi)"
     },
     {
@@ -721,7 +623,7 @@
         1168,
         1312
       ],
-      "id": "18569284-4c8e-46d0-87d7-edbc42929b8d",
+      "id": "0d0f24cd-7637-4d41-bee9-b57fc5ea8ff8",
       "name": "¿Respuesta con texto? (GLM)"
     },
     {
@@ -755,7 +657,7 @@
         1024,
         1872
       ],
-      "id": "49501881-f6a0-470c-99fc-481330adee2b",
+      "id": "058f56ca-38e2-45b5-b9bf-c18ad9ff3d12",
       "name": "¿Respuesta con texto? (Gemini 2)"
     },
     {
@@ -789,8 +691,337 @@
         1392,
         2176
       ],
-      "id": "6ab9d0b5-be0a-42e8-a8ae-c008ccb43c0d",
+      "id": "81fc4598-6352-4a0d-9aa9-3c8655b61610",
       "name": "¿Respuesta con texto? (Gemini 3)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT rol, contenido\nFROM (\n  SELECT id_mensaje, rol, contenido\n  FROM chat_mensaje\n  WHERE session_id = $1\n  ORDER BY id_mensaje DESC\n  LIMIT 6\n) t\nORDER BY id_mensaje ASC;",
+        "options": {
+          "queryReplacement": "={{ [ String($('Webhook').first().json.body.sessionId || '').trim().slice(0, 64) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        704,
+        1456
+      ],
+      "id": "d2e40fe4-fbad-4bb8-b660-c6d798ecc4c7",
+      "name": "Leer historial (Postgres)",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "notes": "Memoria del chat (tabla chat_mensaje, migracion 009): ultimos 6 mensajes de la sesion. Sin sessionId no devuelve filas y el flujo sigue igual."
+    },
+    {
+      "parameters": {
+        "jsCode": "// V10: arma lo que se envia por HTTP a Kimi y a GLM (logica en @healthradar/core).\nconst { construirMensajesChat, construirCuerpoChat } = require('@healthradar/core');\nconst c = $('Consolidar boletines + clima del periodo').first().json;\nconst body = $('Webhook').first().json.body || {};\n// HU-3: contexto de la busqueda semantica ('' si no hubo o fallo)\nlet textoRag = ''; try { textoRag = $('Armar contexto RAG').first().json.texto_rag || ''; } catch (e) {}\n// Filas de chat_mensaje (si no hay historial llega un item vacio: se descarta)\nconst historial = $input.all().map(i => i.json).filter(f => f && f.rol);\n// El prompt viene del .env y va dentro del mensaje de usuario (igual que en los agentes)\nconst messages = construirMensajesChat({\n  promptSistema: $env.SYSTEM_PROMPT_CONEXION,\n  criterioPeriodo: c.criterio_periodo,\n  cantidadBoletines: c.cantidad_boletines,\n  textoBoletines: c.texto_boletines,\n  textoClima: c.texto_clima,\n  textoTendencia: c.texto_tendencia,\n  textoRag,\n  pregunta: body.pregunta,\n  historial,\n});\nreturn [{ json: {\n  cuerpo_kimi: construirCuerpoChat({ modelo: 'moonshotai/kimi-k3', messages }),\n  cuerpo_glm: construirCuerpoChat({ modelo: 'z-ai/glm-5.3', messages }),\n  mensajes_historial: messages.length - 1,\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        1456
+      ],
+      "id": "b66c6b3f-cde4-489f-8855-508921bc0091",
+      "name": "Armar mensajes (core)",
+      "notesInFlow": true,
+      "notes": "V10: arma messages con core (prompt del .env + historial + contexto + pregunta)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.NVIDIA_API_KEY_KIMI }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Armar mensajes (core)').first().json.cuerpo_kimi) }}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1184,
+        1584
+      ],
+      "id": "2e4dbd5d-707e-48a4-b593-293117cc2ea6",
+      "name": "HTTP Kimi",
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Principal: Kimi K3 (NVIDIA) por HTTP. La API key sale de $env.NVIDIA_API_KEY (no hay credencial que elegir). Sin reintentos; la salida de error pasa a GLM."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deja la respuesta como { output } para el IF de siempre. Respuesta vacia -> '' (pasa al siguiente modelo).\nconst { extraerRespuestaLlm } = require('@healthradar/core');\nreturn [{ json: { output: extraerRespuestaLlm($input.first().json).output } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        1584
+      ],
+      "id": "3414376a-2be8-4bf4-8e2d-08a073202f3f",
+      "name": "Normalizar Kimi"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.NVIDIA_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Armar mensajes (core)').first().json.cuerpo_glm) }}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        1232
+      ],
+      "id": "1a4e5c7d-9cbd-4a5b-bf26-c8fdd7217a96",
+      "name": "HTTP GLM",
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Respaldo 1: GLM 5.3 (NVIDIA) por HTTP. Misma key. La salida de error pasa a Gemini."
+    },
+    {
+      "parameters": {
+        "jsCode": "// GLM razona: si el razonamiento consume max_tokens, content llega nulo -> output '' -> sigue Gemini.\nconst { extraerRespuestaLlm } = require('@healthradar/core');\nreturn [{ json: { output: extraerRespuestaLlm($input.first().json).output } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1232
+      ],
+      "id": "1fb0c9b5-8b71-47ee-bf13-a3880acbc036",
+      "name": "Normalizar GLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Despues de responder: pregunta + respuesta limpia (sin marcador de riesgo). Sin sessionId no se guarda.\nconst { prepararGuardadoHistorial } = require('@healthradar/core');\nconst body = $('Webhook').first().json.body || {};\nreturn [{ json: prepararGuardadoHistorial({ sessionId: body.sessionId, pregunta: body.pregunta, respuesta: $input.first().json.output }) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        960
+      ],
+      "id": "084f698c-eb9c-4645-b237-1d420307deed",
+      "name": "Preparar guardado historial"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chat_mensaje (session_id, request_id, rol, contenido)\nSELECT v.sid, v.rid, v.rol, v.txt\nFROM (VALUES ($1::text, $2::text, 'user', LEFT($3::text, 4000)),\n             ($1::text, $2::text, 'assistant', LEFT($4::text, 4000))) AS v(sid, rid, rol, txt)\nWHERE $5::boolean AND btrim($3::text) <> '' AND btrim($4::text) <> ''\nON CONFLICT (request_id, rol) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ [ $json.session_id, $json.request_id, $json.pregunta, $json.respuesta, $json.guardar ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2352,
+        960
+      ],
+      "id": "22d55084-d4b2-4718-aacf-17acbe98332d",
+      "name": "Guardar historial (Postgres)",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Guarda pregunta y respuesta en chat_mensaje (idempotente por request_id; recorta a 4000 en SQL). Si falla o no hay sessionId, no afecta la respuesta (ya se envio)."
+    },
+    {
+      "parameters": {
+        "content": "## V10 — Kimi y GLM por HTTP\nKimi y GLM ya no son AI Agent: son nodos HTTP Request a NVIDIA (/v1/chat/completions).\n- La key sale de **$env.NVIDIA_API_KEY**: no hay credencial de OpenAI que elegir.\n- Cadena: HTTP Kimi -> HTTP GLM -> AI Agent Gemini 2 -> AI Agent Gemini 3 -> error 503.\n- Memoria: tabla **chat_mensaje** (migracion 009). Los agentes de Gemini siguen con Simple Memory.\n- Tokens reales en Phoenix para Kimi/GLM (usage de la respuesta).\n- Requiere @healthradar/core v9 en la imagen de n8n.",
+        "height": 260,
+        "width": 460
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        848
+      ],
+      "id": "30fad752-64a8-4975-abc0-b4bbdea448e2",
+      "name": "Nota V10 HTTP"
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-3: prepara la busqueda semantica. k y max_distancia son los valores de arranque del plan v2.3\n// (se calibran con las trazas de Phoenix, healthradar.rag_*). Modelo y dimensiones: los MISMOS que el indexador.\nconst { construirExclusionBoletines } = require('@healthradar/core');\nconst K = 5;\nconst MAX_DISTANCIA = 0.35;   // = similitud minima 0.65\nconst pregunta = String((($('Webhook').first().json.body) || {}).pregunta || '').trim().slice(0, 2000);\nlet periodo = [];\ntry { periodo = $('Filtrar boletines del periodo').all().map(i => i.json); } catch (e) {}\nreturn [{ json: {\n  _t0: Date.now(),\n  hay_pregunta: pregunta !== '',\n  k: K,\n  max_distancia: MAX_DISTANCIA,\n  excluidos: construirExclusionBoletines(periodo),   // boletines que YA van en el contexto del periodo\n  body: {\n    model: 'models/gemini-embedding-001',\n    content: { parts: [{ text: pregunta || ' ' }] },\n    taskType: 'RETRIEVAL_QUERY',          // los boletines se indexaron como RETRIEVAL_DOCUMENT\n    outputDimensionality: 768,\n  },\n} }];"
+      },
+      "name": "Preparar busqueda semantica",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "d8a68665-fde8-4690-9762-87977f17d29a",
+      "position": [
+        448,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "name": "HTTP - embedding de la pregunta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "notesInFlow": true,
+      "id": "fec16b98-b84e-447f-a5ee-ae6f14464d1a",
+      "position": [
+        688,
+        1760
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Sin reintentos y con tope de 8 s: si Gemini falla, el chat sigue sin contexto semantico."
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-3: valida dimension y normaliza (L2), igual que el indexador. Si no es valido, la busqueda se omite.\nconst MODELO = 'gemini-embedding-001';\nconst DIMS = 768;\nconst prep = $('Preparar busqueda semantica').first().json;\nconst r = $input.first().json || {};\nconst vec = r.embedding && r.embedding.values;\nlet ok = prep.hay_pregunta && Array.isArray(vec) && vec.length === DIMS && vec.every(Number.isFinite);\nlet norma = 0;\nif (ok) { norma = Math.sqrt(vec.reduce((s, x) => s + x * x, 0)); ok = norma > 0; }\nconst motivo = ok ? '' : (!prep.hay_pregunta ? 'sin pregunta'\n  : r.error ? 'HTTP/red: ' + String(r.error.message || r.error).slice(0, 120)\n  : Array.isArray(vec) ? 'dimension ' + vec.length + ' != ' + DIMS : 'respuesta sin embedding');\nreturn [{ json: {\n  ok, motivo,\n  embedding: ok ? JSON.stringify(vec.map(x => x / norma)) : null,   // $1\n  modelo: ok ? MODELO : null,                                        // $2\n  k: prep.k,                                                         // $3\n  excluidos: prep.excluidos,                                         // $4\n  max_distancia: prep.max_distancia,                                 // $5\n} }];"
+      },
+      "name": "Validar vector de la pregunta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "d06f30cd-726e-47ee-8f49-61d8859f25f4",
+      "position": [
+        928,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT anio, semana_epidemiologica, resumen,\n       round((embedding <=> $1::vector)::numeric, 4) AS distancia\nFROM boletin_descubierto\nWHERE procesado = TRUE\n  AND embedding IS NOT NULL\n  AND modelo_embedding = $2\n  AND (embedding <=> $1::vector) < $5::float8\n  AND (anio * 100 + semana_epidemiologica) <> ALL($4::int[])\nORDER BY embedding <=> $1::vector\nLIMIT $3::int;",
+        "options": {
+          "queryReplacement": "={{ [ $json.embedding, $json.modelo, $json.k, $json.excluidos, $json.max_distancia ] }}"
+        }
+      },
+      "name": "Postgres - boletines similares",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "id": "017bb6c4-66eb-4933-9392-684d7a3709ac",
+      "position": [
+        1168,
+        1760
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Similitud coseno (<=>). Solo vectores del MISMO modelo. Excluye los boletines que ya entran por el periodo. Sin vector valido no devuelve filas."
+    },
+    {
+      "parameters": {
+        "jsCode": "// HU-3: da forma al contexto recuperado (core) y deja lo que Phoenix necesita para calibrar k y la distancia.\nconst { construirContextoRag } = require('@healthradar/core');\nconst val = $('Validar vector de la pregunta').first().json;\nlet t0; try { t0 = $('Preparar busqueda semantica').first().json._t0; } catch (e) {}\n// Si la consulta fallo (continuar con error) llegan items sin 'resumen': se descartan.\nconst filas = $input.all().map(i => i.json).filter(r => r && r.resumen !== undefined);\nconst rag = construirContextoRag(filas);\nreturn [{ json: {\n  texto_rag: rag.texto_rag,\n  rag_ok: !!val.ok,\n  rag_motivo: val.motivo || '',\n  rag_encontrados: rag.cantidad,\n  rag_boletines: rag.boletines,\n  rag_k: val.k,\n  rag_max_distancia: val.max_distancia,\n  rag_ms: Number.isFinite(t0) ? Date.now() - t0 : null,\n} }];"
+      },
+      "name": "Armar contexto RAG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "3ed206ae-e0e2-416d-9acf-692db0ed24a1",
+      "position": [
+        1408,
+        1760
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## V11 — Busqueda semantica (HU-3, pgvector)\nEntre 'Consolidar' y 'Leer historial': embebe la pregunta (Gemini, RETRIEVAL_QUERY, 768 dims), busca los boletines mas cercanos (distancia coseno < 0.35, k = 5) que NO esten ya en el periodo, y los agrega al prompt como 'boletines de otros periodos'.\n- Si el embedding o la consulta fallan, el chat sigue SIN ese bloque (el prompt queda igual que en V10).\n- Phoenix: atributos healthradar.rag_* (encontrados, distancias, ms) para calibrar k y la distancia.\n- Requiere @healthradar/core con contexto-rag (core v9.2), la migracion 009 y vectores cargados (flujo Indexar embeddings).\n- Desactiva V10 antes de activar V11: usan el mismo webhook /consulta.",
+        "height": 300,
+        "width": 520
+      },
+      "name": "Nota V11 RAG",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "id": "080e5238-0b64-41bf-ad09-c3493a314511",
+      "position": [
+        -1216,
+        2240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// RAG paso 3: las cifras de la respuesta deben salir de los datos que vio el modelo\n// (boletines del periodo, boletines recuperados, clima, tendencia, pregunta e historial).\n// Falla abierta: ante cualquier error la respuesta sale igual, sin advertencia (no rompe el chat).\nconst { verificarCifras } = require('@healthradar/core');\nconst salida = $input.first().json;\nlet v = { revisadas: 0, sin_respaldo: [], advertencia_cifras: null };\ntry {\n  const c = $('Consolidar boletines + clima del periodo').first().json;\n  const body = $('Webhook').first().json.body || {};\n  let rag = ''; try { rag = $('Armar contexto RAG').first().json.texto_rag || ''; } catch (e) {}\n  let historial = []; try { historial = $('Leer historial (Postgres)').all().map(i => i.json.contenido || ''); } catch (e) {}\n  v = verificarCifras(salida.output, {\n    contexto: [c.texto_boletines, c.texto_clima, c.texto_tendencia, c.criterio_periodo, rag, body.pregunta, ...historial],\n    metadatos: [c.cantidad_boletines],\n  });\n} catch (e) {}\nreturn [{ json: { ...salida, advertencia_cifras: v.advertencia_cifras,\n  _verificacion: { revisadas: v.revisadas, sin_respaldo: v.sin_respaldo.length } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        1008
+      ],
+      "id": "b91718a9-6c83-46e4-9212-b34d2368be39",
+      "name": "Verificar cifras",
+      "notesInFlow": true,
+      "notes": "Falla abierta: si algo sale mal la respuesta pasa sin advertencia."
+    },
+    {
+      "parameters": {
+        "content": "## V12 — Verificacion de cifras (RAG paso 3)\n'Verificar cifras' compara los numeros de la respuesta con los datos que vio el modelo (boletines del periodo, boletines recuperados, clima, tendencia, pregunta, historial). Si hay cifras sin respaldo agrega `advertencia_cifras` (texto) a la respuesta; si no, `null`.\n- No se revisan enteros < 100, anios, ni numeros pegados a letras. Se aceptan redondeos y calculos simples cuyos operandos aparecen en la respuesta.\n- Falla abierta: un error de la verificacion nunca rompe el chat.\n- Phoenix: healthradar.cifras_revisadas / cifras_sin_respaldo / cifras_advertencia.\n- Requiere @healthradar/core v9.5 (verificarCifras). El front aun no muestra el aviso (campo `advertencia_cifras`).\n- Desactiva V11 antes de activar V12: usan el mismo webhook /consulta.",
+        "height": 260,
+        "width": 520
+      },
+      "name": "Nota V12 cifras",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "id": "ca4ab168-5b21-45f7-aab9-faad2d4f9071",
+      "position": [
+        2320,
+        80
+      ]
     }
   ],
   "pinData": {},
@@ -891,7 +1122,7 @@
       "main": [
         [
           {
-            "node": "AI Agent Kimi",
+            "node": "Preparar busqueda semantica",
             "type": "main",
             "index": 0
           }
@@ -908,16 +1139,6 @@
           },
           {
             "node": "AI Agent Gemini 2",
-            "type": "ai_memory",
-            "index": 0
-          },
-          {
-            "node": "AI Agent1",
-            "type": "ai_memory",
-            "index": 0
-          },
-          {
-            "node": "AI Agent Kimi",
             "type": "ai_memory",
             "index": 0
           }
@@ -1107,24 +1328,6 @@
         ]
       ]
     },
-    "AI Agent1": {
-      "main": [
-        [
-          {
-            "node": "¿Respuesta con texto? (GLM)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "AI Agent Gemini 2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "AI Agent Gemini 3": {
       "main": [
         [
@@ -1169,30 +1372,7 @@
       "main": [
         [
           {
-            "node": "Respond to Webhook",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Armar traza Phoenix",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Agent Kimi": {
-      "main": [
-        [
-          {
-            "node": "¿Respuesta con texto? (Kimi)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "AI Agent1",
+            "node": "Verificar cifras",
             "type": "main",
             "index": 0
           }
@@ -1215,28 +1395,6 @@
         ]
       ]
     },
-    "NVIDIA GLM 5.3 (respaldo 1)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent1",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "NVIDIA Kimi K3 (principal)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent Kimi",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "¿Respuesta con texto? (Kimi)": {
       "main": [
         [
@@ -1248,7 +1406,7 @@
         ],
         [
           {
-            "node": "AI Agent1",
+            "node": "HTTP GLM",
             "type": "main",
             "index": 0
           }
@@ -1308,6 +1466,173 @@
           }
         ]
       ]
+    },
+    "Leer historial (Postgres)": {
+      "main": [
+        [
+          {
+            "node": "Armar mensajes (core)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensajes (core)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Kimi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Kimi": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Kimi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP GLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Kimi": {
+      "main": [
+        [
+          {
+            "node": "¿Respuesta con texto? (Kimi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP GLM": {
+      "main": [
+        [
+          {
+            "node": "Normalizar GLM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Gemini 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar GLM": {
+      "main": [
+        [
+          {
+            "node": "¿Respuesta con texto? (GLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar guardado historial": {
+      "main": [
+        [
+          {
+            "node": "Guardar historial (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar busqueda semantica": {
+      "main": [
+        [
+          {
+            "node": "HTTP - embedding de la pregunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - embedding de la pregunta": {
+      "main": [
+        [
+          {
+            "node": "Validar vector de la pregunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar vector de la pregunta": {
+      "main": [
+        [
+          {
+            "node": "Postgres - boletines similares",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - boletines similares": {
+      "main": [
+        [
+          {
+            "node": "Armar contexto RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar contexto RAG": {
+      "main": [
+        [
+          {
+            "node": "Leer historial (Postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar cifras": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Armar traza Phoenix",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preparar guardado historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1316,11 +1641,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "df8bc436-72b5-4e67-8fde-3cdc8aebc1fa",
+  "versionId": "6234fe5f-678a-4482-9a4f-8b126a126103",
   "meta": {
     "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },
   "nodeGroups": [],
-  "id": "sNi1RIhS9gnUARhE",
+  "id": "g4oXr7gKpPDKu9j0",
   "tags": []
 }

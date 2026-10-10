@@ -13,6 +13,8 @@
 'use strict';
 
 const { extraerCifras } = require('../parsers/cifras-boletin');
+const { verificarCifrasContraFuente } = require('./cifras-en-fuente');
+const { extraerCifrasTablas } = require('../parsers/tablas-boletin');
 
 /** Desgloses que deben sumar exactamente su total (verificado en boletines SE 2, 9 y 10). */
 const SUMAS = [
@@ -117,7 +119,11 @@ function detectarInconsistenciasCifras(actual, previo, opciones = {}) {
  * @param {string} modeloUsado - Identificador del modelo que generó el resumen
  * @param {number} semanaEsperada - Semana epidemiológica del boletín que se procesa
  * @param {{ semanaPrevia?: number, resumenPrevio?: string, exigirCifras?: boolean,
- *           factorCrecimiento?: number, toleranciaBaja?: number }} [opciones]
+ *           textoFuente?: string, factorCrecimiento?: number, toleranciaBaja?: number }} [opciones]
+ *        textoFuente: texto del PDF; si se pasa, cada valor de [CIFRAS] debe aparecer en él (se rechaza si no)
+ *        y las cifras de 1000 o más del texto que no aparezcan generan una advertencia. Además se leen las
+ *        tablas del PDF (parsers/tablas-boletin) y toda clave de [CIFRAS] que difiera de la tabla se rechaza
+ *        (opciones.modoTablas = 'advertir' lo degrada a advertencia). El resultado trae `cifrasTablas`.
  *        semanaPrevia / resumenPrevio: boletín ya procesado inmediatamente anterior (mismo año).
  *        exigirCifras: si es true, un resumen sin marcador [CIFRAS: ...] se rechaza
  *        (por defecto solo genera una advertencia, para poder desplegar antes que el prompt).
@@ -144,6 +150,7 @@ function validarResumenBoletin(output, modeloUsado, semanaEsperada, opciones = {
 
   const inconsistencias = [];
   const advertencias = [];
+  let cifrasTablas = null;
 
   const semanaTexto = Number(semanaMatch[1]);
   if (semanaEsperada !== undefined && semanaEsperada !== null && Number(semanaEsperada) !== semanaTexto) {
@@ -188,6 +195,28 @@ function validarResumenBoletin(output, modeloUsado, semanaEsperada, opciones = {
         toleranciaBaja: opciones.toleranciaBaja,
       })
     );
+
+    if (opciones.textoFuente !== undefined) {
+      const f = verificarCifrasContraFuente(cifras, output, opciones.textoFuente);
+      if (f.omitido) {
+        advertencias.push('No se pudo leer el texto del PDF; no se verificaron las cifras contra la fuente');
+      } else {
+        cifrasTablas = extraerCifrasTablas(opciones.textoFuente);
+        const difieren = Object.entries(cifrasTablas)
+          .filter(([k, v]) => cifras[k] !== undefined && cifras[k] !== v)
+          .map(([k, v]) => `${k}: el resumen dice ${fmt(cifras[k])} y la tabla del boletín dice ${fmt(v)}`);
+        if (difieren.length > 0) {
+          if (opciones.modoTablas === 'advertir') advertencias.push(`Cifras que difieren de la tabla: ${difieren.join('; ')}`);
+          else inconsistencias.push(`cifras que difieren de la tabla del boletín (${difieren.join('; ')})`);
+        }
+        if (f.cifrasSinFuente.length > 0) {
+          inconsistencias.push(`cifras que no aparecen en el boletín (posible error de lectura de tablas): ${f.cifrasSinFuente.join(', ')}`);
+        }
+        if (f.textoSinFuente.length > 0) {
+          advertencias.push(`Cifras del texto que no aparecen en el boletín: ${f.textoSinFuente.map(fmt).join(', ')}`);
+        }
+      }
+    }
   }
 
   if (inconsistencias.length > 0) {
@@ -199,7 +228,7 @@ function validarResumenBoletin(output, modeloUsado, semanaEsperada, opciones = {
     throw err;
   }
 
-  return { resumen: output.trim(), cifras, advertencias };
+  return { resumen: output.trim(), cifras, cifrasTablas, advertencias };
 }
 
 module.exports = { validarResumenBoletin, detectarInconsistenciasCifras };
