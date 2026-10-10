@@ -1,0 +1,333 @@
+{
+  "name": "Panorama HealthRadarV4",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "panorama",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1000,
+        0
+      ],
+      "id": "5811218c-617b-4448-984c-b0fb1a67a904",
+      "name": "Webhook",
+      "webhookId": "d42291ea-98f1-4e55-9f5e-701b3460a0da"
+    },
+    {
+      "parameters": {
+        "jsCode": "// El body del webhook es entrada NO confiable: se valida con @healthradar/core.\n// Las queries no reciben ningun valor del usuario; el filtrado por anio/semana se hace en el core.\nconst { validarFiltrosPanorama } = require('@healthradar/core');\nconst r = validarFiltrosPanorama($input.first().json.body);\nreturn [{ json: { filtros: r.filtros, _valido: r.valido, _error: r.error } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        0
+      ],
+      "id": "f8c55f8c-283e-4a17-981b-dc94d8f58cb5",
+      "name": "Validar entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1e31cea9-8f95-4bf6-9939-2847db9be02c",
+              "leftValue": "={{ $json._valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "07a359f3-598d-4aa7-8e42-13c2c44bf71c",
+      "name": "Entrada valida?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json._error } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -340,
+        160
+      ],
+      "id": "22c5621e-0c83-4500-86d6-f4073d4cf08a",
+      "name": "Responder 400"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  anio,\n  semana_epidemiologica AS semana,\n  fecha_publicacion::text AS fecha_publicacion,\n  resumen\nFROM boletin_descubierto\nWHERE procesado = TRUE\n  AND resumen <> ''\nORDER BY anio DESC, semana_epidemiologica DESC\nLIMIT 30;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -340,
+        -120
+      ],
+      "id": "2ad587ea-1bec-4139-b622-d9424bd4bfee",
+      "name": "Boletines procesados",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*)::int AS total,\n  COUNT(*) FILTER (WHERE resumen LIKE '%[CIFRAS:%')::int AS con_cifras\nFROM boletin_descubierto\nWHERE procesado = TRUE\n  AND resumen <> '';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -120,
+        -120
+      ],
+      "id": "3e4cf0c8-fdf4-452c-a102-f1e49c26e256",
+      "name": "Conteos",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sprint 3 (ADR-012): la logica vive en @healthradar/core (construirPanorama).\n// Las cifras salen del marcador [CIFRAS] que valida Fase B; aqui no se calcula nada.\nconst { construirPanorama } = require('@healthradar/core');\nconst filtros = $('Validar entrada').first().json.filtros;\nconst filas = $('Boletines procesados').all().map(i => i.json);\nconst conteos = $('Conteos').first().json;\nreturn [{ json: construirPanorama(filas, filtros, conteos) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        -120
+      ],
+      "id": "9c6913be-cbea-423c-8285-5921315d5ad0",
+      "name": "Armar panorama",
+      "notesInFlow": true,
+      "notes": "Sprint 3: adaptador de @healthradar/core"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b7694011-61fa-4737-921c-a990c71e514f",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        -120
+      ],
+      "id": "8dd1b5cd-5ccb-4dcd-9a22-2ddbf42a263b",
+      "name": "Encontrado?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        540,
+        -200
+      ],
+      "id": "e26f7b97-6f1b-4bde-b5dd-7d6a18c58ac6",
+      "name": "Responder panorama"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.error } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        540,
+        -20
+      ],
+      "id": "04857607-2852-4495-8cc5-ba0102b59802",
+      "name": "Responder 404"
+    },
+    {
+      "parameters": {
+        "content": "## Panorama (mf-dashboard)\nWebhook `POST /webhook/panorama` · body opcional `{anio, semana}` (sin body = boletin mas reciente con cifras).\nSolo LEE `boletin_descubierto`. Sin LLM: las cifras vienen del marcador `[CIFRAS]` de Fase B.\nLos resumenes anteriores a Fase B V7 no traen `[CIFRAS]`: el front lo avisa en pantalla.",
+        "height": 150,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1000,
+        -260
+      ],
+      "id": "7d841a04-3c27-4b1f-98b3-8841c69e418a",
+      "name": "Nota"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar entrada": {
+      "main": [
+        [
+          {
+            "node": "Entrada valida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada valida?": {
+      "main": [
+        [
+          {
+            "node": "Boletines procesados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Boletines procesados": {
+      "main": [
+        [
+          {
+            "node": "Conteos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conteos": {
+      "main": [
+        [
+          {
+            "node": "Armar panorama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar panorama": {
+      "main": [
+        [
+          {
+            "node": "Encontrado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encontrado?": {
+      "main": [
+        [
+          {
+            "node": "Responder panorama",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 404",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "877ded3b-5acf-400c-87b7-b88040121176",
+  "meta": {
+    "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
+  },
+  "nodeGroups": [],
+  "id": "pnRm4Ha1Zq8WkT2e",
+  "tags": []
+}

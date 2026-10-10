@@ -39,6 +39,7 @@ const { validarResumenBoletin, detectarInconsistenciasCifras } = require('./vali
 const { extraerCifras, quitarMarcadorCifras } = require('./parsers/cifras-boletin');
 const { verificarCifras } = require('./validators/cifras-respuesta');
 const { verificarCifrasContraFuente } = require('./validators/cifras-en-fuente');
+const { validarFiltrosPanorama, extraerAlertas, construirPanorama } = require('./builders/panorama');
 const { extraerCifrasTablas, bloqueCifrasVerificadas } = require('./parsers/tablas-boletin');
 const { validarFiltrosConsulta } = require('./validators/filtros-consulta');
 
@@ -112,6 +113,11 @@ module.exports = {
   quitarMarcadorCifras,
   verificarCifras,
   validarFiltrosConsulta,
+  validarFiltrosPanorama,
+
+  // Builders de panorama (mf-dashboard)
+  extraerAlertas,
+  construirPanorama,
 
   // Presentación
   presentacion,
