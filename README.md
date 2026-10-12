@@ -98,20 +98,32 @@ sequenceDiagram
     participant FE as Frontend Next.js
     participant API as /api/query (server-side)
     participant N8N as n8n Self-Hosted
+    participant CORE as @healthradar/core
     participant PG as PostgreSQL + pgvector
-    participant CLAUDE as Claude Haiku (Anthropic)
+    participant NVIDIA as NVIDIA API Catalog (Kimi/GLM)
+    participant GEMINI as Google Gemini Flash (3 llaves, failover)
     participant PHX as Arize Phoenix
 
     Analista->>FE: Escribe consulta en lenguaje natural
     FE->>API: POST /api/query { pregunta }
     Note over API: Credenciales de n8n permanecen<br/>en el servidor, nunca en el navegador
 
-    API->>N8N: Webhook POST con la consulta
+    API->>N8N: Webhook POST /webhook/consulta (Evento QueryRequested)
+    N8N->>CORE: require('@healthradar/core')<br/>parsers, filtros y ventanas por defecto sin LLM
+    CORE-->>N8N: Filtros y contexto normalizados
     N8N->>PG: Consulta SQL por distrito, semana y enfermedad
     PG-->>N8N: Datos epidemiológicos y climáticos estructurados
 
-    N8N->>CLAUDE: Prompt con los datos + pregunta del analista
-    CLAUDE-->>N8N: Reporte analítico en lenguaje natural
+    N8N->>NVIDIA: Prompt con los datos + pregunta del analista (ADR-003)
+    alt NVIDIA disponible
+        NVIDIA-->>N8N: Reporte analítico en lenguaje natural
+    else Error 429 / saturación (failover automático)
+        N8N->>GEMINI: Conmuta a la siguiente clave Gemini disponible
+        GEMINI-->>N8N: Reporte analítico en lenguaje natural
+    end
+
+    N8N->>CORE: Validador de contratos (shape-check) sobre la respuesta
+    CORE-->>N8N: Estructura uniforme (sin importar el modelo)
 
     N8N->>PHX: Traza completa HTTP/OTel (prompt, respuesta, tokens, latencia)
     PHX-->>N8N: Confirmación de registro
@@ -172,6 +184,7 @@ Cada decisión técnica relevante del proyecto está documentada en `infrastruct
 | [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting   | Vigente                 |
 | [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md)          | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente                 |
 | [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) | Microservicios Frontend (Microfrontends) con Next.js y Nginx  | Vigente                 |
+| [ADR-014](infrastructure/ADRs/ADR-014-autenticacion-usuarios.md)                 | Autenticación de Sesión con Nginx auth_request y Login Centralizado | Vigente                 |
 
 ---
 
@@ -226,7 +239,7 @@ cd src/mf-historicos && npm run dev    # http://localhost:3002
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/               # Pipelines de CI/CD
 ├── infrastructure/
-│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-013)
+│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-014)
 │   ├── manuals/                 # Manuales de despliegue y redes (Azure)
 │   ├── scripts-poc-arquitectura/ # Scripts de verificación y PoCs de arquitectura
 │   ├── nginx/                   # Configuración de Nginx Shell Router (ADR-013)

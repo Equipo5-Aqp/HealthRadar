@@ -1,6 +1,7 @@
 import TablaView from '@/modules/historicos/components/TablaView'
 
-// Datos históricos (tabla). La protección por sesión la aplica nginx (auth_request) o el middleware, según ADR-014.
+// Historicos (tabla). Protegido por nginx auth_request (ADR-014): Nginx verifica la sesion
+// en /_auth antes de llegar aqui.
 export default function Page() {
   return <TablaView />
 }

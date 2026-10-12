@@ -37,10 +37,11 @@ El host dispone de solo 4 GiB de RAM. **Está terminantemente prohibido agregar 
 
 HealthRadar implementa **Microfrontends con Next.js Multi-Zones** ([ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md)):
 
-1. **Estructura en `src/`:**
-   - `src/mf-dashboard/`: Next.js 14 standalone, atiende la raíz `/` (`basePath: ''`).
-   - `src/mf-consulta/`: Next.js 14 standalone, atiende `/consulta` (`basePath: '/consulta'`).
-   - `src/mf-historicos/`: Next.js 14 standalone, atiende `/historicos` (`basePath: '/historicos'`).
+1. **Estructura en `src/`** (los 3 usan **Next.js 16.3.1 + React 19**, `output: 'standalone'`):
+   - `src/mf-dashboard/`: atiende la raíz `/` (`basePath: ''`). Dev local: `npm run dev` → puerto **3003**.
+   - `src/mf-consulta/`: atiende `/consulta` (`basePath: '/consulta'`). Dev local: puerto **3001**.
+   - `src/mf-historicos/`: atiende `/historicos` (`basePath: '/historicos'`). Dev local: puerto **3002**.
+   - *Nota:* los scripts `dev` de cada `package.json` fijan el puerto (`next dev -p <puerto>`); el README menciona 3000/3001/3002 y está desfasado.
 2. **Enrutamiento Nginx (`infrastructure/nginx/nginx.conf`):**
    - Proxy inverso que mapea las rutas al respectivo contenedor upstream.
 3. **Reglas de Desarrollo Frontend:**
@@ -77,14 +78,26 @@ Implementada según [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-mome
   - Modelo: **Google Gemini 2.5 Flash** (ventana de contexto masiva y capacidad multimodal).
   - Resiliencia: Rotación secuencial de **3 API Keys** (`GEMINI_API_KEY`, `GEMINI_API_KEY_2`, `GEMINI_API_KEY_3`) para mitigar límites de cuota (Rate Limits 429) en el plan gratuito.
 - **Momento Consulta (Online / NLQ interactivo para el analista):**
-  - Modelo Principal: **NVIDIA API Catalog** (modelos de alto razonamiento como Kimi k1.5 / Moonshot o GLM-4) vía `NVIDIA_API_KEY`.
-  - Contingencia / Fallback: Conmutación automática hacia **OpenRouter** ante errores 429 o caídas de latencia.
+  - Modelo Principal: **NVIDIA API Catalog** (`NVIDIA_API_KEY`, `NVIDIA_API_KEY_KIMI`) con modelos Kimi (Moonshot Kimi K3) y GLM (GLM‑4 / GLM‑5‑3).
+  - **Failover automático:** ante indisponibilidad, error 429 o saturación de NVIDIA, el workflow conmuta a las **3 claves de Google Gemini Flash** como respaldo de continuidad.
+  - Contingencia adicional (mitigación documentada, no fallback primario): proveedores agregadores compatibles con la API OpenAI como **OpenRouter** (DeepSeek, Qwen, etc.).
+  - *Nota:* el diagrama NLQ del README mencionaba "Claude Haiku (Anthropic)"; estaba desfasado y ya fue corregido para coincidir con ADR-003.
 - **Observabilidad ([ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)):**
-  - Cada llamada a un LLM en n8n debe emitir su traza OTel correspondiente al contenedor `healthradar-phoenix` (`http://phoenix:4318/v1/traces`).
+  - Cada llamada a un LLM en n8n debe emitir su traza correspondiente al contenedor `healthradar-phoenix`: HTTP POST a `http://phoenix:6006/v1/projects/${PHOENIX_PROJECT||default}/spans` (los flujos leen `PHOENIX_URL`/`PHOENIX_PROJECT` con defaults `http://phoenix:6006` y `default`).
 
 ---
 
-## 6. Mapa Rápido de Decisiones de Arquitectura (ADRs)
+## 6. CI/CD y Despliegue Automático
+
+Hechos operativos que cambian cómo debe trabajar un agente (verificados en `.github/workflows/`):
+
+1. **Despliegue a producción (`deploy.yml`):** todo push a `main` que modifique `src/` (**excepto `src/n8n-workflows/`**) o `infrastructure/` dispara el pipeline automático: SSH a la VM de Azure → `git reset --hard origin/main` → **builds secuenciales** con Docker Compose (uno por uno para proteger los 4 GiB de RAM de la VM) → `docker compose up -d`. Al final ejecuta **migraciones SQL idempotentes**: cada archivo de `src/database/migrations/` se registra en la tabla de control `healthradar_schema_migrations` y no se vuelve a aplicar si ya existe.
+2. **Despliegue de workflows n8n (`n8n-deploy-cd.yml`):** los cambios en `src/n8n-workflows/` **NO** se despliegan con push a `main`. Solo se publican en n8n producción al crear un **tag `v*.*.*`** o vía `workflow_dispatch` manual, y requieren aprobación del environment `production`.
+3. **Migraciones en primer boot:** Postgres ejecuta automáticamente los SQL de `src/database/migrations/` al inicializar el volumen (montado en `/docker-entrypoint-initdb.d`). Por eso las migraciones deben ser idempotentes y numeradas.
+
+---
+
+## 7. Mapa Rápido de Decisiones de Arquitectura (ADRs)
 
 | ADR | Decisión Central | Estado |
 | :--- | :--- | :--- |
@@ -101,10 +114,12 @@ Implementada según [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-mome
 | **ADR-011** | Hosting en Microsoft Azure Virtual Machines (instancia B2als_v2 con 4 GiB) | Vigente |
 | **ADR-012** | Arquitectura Basada en Eventos (EDA) en n8n con `@healthradar/core` desacoplado | Vigente |
 | **ADR-013** | Microservicios Frontend (3 Microfrontends) con Next.js Multi-Zones y Shell Nginx | Vigente |
+| **ADR-014** | Autenticación de Sesión con Nginx auth_request y Login Centralizado en mf-dashboard | Vigente |
+| **ADR-014** | Autenticación de Sesión con Nginx auth_request y Login Centralizado en mf-dashboard | Vigente |
 
 ---
 
-## 7. Instrucciones para Generación de Código y Optimización de Carga
+## 8. Instrucciones para Generación de Código y Optimización de Carga
 
 1. **Variables de Entorno:** Nunca crear archivos `.env` en los commits. Usar siempre `infrastructure/.env.example` como plantilla. Nunca usar prefijos `NEXT_PUBLIC_` para credenciales o URLs internas de Docker.
 2. **Microfrontends:** No importar archivos de un microfrontend dentro de otro. El código debe mantenerse estrictamente desacoplado en `src/mf-dashboard/`, `src/mf-consulta/` y `src/mf-historicos/`.
@@ -115,7 +130,7 @@ Implementada según [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-mome
 
 ---
 
-## 8. Reglas Operativas para Agentes IA (No Negociables)
+## 9. Reglas Operativas para Agentes IA (No Negociables)
 
 1. **Planificar antes de actuar:** Antes de cualquier edición, explica brevemente el plan y los archivos a tocar. No saltes directo a modificar.
 2. **Leer antes de editar:** Obligatorio leer el archivo con herramientas de lectura (`view_file` o equivalente) al menos una vez antes de editar o sobrescribir. Nunca asumir contenido.
@@ -130,7 +145,7 @@ Implementada según [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-mome
 
 ---
 
-## 9. Guardrails Anti-Alucinaciones
+## 10. Guardrails Anti-Alucinaciones
 
 1. **Fuente única de verdad:** Las decisiones arquitectónicas prevalecen en los **ADRs** (`infrastructure/ADRs/`). Si hay conflicto entre una suposición y un ADR, **siempre prevalece el ADR**.
 2. **Evidencia antes de conclusión:** Toda afirmación sobre el código o estado del sistema debe sustentarse con lectura previa o búsqueda en el repositorio. No declarar hechos sin evidencia verificable.

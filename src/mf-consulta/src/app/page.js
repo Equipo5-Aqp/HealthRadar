@@ -1,6 +1,7 @@
 import ConsultaView from '@/modules/consulta/components/ConsultaView'
 
-// Consulta (chat NLQ). La protección por sesión la aplica nginx (auth_request) o el middleware, según ADR-014.
+// Consulta (chat NLQ). Protegido por nginx auth_request (ADR-014): Nginx verifica la sesion
+// en /_auth antes de llegar aqui.
 export default function Page() {
   return <ConsultaView />
 }
