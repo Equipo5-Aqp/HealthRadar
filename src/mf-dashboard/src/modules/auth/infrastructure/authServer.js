@@ -13,8 +13,8 @@ export function tokenValido(token) {
 }
 
 // La cookie lleva Secure solo si AUTH_COOKIE_SECURE=true. Con HTTP plano (despliegue actual:
-// nginx en :3000 sin TLS) un navegador DESCARTA las cookies Secure y nadie podría entrar.
-// La decisión TLS vs. riesgo aceptado está pendiente en el ADR-014: no se activa a ciegas.
+// nginx en :3000 sin TLS) un navegador DESCARTA las cookies Secure y nadie podria entrar.
+// Opcion B (ADR-014): AUTH_COOKIE_SECURE=false es el riesgo aceptado documentado para HTTP sin TLS.
 function atributosComunes() {
   const partes = ['HttpOnly', 'SameSite=Lax', 'Path=/']
   if (process.env.AUTH_COOKIE_SECURE === 'true') partes.push('Secure')

@@ -471,28 +471,28 @@ COMMENT ON FUNCTION fn_auth_purgar(INT,INT) IS
 --   notificaciones de error con el payload). Esta nota NO cierra R1: la mitigación
 --   vive en docker-compose.yml y en el workflow, no en este .sql.
 --
--- TLS / COOKIE Secure — DECISIÓN PENDIENTE (va en el ADR-014):
+-- TLS / COOKIE Secure — DECISION DOCUMENTADA EN ADR-014 (Opcion B - Riesgo Aceptado):
 --   El despliegue actual sirve HTTP plano (nginx escucha en 3000, sin ssl_certificate ni
 --   listen 443; docker-compose publica "3000:3000"). Un navegador DESCARTA las cookies
---   Secure cuando la página llega por HTTP: el login respondería 200, el Set-Cookie se
---   ignoraría y nadie podría entrar. Además, con HTTP la contraseña viaja en claro por la
---   red. Antes de activar el workflow hay que elegir UNA opción:
---     (a) TLS en nginx (requiere dominio + certificado; la RAM extra es ~0), cookie Secure; o
---     (b) cookie SIN Secure, documentada como RIESGO ACEPTADO solo para la demo en VM con IP.
---   Hasta decidirlo, el atributo Secure del paso 6 NO debe darse por funcionando.
+--   Secure cuando la pagina llega por HTTP: el login responderia 200, el Set-Cookie se
+--   ignoraria y nadie podria entrar. Ademas, con HTTP la contrasena viaja en claro por la
+--   red. ADR-014 adopta la Opcion B: cookie SIN Secure, documentada como RIESGO ACEPTADO
+--   solo para la demo en VM con IP publica sin dominio propio (ver ADR-014).
+--   Para pasar a Opcion A (TLS): configurar dominio + certificado SSL en nginx y poner
+--   AUTH_COOKIE_SECURE=true en el .env de la VM de Azure.
 --
 -- R2 — ESTE ARCHIVO NO ES IDEMPOTENTE PARA EL PIPELINE:
 --   Que 008 se pueda aplicar dos veces (paso 8) sirve para aplicarla A MANO. El paso 2.5 de
 --   n8n-deploy-cd.yml omite los archivos ya registrados en healthradar_schema_migrations y
---   registra la migración aunque falle: una aplicación a medias queda marcada como hecha y
+--   registra la migracion aunque falle: una aplicacion a medias queda marcada como hecha y
 --   no se reintenta. Tras desplegar, verificar a mano (paso 8 y la consulta de funciones) y,
---   si falló, re-aplicar manualmente. No existe todavía CI que valide las migraciones.
+--   si fallo, re-aplicar manualmente. No existe todavia CI que valide las migraciones.
 --
--- DEUDA TÉCNICA (registrar en el ADR-014 / matriz del Sprint 4):
---   M4  CI de migraciones: aplicar 001–008 dos veces contra un Postgres efímero en cada PR
---       y sacar el paso 2.5 a su propio workflow (cierra R2 de raíz).
---   M5  Rotación / cambio de contraseña: hoy solo existe debe_cambiar_password; falta el
---       flujo y la política (caducidad, historial) que la use.
+-- DEUDA TECNICA REGISTRADA EN ADR-014 (items M4, M5 y M6 — Sprint 4):
+--   M4  CI de migraciones: aplicar 001-008 dos veces contra un Postgres efimero en cada PR
+--       y sacar el paso 2.5 a su propio workflow (cierra R2 de raiz).
+--   M5  Rotacion / cambio de contrasena: hoy solo existe debe_cambiar_password; falta el
+--       flujo y la politica (caducidad, historial) que la use.
 --
 -- MOTIVO en login_evento (lo decide el flujo con lo que devuelve la BD):
 --   registrar_fallo devuelve 0 filas      -> 'no_existe'
