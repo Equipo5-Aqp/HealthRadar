@@ -36,6 +36,16 @@ const ACUMULADOS = [
   'sarampion_notificados', 'pfa_total', 'ofidismo_total', 'muerte_materna_directa',
 ];
 
+/**
+ * Claves cuyo valor del boletín puede bajar algo entre semanas sin que sea un error de lectura:
+ * los casos de PFA notificados vienen de un indicador de vigilancia que el propio boletín corrige
+ * (SE 26 = 49 y SE 27 = 46 en los boletines reales). Para ellas se tolera una baja de hasta el 10 %
+ * del valor previo o de `abs` casos, lo que sea mayor. Una caída más grande (p. ej. 17 → 5) se sigue rechazando.
+ * Pesa poco rechazar de más: un boletín rechazado bloquea la cola de Fase B, y el valor del PFA ya se
+ * contrasta contra la tabla del PDF cuando esta se puede leer.
+ */
+const TOLERANCIA_BAJA_POR_CLAVE = { pfa_total: { relativa: 0.10, abs: 10 } };
+
 /** Acumulados grandes a los que además se aplica un tope de crecimiento semanal. */
 const CON_TOPE = [
   'dengue_total', 'ira_total', 'eda_total',
@@ -91,7 +101,11 @@ function detectarInconsistenciasCifras(actual, previo, opciones = {}) {
       const a = actual[clave];
       const p = previo[clave];
 
-      if (a < p * (1 - o.toleranciaBaja)) {
+      const especial = TOLERANCIA_BAJA_POR_CLAVE[clave];
+      const bajaMaxima = especial
+        ? Math.max(p * o.toleranciaBaja, p * especial.relativa, especial.abs)
+        : p * o.toleranciaBaja;
+      if (p - a > bajaMaxima) {
         problemas.push(
           `${clave}: bajó de ${fmt(p)} (SE ${semanaPrevia}) a ${fmt(a)} (SE ${semanaActual}); un acumulado no debería disminuir`
         );
