@@ -209,7 +209,7 @@
     },
     {
       "parameters": {
-        "content": "## Panorama (mf-dashboard)\nWebhook `POST /webhook/panorama` · body opcional `{anio, semana}` (sin body = boletin mas reciente con cifras).\nSolo LEE `boletin_descubierto`. Sin LLM: las cifras vienen del marcador `[CIFRAS]` de Fase B.\nLos resumenes anteriores a Fase B V7 no traen `[CIFRAS]`: el front lo avisa en pantalla.",
+        "content": "## Panorama (mf-dashboard)\nWebhook `POST /webhook/panorama` · body opcional `{anio, semana}` (sin body = boletin mas reciente con cifras). Simulacro S3-HU-04.\nSolo LEE `boletin_descubierto`. Sin LLM: las cifras vienen del marcador `[CIFRAS]` de Fase B.\nLos resumenes anteriores a Fase B V7 no traen `[CIFRAS]`: el front lo avisa en pantalla.",
         "height": 150,
         "width": 420
       },
