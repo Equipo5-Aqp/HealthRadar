@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import requests
 
-BASE_URL = os.environ.get("HR_BASE_URL", "http://20.9.78.118:3000").rstrip("/")
+BASE_URL = (os.environ.get("HR_BASE_URL") or "http://20.9.78.118:3000").rstrip("/")
 PHOENIX_URL = os.environ.get("PHOENIX_URL", "http://localhost:6006").rstrip("/")
 PHOENIX_PROJECT = os.environ.get("PHOENIX_PROJECT", "default")
 

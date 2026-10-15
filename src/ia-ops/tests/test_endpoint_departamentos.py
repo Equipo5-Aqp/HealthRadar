@@ -20,7 +20,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("HR_BASE_URL", "http://20.9.78.118:3000").rstrip("/")
+BASE_URL = (os.environ.get("HR_BASE_URL") or "http://20.9.78.118:3000").rstrip("/")
 URL_LOGIN = f"{BASE_URL}/api/auth/login"
 URL_DEP = f"{BASE_URL}/historicos/api/departamentos"
 
