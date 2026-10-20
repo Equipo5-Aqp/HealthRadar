@@ -24,6 +24,9 @@ jobs:
       # así '!src/n8n-workflows/**' realmente excluye (con 'some' cualquier archivo lo cumpliría).
       # Por eso src e infrastructure van en filtros separados (un archivo no puede estar en ambos).
       # Los workflows de n8n se publican con n8n-deploy-cd.yml (tag v*.*.*), no con este pipeline.
+      # No llegan a la VM (no despliegan nada): src/ia-ops (tests y prompts de QA; n8n lee los prompts
+      # de SYSTEM_PROMPT_* en infrastructure/.env), scripts ETL de src/database, documentación y plantillas.
+      # Las migraciones (src/database/migrations) sí se despliegan: filtro propio.
       - name: Detectar cambios desplegables
         if: github.event_name == 'push'
         uses: dorny/paths-filter@v3
@@ -34,8 +37,18 @@ jobs:
             src:
               - 'src/**'
               - '!src/n8n-workflows/**'
+              - '!src/ia-ops/**'
+              - '!src/database/**'
+              - '!**/*.md'
+            migraciones:
+              - 'src/database/migrations/**'
             infra:
               - 'infrastructure/**'
+              - '!infrastructure/ADRs/**'
+              - '!infrastructure/manuals/**'
+              - '!infrastructure/scripts-poc-arquitectura/**'
+              - '!infrastructure/.env*.example'
+              - '!**/*.md'
 
       # ── 2. ¿Qué servicios hay que compilar? (ADR-008: proteger los 4 GiB de la VM) ──
       # Cada microfrontend se construye con su propia carpeta como contexto; la imagen de
@@ -66,9 +79,10 @@ jobs:
         env:
           EVENTO: ${{ github.event_name }}
           HAY_SRC: ${{ steps.deployable.outputs.src }}
+          HAY_MIGRACIONES: ${{ steps.deployable.outputs.migraciones }}
           HAY_INFRA: ${{ steps.deployable.outputs.infra }}
         run: |
-          if [ "$EVENTO" = "workflow_dispatch" ] || [ "$HAY_SRC" = "true" ] || [ "$HAY_INFRA" = "true" ]; then
+          if [ "$EVENTO" = "workflow_dispatch" ] || [ "$HAY_SRC" = "true" ] || [ "$HAY_MIGRACIONES" = "true" ] || [ "$HAY_INFRA" = "true" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -213,4 +227,4 @@ jobs:
 
       - name: Sin cambios desplegables
         if: steps.decide.outputs.deploy == 'false'
-        run: echo "✅ Este push no toca src/ (salvo n8n-workflows) ni infrastructure/ — se omite el despliegue"
+        run: echo "✅ Este push no toca nada desplegable (src/ sin n8n-workflows/ia-ops/docs, migraciones, infrastructure/ sin docs) — se omite el despliegue"
