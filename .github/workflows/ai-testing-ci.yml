@@ -41,6 +41,10 @@ jobs:
     needs: [changes, sast]
     if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
+    env:
+      HR_USER: ${{ secrets.HR_USER }}
+      HR_PASS: ${{ secrets.HR_PASS }}
+      HR_BASE_URL: ${{ secrets.HR_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -82,15 +86,15 @@ jobs:
         env:
           N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
         run: python -m pytest src/ia-ops/tests/test_llm_outputs.py -v
-      
-      - name: "QA · Detección de Periodo NLQ (HU-10)"
+
+      - name: "QA · Detección de Periodo NLQ (HU-10 / #160)"
         if: steps.check_webhook.outputs.skip == 'false'
         continue-on-error: true
         env:
           N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
         run: python -m pytest src/ia-ops/tests/test_nlq_periodo.py -v
 
-      - name: "QA · Failover Multi-Modelo (HU-11)"
+      - name: "QA · Failover Multi-Modelo (HU-11 / #160)"
         if: steps.check_webhook.outputs.skip == 'false'
         continue-on-error: true
         env:
