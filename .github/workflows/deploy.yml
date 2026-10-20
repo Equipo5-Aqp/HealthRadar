@@ -3,6 +3,13 @@ name: Deploy CD
 on:
   push:
     branches: [ main ]
+  # Ejecución manual: build_all=true recompila los 4 servicios (recupera desfases tras un deploy fallido).
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Recompilar los 4 servicios (n8n, mf-dashboard, mf-consulta, mf-historicos)'
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -12,25 +19,70 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── 1. ¿Hay algo desplegable? ─────────────────────────────────────────────
+      # predicate-quantifier 'every': un archivo cuenta solo si cumple TODOS los patrones del filtro,
+      # así '!src/n8n-workflows/**' realmente excluye (con 'some' cualquier archivo lo cumpliría).
+      # Por eso src e infrastructure van en filtros separados (un archivo no puede estar en ambos).
+      # Los workflows de n8n se publican con n8n-deploy-cd.yml (tag v*.*.*), no con este pipeline.
       - name: Detectar cambios desplegables
+        if: github.event_name == 'push'
+        uses: dorny/paths-filter@v3
+        id: deployable
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            src:
+              - 'src/**'
+              - '!src/n8n-workflows/**'
+            infra:
+              - 'infrastructure/**'
+
+      # ── 2. ¿Qué servicios hay que compilar? (ADR-008: proteger los 4 GiB de la VM) ──
+      # Cada microfrontend se construye con su propia carpeta como contexto; la imagen de
+      # n8n solo copia src/core/ (infrastructure/n8n/Dockerfile, ADR-012).
+      # Un cambio en el compose puede alterar entorno/redes de cualquier servicio → los 4.
+      - name: Detectar cambios por servicio
+        if: github.event_name == 'push'
         uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
-            deployable:
-              - 'src/**'
-              - '!src/n8n-workflows/**'
-              - 'infrastructure/**'
+            n8n:
+              - 'src/core/**'
+              - 'infrastructure/n8n/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_dashboard:
+              - 'src/mf-dashboard/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_consulta:
+              - 'src/mf-consulta/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_historicos:
+              - 'src/mf-historicos/**'
+              - 'infrastructure/docker-compose.yml'
+
+      - name: Decidir despliegue
+        id: decide
+        env:
+          EVENTO: ${{ github.event_name }}
+          HAY_SRC: ${{ steps.deployable.outputs.src }}
+          HAY_INFRA: ${{ steps.deployable.outputs.infra }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ] || [ "$HAY_SRC" = "true" ] || [ "$HAY_INFRA" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Desplegar vía SSH
-        if: steps.filter.outputs.deployable == 'true'
+        if: steps.decide.outputs.deploy == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          # VM B2als_v2 (2 vCPU, 4 GB) puede tardar >10min en build + recreate + healthchecks
-          command_timeout: 20m
+          # VM B2als_v2 (2 vCPU, 4 GB): incluye la espera del candado si hay otro deploy en curso
+          command_timeout: 30m
           script: |
             set -e
 
@@ -38,16 +90,62 @@ jobs:
             DB_CONTAINER="healthradar-postgres"
             MIGRATIONS_DIR="$REPO_DIR/src/database/migrations"
 
+            # Un solo deploy a la vez en la VM. Los pushes en cola esperan su turno (no se cancelan):
+            # cada uno conserva su propia decisión de qué compilar, así ningún cambio queda sin construir.
+            exec 9>/tmp/healthradar-deploy.lock
+            echo "🔒 Esperando turno de despliegue (máx. 20 min)..."
+            flock -w 1200 9
+
             cd "$REPO_DIR"
             echo "📥 Actualizando código..."
             git fetch origin main
             git reset --hard origin/main
             cd infrastructure
-            echo "🔨 [ADR-008] Compilando imágenes secuencialmente para proteger RAM de la VM..."
-            docker compose build n8n
-            docker compose build mf-dashboard
-            docker compose build mf-consulta
-            docker compose build mf-historicos
+
+            # ── Decisiones calculadas por GitHub Actions (valores 'true'/'false') ──
+            BUILD_ALL="${{ inputs.build_all }}"
+            BUILD_N8N="${{ steps.filter.outputs.n8n }}"
+            BUILD_DASHBOARD="${{ steps.filter.outputs.mf_dashboard }}"
+            BUILD_CONSULTA="${{ steps.filter.outputs.mf_consulta }}"
+            BUILD_HISTORICOS="${{ steps.filter.outputs.mf_historicos }}"
+
+            BUILT=0
+
+            echo "🔨 [ADR-008] Compilación condicional y secuencial para proteger RAM de la VM..."
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_N8N" = "true" ]; then
+              echo "  ▶️  Compilando n8n (cambió core, Dockerfile o compose)..."
+              docker compose build n8n
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo n8n (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_DASHBOARD" = "true" ]; then
+              echo "  ▶️  Compilando mf-dashboard..."
+              docker compose build mf-dashboard
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-dashboard (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_CONSULTA" = "true" ]; then
+              echo "  ▶️  Compilando mf-consulta..."
+              docker compose build mf-consulta
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-consulta (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_HISTORICOS" = "true" ]; then
+              echo "  ▶️  Compilando mf-historicos..."
+              docker compose build mf-historicos
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-historicos (sin cambios)"
+            fi
+
+            echo "📊 Resumen: se compilaron $BUILT de 4 servicios."
             echo "🐳 Levantando contenedores actualizados..."
             docker compose up -d
             docker compose restart nginx-shell
@@ -114,5 +212,5 @@ jobs:
             echo "📋 Migraciones: $COUNT_APPLIED aplicadas, $COUNT_SKIP omitidas."
 
       - name: Sin cambios desplegables
-        if: steps.filter.outputs.deployable == 'false'
-        run: echo "✅ Este push no toca src/ ni infrastructure/ — se omite el despliegue"
+        if: steps.decide.outputs.deploy == 'false'
+        run: echo "✅ Este push no toca src/ (salvo n8n-workflows) ni infrastructure/ — se omite el despliegue"
