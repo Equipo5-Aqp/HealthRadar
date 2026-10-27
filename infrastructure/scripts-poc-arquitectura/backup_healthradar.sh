@@ -121,14 +121,17 @@ log "[3/3] Rotacion (retencion: $BACKUP_RETENTION_COUNT)..."
 rotate() {
   local pattern="$1" keep="$2" f
   local total=0
-  # shellcheck disable=SC2012
-  for f in $(ls -1t "$BACKUP_DIR"/$pattern 2>/dev/null); do
+  while IFS= read -r -d '' f; do
     total=$((total + 1))
     if [ "$total" -gt "$keep" ]; then
       rm -f "$f" "$f.sha256"
       log " -> Eliminado por rotacion: $(basename "$f")"
     fi
-  done
+  done < <(
+    find "$BACKUP_DIR" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\0' 2>/dev/null \
+      | sort -z -rn \
+      | cut -z -d' ' -f2-
+  )
 }
 rotate "pg_*.dump.gz" "$BACKUP_RETENTION_COUNT"
 rotate "n8n-workflows_*.tar.gz" "$BACKUP_RETENTION_COUNT"
