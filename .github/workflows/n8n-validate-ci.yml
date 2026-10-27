@@ -20,6 +20,23 @@ jobs:
               - 'src/n8n-workflows/**'
               - 'src/ia-ops/**'
 
+      - name: Verificar version fijada de n8n
+        run: |
+          PIN=$(grep -oE 'n8nio/n8n:[0-9]+\.[0-9]+\.[0-9]+' infrastructure/n8n/Dockerfile | head -n1 | cut -d: -f2)
+          if [ -z "$PIN" ]; then
+            echo "ERROR: infrastructure/n8n/Dockerfile no fija una version exacta de n8n"
+            exit 1
+          fi
+          if ! grep -qF "| n8n |" README.md || ! grep -qF "$PIN" README.md; then
+            echo "ERROR: README.md no declara n8n $PIN"
+            exit 1
+          fi
+          if grep -RqsE 'n8nio/n8n:(latest|stable|develop)' infrastructure .github --include='*.yml' --include='*.yaml' --include='Dockerfile*'; then
+            echo "ERROR: hay referencias a tags moviles de n8n"
+            exit 1
+          fi
+          echo "OK: n8n $PIN fijado y documentado"
+
       - name: Configurar Python
         if: steps.filter.outputs.n8n == 'true'
         uses: actions/setup-python@v5
@@ -95,26 +112,24 @@ jobs:
 
       - name: Verificar traza a Arize Phoenix en workflows con LLM (ADR-010)
         if: steps.filter.outputs.n8n == 'true'
-        continue-on-error: true
         run: |
           echo "Verificando trazabilidad de Phoenix en workflows que invocan un LLM..."
           FAIL=0
-          FILES=$(grep -rlEi "gemini|claude|anthropic" src/n8n-workflows --include="*.json" 2>/dev/null || true)
+          FILES=$(grep -rlEi "gemini|kimi|glm|nvidia|anthropic|claude" src/n8n-workflows/production --include="*.json" 2>/dev/null || true)
           if [ -z "$FILES" ]; then
-            echo "ℹ️ No se encontraron workflows que invoquen Gemini o Claude — se omite esta verificación"
+            echo "No se encontraron workflows de produccion que invoquen un LLM."
           else
             for f in $FILES; do
               if grep -qi "phoenix" "$f"; then
-                echo "✅ $f invoca un LLM y sí incluye traza a Phoenix"
+                echo "OK: $f invoca un LLM y envia traza a Phoenix"
               else
-                echo "⚠️ $f invoca un LLM pero NO incluye el nodo de traza a Arize Phoenix (ADR-010)"
+                echo "ERROR: $f invoca un LLM pero no envia traza a Arize Phoenix (ADR-010)"
                 FAIL=1
               fi
             done
           fi
           if [ "$FAIL" -eq 1 ]; then
-            echo ""
-            echo "Acción pendiente: agregar el nodo de envío de traza a Arize Phoenix en los workflows señalados arriba (HU-08)."
+            exit 1
           fi
 
       - name: Sin cambios relevantes

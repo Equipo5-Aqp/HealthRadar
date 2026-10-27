@@ -5,6 +5,66 @@ on:
     branches: [ main ]
 
 jobs:
+  check-versions:
+    name: Validar versiones React/Next
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar versiones alineadas y fijadas
+        run: |
+          python3 - <<'PYEOF'
+          import glob, json, re, sys
+
+          files = sorted(glob.glob("src/mf-*/package.json"))
+          if len(files) != 3:
+              print(f"ERROR: se esperaban 3 microfrontends, encontrados {len(files)}")
+              sys.exit(1)
+
+          versions = {}
+          for path in files:
+              with open(path, encoding="utf-8") as fh:
+                  pkg = json.load(fh)
+              deps = pkg.get("dependencies", {})
+              versions[path] = {
+                  "next": deps.get("next"),
+                  "react": deps.get("react"),
+                  "react-dom": deps.get("react-dom"),
+              }
+
+          expected = None
+          errors = []
+          for path, deps in versions.items():
+              for name, value in deps.items():
+                  if not value:
+                      errors.append(f"{path}: falta {name}")
+                      continue
+                  if not re.fullmatch(r"\d+\.\d+\.\d+", value):
+                      errors.append(f"{path}: {name}={value} no esta fijado a una version exacta")
+              current = tuple(deps.values())
+              if expected is None:
+                  expected = current
+              elif current != expected:
+                  errors.append(f"{path}: versiones {deps} distintas del resto")
+
+          for path in files:
+              lock_path = path.replace("package.json", "package-lock.json")
+              with open(lock_path, encoding="utf-8") as fh:
+                  lock = json.load(fh)
+              root = lock.get("packages", {}).get("", {}).get("dependencies", {})
+              with open(path, encoding="utf-8") as fh:
+                  pkg = json.load(fh)
+              for name in ("next", "react", "react-dom"):
+                  if root.get(name) != pkg["dependencies"].get(name):
+                      errors.append(f"{lock_path}: {name} del lock no coincide con package.json")
+
+          if errors:
+              for error in errors:
+                  print(f"ERROR: {error}")
+              sys.exit(1)
+
+          print(f"OK: Next {expected[0]}, React {expected[1]}, React DOM {expected[2]} en los 3 microfrontends")
+          PYEOF
+
   changes:
     runs-on: ubuntu-latest
     outputs:
