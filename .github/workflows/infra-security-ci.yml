@@ -62,3 +62,27 @@ jobs:
       - name: Sin cambios relevantes
         if: steps.filter.outputs.infra == 'false'
         run: echo "✅ Este PR no toca infrastructure/ — se omite la validación, check en verde"
+
+  verify-backup-script:
+    name: Validar script de backups HU-303 (shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar shellcheck
+        run: sudo apt-get update -y && sudo apt-get install -y shellcheck
+
+      - name: Analizar backup_healthradar.sh
+        run: |
+          SCRIPT="infrastructure/scripts-poc-arquitectura/backup_healthradar.sh"
+          test -f "$SCRIPT" || { echo "❌ No existe $SCRIPT"; exit 1; }
+          test -x "$SCRIPT" || { echo "❌ $SCRIPT no tiene bit ejecutable"; exit 1; }
+          bash -n "$SCRIPT" && echo "✅ Sintaxis bash OK"
+          shellcheck -S warning "$SCRIPT"
+
+      - name: Sin secretos ni puertos en el script
+        run: |
+          SCRIPT="infrastructure/scripts-poc-arquitectura/backup_healthradar.sh"
+          ! grep -nE "POSTGRES_PASSWORD=|N8N_ENCRYPTION_KEY=|GEMINI_API_KEY=|ports:" "$SCRIPT" \
+            && echo "✅ Sin credenciales hardcodeadas ni ports: en el script" \
+            || { echo "❌ El script contiene secretos o ports:"; exit 1; }

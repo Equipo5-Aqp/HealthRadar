@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js para @healthradar/core
         uses: actions/setup-node@v4
@@ -47,13 +49,19 @@ jobs:
             REPO_DIR="/home/azureuser/HealthRadar"
             WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
             CONTAINER_NAME="healthradar-n8n"
+            TARGET_SHA="${{ github.sha }}"
 
-            echo "📥 1. Actualizando repositorio en la VM..."
+            echo "📥 1. Desplegando ref ${{ github.ref_name }} ($TARGET_SHA)..."
             cd "$REPO_DIR"
 
-            echo "  🧹 Sincronizando con origin/main (descartando cualquier residuo local)..."
-            git fetch origin main
-            git reset --hard origin/main
+            echo "  🧹 Sincronizando el commit exacto (descartando residuos locales)..."
+            git fetch --tags origin
+            git fetch origin "${{ github.ref_name }}"
+            if ! git cat-file -e "$TARGET_SHA^{commit}" 2>/dev/null; then
+              git fetch origin "$TARGET_SHA"
+            fi
+            git checkout --detach "$TARGET_SHA"
+            git reset --hard "$TARGET_SHA"
             git clean -fd src/n8n-workflows/production/
 
             echo "🔍 2. Verificando que el contenedor esté activo..."
@@ -102,15 +110,11 @@ jobs:
 
             echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
 
-            N8N_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
+            N8N_IP=$(docker inspect -f '{{(index .NetworkSettings.Networks "healthradar-net").IPAddress}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
 
             if [ -z "$N8N_IP" ]; then
-              N8N_IP=$(docker inspect -f '{{(index .NetworkSettings.Networks "healthradar-net").IPAddress}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
-            fi
-
-            if [ -z "$N8N_IP" ]; then
-              echo "⚠️  No se pudo resolver la IP por inspección, usando fallback 172.18.0.4..."
-              N8N_IP="172.18.0.4"
+              echo "❌ No se pudo resolver la IP interna de $CONTAINER_NAME en healthradar-net."
+              exit 1
             fi
 
             echo "  📡 IP interna de n8n en la red Docker: $N8N_IP:5678"
@@ -203,11 +207,12 @@ jobs:
               echo "  El detalle de Phoenix aún no está disponible en este pipeline — se continúa con las demás pruebas."
               exit 0
             fi
-            docker exec "$CONTAINER_NAME" wget -qO- http://localhost:6006 > /dev/null 2>&1 \
-              && echo "✅ Phoenix responde" \
-              || { echo "  ⚠️  ADVERTENCIA: Phoenix no responde internamente en localhost:6006." &&
-                   echo "  El detalle de Phoenix aún no está disponible en este pipeline — se continúa con las demás pruebas." &&
-                   exit 0; }
+            if docker exec "$CONTAINER_NAME" python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:6006/healthz').status == 200 else 1)"; then
+              echo "✅ Phoenix responde"
+            else
+              echo "  ⚠️  ADVERTENCIA: Phoenix no responde internamente en localhost:6006."
+              echo "  La observabilidad es pasiva; se continúa con las demás pruebas."
+            fi
 
       - name: Smoke test del flujo NLQ (webhook de n8n)
         uses: appleboy/ssh-action@v1
@@ -217,7 +222,7 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
             RESPONSE=$(docker exec healthradar-n8n wget -qO- --header="Content-Type: application/json" \
-              --post-data='{"pregunta":"prueba de humo staging"}' \
+              --post-data='{"pregunta":"prueba de humo produccion"}' \
               http://localhost:5678/webhook/consulta || echo "FAIL")
             echo "$RESPONSE" | grep -q "FAIL" && (echo "❌ Webhook NLQ no respondió" && exit 1) || echo "✅ Webhook NLQ respondió"
 
@@ -228,4 +233,9 @@ jobs:
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
-            docker logs healthradar-n8n 2>&1 | grep -iE "fatal|unhandled" && (echo "❌ Errores fatales en n8n" && exit 1) || echo "✅ Sin errores fatales en n8n"
+            if docker logs healthradar-n8n 2>&1 | grep -qiE "fatal|unhandled"; then
+              echo "❌ Errores fatales en n8n"
+              exit 1
+            else
+              echo "✅ Sin errores fatales en n8n"
+            fi

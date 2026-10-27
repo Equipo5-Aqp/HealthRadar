@@ -5,7 +5,7 @@
 
 ## Contexto
 
-HealthRadar requiere datos epidemiológicos para dos propósitos: cargar el historial de enfermedades de los últimos 20 años por distrito del Perú, y recibir datos dinámicos semanales con los casos nuevos de enfermedades de notificación obligatoria como Dengue, Influenza y Covid-19.
+HealthRadar requiere datos epidemiológicos para dos propósitos: cargar el historial de enfermedades de los últimos 20 años por distrito del Perú, y recibir datos dinámicos semanales de Dengue, EDA e IRA.
 
 Se evaluaron tres fuentes candidatas: MINSA/CDC Perú, Instituto
 Nacional de Salud (INS) y Organización Mundial de la Salud (OMS).
@@ -28,9 +28,14 @@ epidemiológicos del sistema. Esta fuente cubre tanto la carga inicial
 del historial como la ingesta dinámica semanal.
 
 Los boletines se publican en formato PDF semanalmente. n8n descarga
-el PDF, Gemini Flash (ADR-003) extrae los datos estructurados en JSON,
-y n8n inserta el resultado en PostgreSQL diferenciado por fecha y semana
-epidemiológica.
+el PDF, Gemini 3.5 Flash Lite (ADR-003) genera un resumen epidemiológico
+con marcador `[CIFRAS]`, y n8n actualiza el registro correspondiente en
+`boletin_descubierto` para la semana epidemiológica detectada.
+
+El historial por distrito no lo escribe n8n: se carga con el ETL de
+`src/database/` (`limpiar_datasets_minsa.py` y `cargar_datos_minsa.py`)
+en las tablas `caso_dengue`, `caso_eda`, `caso_ira_neumonia` y
+`caso_ira_no_neumonia`.
 
 La OMS e INS quedan fuera de la arquitectura como fuentes de datos
 conectadas. Su único uso es como referencia documental para definir
@@ -43,9 +48,10 @@ dinámicos.
 **Beneficios:**
 
 - Fuente única garantiza consistencia total del esquema de datos en
-  PostgreSQL. Gemini Flash siempre procesa el mismo formato de PDF.
-- Granularidad distrital disponible, que es la granularidad necesaria
-  para detectar brotes locales en el Perú.
+  PostgreSQL. El ETL histórico y la ingesta semanal trabajan sobre la
+  misma fuente y el mismo periodo epidemiológico.
+- Granularidad distrital disponible en el histórico, que es la
+  granularidad necesaria para detectar brotes locales en el Perú.
 - Elimina el riesgo de inconsistencias por cruce de fuentes con
   formatos distintos.
 - Simplifica el workflow de ingesta en n8n a un solo tipo de documento
@@ -61,9 +67,9 @@ dinámicos.
 
 **Mitigación:**
 
-- Arize Phoenix (ADR-010) monitorea cada extracción de Gemini Flash y
-  alerta cuando el JSON resultante cambia de estructura, detectando
-  cambios de formato del boletín antes de que el error llegue a PostgreSQL.
-- Se agrega un nodo de validación de esquema JSON en n8n entre la
-  extracción de Gemini y la inserción en PostgreSQL para rechazar
-  datos mal formados antes de contaminar la base de datos.
+- Arize Phoenix (ADR-010) monitorea latencia, tokens, errores y
+  metadatos de cada resumen, detectando cambios de comportamiento antes
+  de que el error llegue a PostgreSQL.
+- `@healthradar/core` valida el resumen y el marcador `[CIFRAS]` antes
+  de actualizar `boletin_descubierto`; si la validación falla, el flujo
+  detiene ese boletín y lo deja para revisión.
