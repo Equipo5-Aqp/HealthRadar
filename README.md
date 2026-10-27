@@ -28,10 +28,12 @@ Si un documento contradice el código o un ADR, prevalecen el código y el ADR.
 | PostgreSQL | `16` + pgvector | `infrastructure/docker-compose.yml` |
 | Arize Phoenix | `20.3.0` | `infrastructure/docker-compose.yml` |
 | nginx | `1.27-alpine` | `infrastructure/docker-compose.yml` |
-| Node.js (microfrontends) | `20.x` (Next exige `>=20.9.0`) | `src/mf-*/Dockerfile` |
+| Node.js (paquetes Node) | `20.x` (mínimo `>=20.9.0`; `.nvmrc` fija `20`) | `package.json`, `src/mf-*/Dockerfile`, `.nvmrc` y CI |
 | Python (CI/ETL) | `3.11` | `.github/workflows/`, `requirements.txt` |
 
-No se deben cambiar versiones de React/Next en un solo microfrontend: los tres deben quedar alineados. El CI lo valida.
+Node 20 aplica a `src/core`, los tres microfrontends y `tests/playwright`. La imagen `n8nio/n8n:2.35.7` trae su propio runtime Node y se gobierna por la versión de n8n, no por este pin.
+
+No se deben cambiar versiones de Node/React/Next en un solo lugar: los tres microfrontends y los paquetes Node deben quedar alineados. El CI lo valida.
 
 ## Arquitectura
 

@@ -6,7 +6,7 @@ on:
 
 jobs:
   check-versions:
-    name: Validar versiones React/Next
+    name: Validar versiones Node/React/Next
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,55 +14,100 @@ jobs:
         run: |
           python3 - <<'PYEOF'
           import glob, json, re, sys
+          from pathlib import Path
 
-          files = sorted(glob.glob("src/mf-*/package.json"))
-          if len(files) != 3:
-              print(f"ERROR: se esperaban 3 microfrontends, encontrados {len(files)}")
+          NODE_ENGINE = ">=20.9.0"
+          NODE_MAJOR = "20"
+          EXPECTED = {
+              "next": "16.3.1",
+              "react": "19.2.8",
+              "react-dom": "19.2.8",
+          }
+
+          errors = []
+
+          def load_json(path):
+              with open(path, encoding="utf-8") as fh:
+                  return json.load(fh)
+
+          mfs = sorted(glob.glob("src/mf-*/package.json"))
+          if len(mfs) != 3:
+              print(f"ERROR: se esperaban 3 microfrontends, encontrados {len(mfs)}")
               sys.exit(1)
 
-          versions = {}
-          for path in files:
-              with open(path, encoding="utf-8") as fh:
-                  pkg = json.load(fh)
+          for path in mfs:
+              pkg = load_json(path)
               deps = pkg.get("dependencies", {})
-              versions[path] = {
-                  "next": deps.get("next"),
-                  "react": deps.get("react"),
-                  "react-dom": deps.get("react-dom"),
-              }
-
-          expected = None
-          errors = []
-          for path, deps in versions.items():
-              for name, value in deps.items():
-                  if not value:
-                      errors.append(f"{path}: falta {name}")
-                      continue
-                  if not re.fullmatch(r"\d+\.\d+\.\d+", value):
-                      errors.append(f"{path}: {name}={value} no esta fijado a una version exacta")
-              current = tuple(deps.values())
-              if expected is None:
-                  expected = current
-              elif current != expected:
-                  errors.append(f"{path}: versiones {deps} distintas del resto")
-
-          for path in files:
               lock_path = path.replace("package.json", "package-lock.json")
-              with open(lock_path, encoding="utf-8") as fh:
-                  lock = json.load(fh)
-              root = lock.get("packages", {}).get("", {}).get("dependencies", {})
-              with open(path, encoding="utf-8") as fh:
-                  pkg = json.load(fh)
-              for name in ("next", "react", "react-dom"):
-                  if root.get(name) != pkg["dependencies"].get(name):
-                      errors.append(f"{lock_path}: {name} del lock no coincide con package.json")
+              lock_root = load_json(lock_path).get("packages", {}).get("", {})
+              lock_deps = lock_root.get("dependencies", {})
+
+              for name, wanted in EXPECTED.items():
+                  got = deps.get(name)
+                  if got != wanted:
+                      errors.append(f"{path}: {name}={got}, se esperaba {wanted}")
+                  if lock_deps.get(name) != wanted:
+                      errors.append(f"{lock_path}: {name}={lock_deps.get(name)}, se esperaba {wanted}")
+
+              if lock_root.get("engines", {}).get("node") != NODE_ENGINE:
+                  errors.append(f"{lock_path}: engines.node no coincide con {NODE_ENGINE}")
+
+          node_packages = mfs + [
+              "src/core/package.json",
+              "tests/playwright/package.json",
+          ]
+          for path in node_packages:
+              pkg = load_json(path)
+              got = pkg.get("engines", {}).get("node")
+              if got != NODE_ENGINE:
+                  errors.append(f"{path}: engines.node={got}, se esperaba {NODE_ENGINE}")
+
+              lock_path = path.replace("package.json", "package-lock.json")
+              lock_root = load_json(lock_path).get("packages", {}).get("", {})
+              if lock_root.get("engines", {}).get("node") != NODE_ENGINE:
+                  errors.append(f"{lock_path}: engines.node no coincide con {NODE_ENGINE}")
+
+          dockerfiles = sorted(glob.glob("src/mf-*/Dockerfile"))
+          if len(dockerfiles) != 3:
+              errors.append(f"se esperaban 3 Dockerfiles de microfrontends, encontrados {len(dockerfiles)}")
+          for path in dockerfiles:
+              text = Path(path).read_text(encoding="utf-8")
+              images = re.findall(r"(?m)^\s*FROM\s+(\S+)", text)
+              node_images = [image for image in images if image.startswith("node:")]
+              if not node_images:
+                  errors.append(f"{path}: no declara una imagen node")
+              for image in node_images:
+                  if image != "node:20-alpine":
+                      errors.append(f"{path}: imagen {image}, se esperaba node:20-alpine")
+
+          workflows = sorted(glob.glob(".github/workflows/*.yml"))
+          node_versions = []
+          for path in workflows:
+              text = Path(path).read_text(encoding="utf-8")
+              for match in re.finditer(r"(?m)^\s*node-version:\s*['\"]?([^'\"\s#]+)", text):
+                  node_versions.append((path, match.group(1)))
+          if not node_versions:
+              errors.append("no se encontro node-version en los workflows")
+          for path, version in node_versions:
+              if version != NODE_MAJOR:
+                  errors.append(f"{path}: node-version={version}, se esperaba {NODE_MAJOR}")
+
+          nvmrc = Path(".nvmrc")
+          if not nvmrc.exists():
+              errors.append("falta .nvmrc")
+          elif nvmrc.read_text(encoding="utf-8").strip() != NODE_MAJOR:
+              errors.append(f".nvmrc no fija Node {NODE_MAJOR}")
 
           if errors:
               for error in errors:
                   print(f"ERROR: {error}")
               sys.exit(1)
 
-          print(f"OK: Next {expected[0]}, React {expected[1]}, React DOM {expected[2]} en los 3 microfrontends")
+          print(
+              f"OK: Node {NODE_MAJOR} ({NODE_ENGINE}), "
+              f"Next {EXPECTED['next']}, React {EXPECTED['react']}, "
+              f"React DOM {EXPECTED['react-dom']} en los 3 microfrontends"
+          )
           PYEOF
 
   changes:

@@ -13,13 +13,14 @@ Guía para agentes IA. El repositorio es la fuente de verdad: si este archivo co
 
 | Componente | Versión | Fuente de verdad |
 | --- | ---: | --- |
-| Node.js | `20.x` (`node:20-alpine`; CI `20`; mínimo `>=20.9.0`) | `src/mf-*/Dockerfile` y `.github/workflows/frontend-ci.yml` |
+| Node.js | `20.x` (`node:20-alpine`; CI `20`; mínimo `>=20.9.0`) | `package.json`, `src/mf-*/Dockerfile`, `.nvmrc` y CI |
 | Next.js | `16.3.1` | `src/mf-*/package.json` y `package-lock.json` |
 | React / React DOM | `19.2.8` | `src/mf-*/package.json` y `package-lock.json` |
 
+- Node 20 aplica a `src/core`, los tres microfrontends y `tests/playwright`. La imagen de n8n usa su runtime Node propio; no se cambia con `node:20-alpine`.
 - Los tres microfrontends deben mantener exactamente las mismas versiones de Next.js, React y React DOM. El job `check-versions` del CI lo valida.
-- No cambiar versiones en un solo microfrontend: actualizar los tres `package.json`, sus `package-lock.json` y `README.md` en el mismo cambio.
-- No hay `.nvmrc` ni `.node-version`; el pin operativo de Node.js vive en Docker y CI.
+- No cambiar versiones en un solo lugar: actualizar `package.json`, `package-lock.json` y `README.md` en el mismo cambio.
+- `.nvmrc` fija `20` para desarrollo local; el CI valida Node, Next y React.
 
 ## Reglas duras
 
