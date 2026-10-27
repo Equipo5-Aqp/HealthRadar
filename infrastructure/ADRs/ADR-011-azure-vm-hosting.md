@@ -11,7 +11,7 @@ El ADR-009 seleccionó inicialmente Oracle Cloud Infrastructure (OCI) tier Alway
 Sin embargo, durante la fase de aprovisionamiento de infraestructura se materializó el riesgo crítico documentado en la sección de *Riesgos* del ADR-009:
 > *"Capacidad regional limitada: el aprovisionamiento de instancias Ampere A1 puede fallar con error 'Out of capacity' según la región y el momento..."*
 
-Tras más de 48 horas continuas de ejecución del script de solicitud automatizada (`lanzar_vm.ps1`), las regiones de OCI mantuvieron indisponibilidad total de capacidad para el shape `VM.Standard.A1.Flex`. Continuar a la espera de cupos aleatorios ponía en riesgo crítico la entrega de los hitos evaluados del curso y los tests de integración.
+Tras más de 48 horas continuas de ejecución del script de solicitud automatizada (retirado del repositorio al descartarse OCI), las regiones de OCI mantuvieron indisponibilidad total de capacidad para el shape `VM.Standard.A1.Flex`. Continuar a la espera de cupos aleatorios ponía en riesgo crítico la entrega de los hitos evaluados del curso y los tests de integración.
 
 Adicionalmente, la documentación rectora del curso (`05-arquitectura.md`, sección *Capa de Orquestación y Lógica*) establece explícitamente como proveedores válidos y homologados:
 > *"Cada grupo debe levantar n8n en su propia instancia Self-Hosted (usando Docker Compose en un VPS económico o AWS EC2/Azure VM)."*
@@ -29,7 +29,7 @@ Se adopta **Microsoft Azure Virtual Machines**, aprovisionando una instancia con
 Reglas de implementación y operación:
 
 - **Host y Sistema Operativo:** Instancia basada en **Ubuntu Server 24.04 LTS (x64)** con almacenamiento de 30 GiB en disco Standard SSD (`StandardSSD_LRS`).
-- **Arquitectura de Software (ADR-008):** Todo el stack (PostgreSQL + pgvector, n8n, Arize Phoenix y Frontend Next.js) se despliega intacto mediante Docker Compose en la red interna `healthradar-net`.
+- **Arquitectura de Software (ADR-008):** Todo el stack (PostgreSQL + pgvector, n8n, Arize Phoenix, Nginx Shell Router y tres microfrontends Next.js) se despliega intacto mediante Docker Compose en la red interna `healthradar-net`.
 - **Aislamiento de Seguridad (ADR-004 y ADR-008):** El Network Security Group (NSG) de Azure únicamente permite tráfico público de entrada hacia el puerto `3000` (Frontend) y puerto `22` (SSH administrativo mediante llave criptográfica `healthradar-vm_key.pem`).
 - **IP Pública Estática:** Se asigna una dirección IP pública fija asociada a la NIC de la VM para garantizar persistencia de endpoints de prueba y webhooks sin variaciones tras reinicios.
 - **Optimización Presupuestaria:** Se habilita la política de apagado programado (*Auto-shutdown*) a las 02:00 AM (UTC-5) para reducir el consumo mensual a ~$16 - $20 USD, asegurando que los $100 USD de crédito financien holgadamente el proyecto hasta el cierre académico (30 de noviembre de 2026).
