@@ -62,9 +62,10 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
+      # Bloqueante: es la única prueba de seguridad. Las demás son informativas porque
+      # dependen de la VM y de la variabilidad del LLM (sin el secret, todas se omiten).
       - name: "QA · Seguridad — Prompt Injection (HU-04)"
         if: steps.check_webhook.outputs.skip == 'false'
-        continue-on-error: true
         env:
           N8N_NLQ_WEBHOOK_URL: ${{ secrets.N8N_NLQ_WEBHOOK_URL }}
         run: python -m pytest src/ia-ops/tests/test_prompt_injection.py -v

@@ -37,11 +37,10 @@ jobs:
       - name: Instalar Newman
         run: npm install -g newman
 
-      # TEMPORAL (se retirará cuando el VM tenga la arquitectura multi-zone desplegada):
-      # La colección apunta a /historicos/api/historicos, ruta que SOLO existe tras
-      # desplegar los microfrontends en el VM (el deploy ocurre por tag v*.*.*, no por PR).
-      # Mientras el VM siga con el frontend monolítico, el 404 es esperado y este check
-      # no debe bloquear el PR. Quitar continue-on-error al validar en producción.
+      # Informativa (no bloquea): la colección prueba /historicos/api/historicos en la VM
+      # de Azure en vivo (ADR-013). El PR todavía no está desplegado (deploy.yml corre al
+      # hacer push a main), así que un fallo aquí refleja el estado de producción.
+      # El reporte JUnit se publica siempre como artifact.
       - name: "QA · Colección Postman - Datos Históricos (HU-13)"
         continue-on-error: true
         run: |

@@ -19,6 +19,7 @@ jobs:
             n8n:
               - 'src/n8n-workflows/**'
               - 'src/ia-ops/**'
+              - '.github/workflows/n8n-validate-ci.yml'
 
       - name: Verificar version fijada de n8n
         run: |
@@ -47,7 +48,7 @@ jobs:
         if: steps.filter.outputs.n8n == 'true'
         run: |
           echo "Validando JSON de workflows n8n..."
-          find src/n8n-workflows/production src/n8n-workflows/templates -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
+          find src/n8n-workflows -name "*.json" -print0 2>/dev/null | while IFS= read -r -d '' f; do
             python3 -m json.tool "$f" > /dev/null || (echo "❌ JSON inválido: $f" && exit 1)
             echo "✅ $f válido"
           done
@@ -65,8 +66,10 @@ jobs:
               r"access[_-]?token|auth[_-]?token|refresh[_-]?token|bearer|authorization)"
           )
           # Patrones de secretos reales por formato (API keys, JWT, llaves privadas).
+          # nvapi-: NVIDIA (Kimi/GLM vía nodos HTTP). Bearer literal: token pegado en una cabecera.
           SECRET_VALUE = re.compile(
               r"(?i)(sk-[a-z0-9]{10,}|AIza[0-9A-Za-z_-]{20,}|ghp_[a-z0-9]{20,}|"
+              r"nvapi-[a-z0-9_-]{20,}|bearer\s+[a-z0-9._~+/-]{20,}|"
               r"xox[baprs]-[a-z0-9-]{10,}|-----BEGIN [A-Z ]+PRIVATE KEY-----|"
               r"eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{5,}\.[a-zA-Z0-9_-]{5,})"
           )
@@ -75,6 +78,12 @@ jobs:
 
           def walk(obj, path, hits):
               if isinstance(obj, dict):
+                  # Cabeceras/parámetros de nodos HTTP: {"name": "Authorization", "value": "..."}.
+                  # El valor debe ser una expresión ({{ $env.X }}), nunca un literal.
+                  name, value = obj.get("name"), obj.get("value")
+                  if (isinstance(name, str) and isinstance(value, str) and SECRET_KEY.search(name)
+                          and value.strip() and "{{" not in value):
+                      hits.append(f"{path}[{name}] = {value[:40]}")
                   for k, v in obj.items():
                       if k in IGNORED_KEYS:
                           continue
@@ -90,10 +99,7 @@ jobs:
                   for i, v in enumerate(obj):
                       walk(v, f"{path}[{i}]", hits)
 
-          FILES = sorted(
-              glob.glob("src/n8n-workflows/production/*.json")
-              + glob.glob("src/n8n-workflows/templates/*.json")
-          )
+          FILES = sorted(glob.glob("src/n8n-workflows/**/*.json", recursive=True))
           FAIL = 0
           for f in FILES:
               with open(f, encoding="utf-8") as fh:
@@ -114,23 +120,57 @@ jobs:
         if: steps.filter.outputs.n8n == 'true'
         run: |
           echo "Verificando trazabilidad de Phoenix en workflows que invocan un LLM..."
-          FAIL=0
-          FILES=$(grep -rlEi "gemini|kimi|glm|nvidia|anthropic|claude" src/n8n-workflows/production --include="*.json" 2>/dev/null || true)
-          if [ -z "$FILES" ]; then
-            echo "No se encontraron workflows de produccion que invoquen un LLM."
-          else
-            for f in $FILES; do
-              if grep -qi "phoenix" "$f"; then
-                echo "OK: $f invoca un LLM y envia traza a Phoenix"
-              else
-                echo "ERROR: $f invoca un LLM pero no envia traza a Arize Phoenix (ADR-010)"
-                FAIL=1
-              fi
-            done
-          fi
-          if [ "$FAIL" -eq 1 ]; then
-            exit 1
-          fi
+          python3 - <<'PYEOF'
+          import json, re, sys, glob
+
+          # Un workflow invoca un LLM si tiene un nodo nativo de modelo/embeddings (LangChain)
+          # o un nodo HTTP contra un proveedor de IA (p. ej. Kimi/GLM en NVIDIA vía HTTP).
+          LLM_NODE_TYPE = re.compile(r"(?i)\.(lmChat|lmOpenAi|embeddings)")
+          LLM_URL = re.compile(
+              r"(?i)(integrate\.api\.nvidia\.com|generativelanguage\.googleapis\.com|"
+              r"api\.anthropic\.com|api\.openai\.com|openrouter\.ai)"
+          )
+
+          def es_http(n):
+              return n.get("type", "").endswith(".httpRequest")
+
+          def url(n):
+              return str(n.get("parameters", {}).get("url", ""))
+
+          FAIL = 0
+          con_llm = 0
+          for f in sorted(glob.glob("src/n8n-workflows/production/*.json")):
+              with open(f, encoding="utf-8") as fh:
+                  wf = json.load(fh)
+              nodos = [n for n in wf.get("nodes", []) if not n.get("disabled")]
+              llm = [n["name"] for n in nodos
+                     if LLM_NODE_TYPE.search(n.get("type", "")) or (es_http(n) and LLM_URL.search(url(n)))]
+              if not llm:
+                  continue
+              con_llm += 1
+
+              # Nodos que reciben alguna conexión (un nodo Phoenix suelto no cuenta).
+              destinos = set()
+              for salidas in wf.get("connections", {}).values():
+                  for ramas in salidas.values():
+                      for rama in ramas or []:
+                          for c in rama or []:
+                              destinos.add(c.get("node"))
+              phoenix = [n["name"] for n in nodos
+                         if es_http(n) and "phoenix" in url(n).lower() and n["name"] in destinos]
+
+              nombre = f.split("/")[-1]
+              if phoenix:
+                  print(f"OK: {nombre} invoca LLM ({', '.join(llm)}) y traza en: {', '.join(phoenix)}")
+              else:
+                  print(f"ERROR: {nombre} invoca LLM ({', '.join(llm)}) pero no tiene un nodo HTTP "
+                        "conectado que envíe la traza a Arize Phoenix (ADR-010)")
+                  FAIL = 1
+
+          if con_llm == 0:
+              print("No se encontraron workflows de produccion que invoquen un LLM.")
+          sys.exit(FAIL)
+          PYEOF
 
       - name: Sin cambios relevantes
         if: steps.filter.outputs.n8n == 'false'
