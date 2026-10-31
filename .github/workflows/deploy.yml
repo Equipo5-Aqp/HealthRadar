@@ -159,6 +159,13 @@ jobs:
             fi
 
             echo "📊 Resumen: se compilaron $BUILT de 4 servicios."
+
+            # Esquema antes que código: si una migración falla, set -e detiene el deploy
+            # y los contenedores nuevos no llegan a correr contra un esquema viejo.
+            echo "🗄️  Aplicando migraciones..."
+            docker compose up -d --wait --wait-timeout 180 postgres
+            bash scripts-poc-arquitectura/migrate.sh
+
             echo "🐳 Levantando contenedores actualizados..."
             docker compose up -d --wait --wait-timeout 180
             # nginx monta su configuracion como bind mount: Compose no detecta cambios
@@ -166,9 +173,6 @@ jobs:
             docker compose up -d --no-deps --force-recreate --wait nginx-shell
             echo "✅ Verificando estado de los servicios..."
             docker compose ps
-
-            echo "🗄️  Aplicando migraciones..."
-            bash scripts-poc-arquitectura/migrate.sh
 
       - name: Sin cambios desplegables
         if: steps.decide.outputs.deploy == 'false'
