@@ -263,9 +263,26 @@ describe('validarResumenBoletin — series adicionales', () => {
     expect(() => validarResumenBoletin(marca(12, { muerte_materna_directa: 21 }), 'g', 12, conPrevio(11, { muerte_materna_directa: 18 }))).not.toThrow();
   });
 
-  test('un acumulado de estas series que baja se rechaza (PFA 17 → 14)', () => {
-    expect(() => validarResumenBoletin(marca(12, { pfa_total: 14 }), 'g', 12, conPrevio(11, { pfa_total: 17 })))
+  test('un acumulado de estas series que baja se rechaza (muerte materna directa 21 → 15)', () => {
+    expect(() => validarResumenBoletin(marca(12, { muerte_materna_directa: 15 }), 'g', 12, conPrevio(11, { muerte_materna_directa: 21 })))
+      .toThrow('muerte_materna_directa: bajó');
+  });
+
+  test('PFA real SE 26 → 27 (49 → 46, el boletín lo corrige a la baja) pasa', () => {
+    expect(() => validarResumenBoletin(marca(27, { pfa_total: 46 }), 'g', 27, conPrevio(26, { pfa_total: 49 }))).not.toThrow();
+  });
+
+  test('PFA: una baja de hasta 10 casos pasa (49 → 39) y de 11 o más se rechaza (49 → 38, 17 → 5)', () => {
+    expect(() => validarResumenBoletin(marca(27, { pfa_total: 39 }), 'g', 27, conPrevio(26, { pfa_total: 49 }))).not.toThrow();
+    expect(() => validarResumenBoletin(marca(27, { pfa_total: 38 }), 'g', 27, conPrevio(26, { pfa_total: 49 })))
       .toThrow('pfa_total: bajó');
+    expect(() => validarResumenBoletin(marca(12, { pfa_total: 5 }), 'g', 12, conPrevio(11, { pfa_total: 17 })))
+      .toThrow('pfa_total: bajó');
+  });
+
+  test('la tolerancia ampliada de PFA no afecta a los demás acumulados (dengue 35 423 → 33 000 se rechaza)', () => {
+    expect(() => validarResumenBoletin(marca(27, { dengue_total: 33000 }), 'g', 27, conPrevio(26, { dengue_total: 35423 })))
+      .toThrow('dengue_total: bajó');
   });
 
   test('con conteos chicos (< 10) no se aplica el tope de crecimiento', () => {

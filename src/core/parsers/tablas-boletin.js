@@ -32,16 +32,19 @@ function soloNumeros(linea) {
   return t;
 }
 
+/** Máximo de líneas de continuación de una fila (el boletín SE 27 parte la fila "Perú" de la Tabla 3 en 5). */
+const MAX_LINEAS_CONTINUACION = 8;
+
 /**
  * A partir de la línea `i` (ya sin la etiqueta), junta números de esa línea y de las siguientes
- * líneas que contengan solo números (el PDF a veces parte una fila en dos líneas).
+ * líneas que contengan solo números (el PDF a veces parte una fila en varias líneas).
  */
 function juntarNumeros(lineas, i, resto) {
   const out = [];
   const primera = resto.trim() === '' ? [] : soloNumeros(resto);
   if (primera === null) return null;
   out.push(...primera);
-  for (let j = i + 1; j < lineas.length && j <= i + 4; j++) {
+  for (let j = i + 1; j < lineas.length && j <= i + MAX_LINEAS_CONTINUACION; j++) {
     const n = soloNumeros(lineas[j]);
     if (n === null) break;
     out.push(...n);

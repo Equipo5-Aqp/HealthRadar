@@ -24,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "  HEALTHRADAR - Conexion y Despliegue en Azure VM (ADR-009)" -ForegroundColor Cyan
+    Write-Host "  HEALTHRADAR - Conexion y Despliegue en Azure VM (ADR-011)" -ForegroundColor Cyan
 Write-Host "======================================================================" -ForegroundColor Cyan
 
 # 1. Gestionar la llave SSH

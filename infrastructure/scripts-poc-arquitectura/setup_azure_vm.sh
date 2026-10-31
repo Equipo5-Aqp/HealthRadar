@@ -46,16 +46,16 @@ sudo usermod -aG docker $USER
 # 4. Clonar o actualizar el repositorio de HealthRadar
 echo ""
 echo "[4/5] Clonando repositorio de HealthRadar..."
-REPO_DIR="$HOME/Celula5_HealthRadar"
+REPO_DIR="$HOME/HealthRadar"
 
 if [ -d "$REPO_DIR" ]; then
     echo " -> Repositorio existente detectado. Actualizando..."
     cd "$REPO_DIR"
     git pull origin main || true
 else
-    git clone https://github.com/tu-organizacion/Celula5_HealthRadar.git "$REPO_DIR" || {
-        echo "Aviso: Ajusta la URL de tu repositorio si es privado. Creando estructura base..."
-        mkdir -p "$REPO_DIR/infrastructure"
+    git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git "$REPO_DIR" || {
+        echo "ERROR: no se pudo clonar el repositorio. Verifica la URL y tus credenciales."
+        exit 1
     }
 fi
 
@@ -69,7 +69,8 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
 fi
 
-sudo docker compose up -d
+sudo docker compose up -d --wait
+sudo bash scripts-poc-arquitectura/migrate.sh
 
 echo ""
 echo "======================================================================"
@@ -79,7 +80,7 @@ echo ""
 sudo docker compose ps
 echo ""
 echo "Servicios activos:"
-echo " - Frontend Next.js:       http://<IP_PUBLICA_AZURE>:3000"
+echo " - Nginx Shell Router:     http://<IP_PUBLICA_AZURE>:3000"
 echo " - PostgreSQL + pgvector:  healthradar-postgres (Interno: 5432)"
 echo " - n8n Self-Hosted:        healthradar-n8n (Interno: 5678)"
 echo " - Arize Phoenix LLM Obs:  healthradar-phoenix (Interno: 6006)"

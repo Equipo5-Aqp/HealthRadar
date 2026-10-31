@@ -45,8 +45,8 @@ Un contenedor ligero `nginx:1.27-alpine` (`healthradar-nginx-shell`, 64 MB RAM, 
 ### 3. Emisión de Eventos hacia el Backend (Conexión 1 a 1 con EDA)
 Cada microfrontend contiene su propia capa BFF (`/api/*`) que transforma las interacciones del usuario en eventos y los despacha hacia los webhooks de n8n (ADR-012) usando `N8N_INTERNAL_URL`:
 - `mf-consulta` emite eventos hacia `/webhook/consulta` y `/webhook/tendencia`.
-- `mf-historicos` emite eventos hacia `/webhook/historicos`.
-- `mf-dashboard` consulta vistas consolidadas.
+- `mf-historicos` emite eventos hacia `/webhook/historicos` y `/webhook/departamentos`.
+- `mf-dashboard` emite eventos hacia `/webhook/panorama`, `/webhook/tendencia` y los webhooks de autenticación (`auth-login`, `auth-sesion`, `auth-logout`).
 
 ### 4. Reglas de Gobernanza
 - **Aislamiento absoluto:** Prohibido compartir estado en memoria o importar código fuente directo entre microfrontends.

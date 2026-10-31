@@ -1,268 +1,168 @@
 # HealthRadar
 
-Sistema de vigilancia epidemiológica automatizada para el Perú, desarrollado por la Célula 5.
+Sistema de vigilancia epidemiológica para el Perú (Dengue, EDA e IRA). Ingesta boletines del MINSA/CDC y clima de Open-Meteo mediante n8n, y expone dashboards y consultas en lenguaje natural.
 
-Integra datos de enfermedades de notificación obligatoria del MINSA/CDC Perú con variables climáticas de Open-Meteo, y permite que analistas de salud pública consulten el historial en lenguaje natural.
+## Fuente de verdad
 
----
+Este README es la entrada única para onboarding, versiones y comandos. No repite decisiones de arquitectura: esas viven en los ADRs.
 
-## Arquitectura del Sistema
+| Tema | Fuente canónica |
+| --- | --- |
+| Versiones de React/Next | `src/mf-*/package.json` y sus `package-lock.json` |
+| Versión de n8n | `infrastructure/n8n/Dockerfile` |
+| Puertos, RAM, servicios e IPs | `infrastructure/docker-compose.yml` |
+| Decisiones de arquitectura | `infrastructure/ADRs/` |
+| Reglas para agentes IA | `AGENTS.md` |
+| Despliegue en Azure | `infrastructure/manuals/Manual_Despliegue_Azure_VM.md` |
+| Backups y restore | `infrastructure/manuals/Manual_Backup_Restore_HU-303.md` |
 
-El sistema sigue un flujo de datos estricto donde cada capa tiene una responsabilidad única:
+Si un documento contradice el código o un ADR, prevalecen el código y el ADR.
 
-```
-Analista de Salud
-      │
-      ▼
-nginx-shell                 ← única interfaz pública, puerto 3000 (ADR-008, ADR-013)
-      │  /           → mf-dashboard:3000   (Landing & Panorama general)
-      │  /consulta   → mf-consulta:3000    (Asistente NLQ conversacional)
-      │  /historicos → mf-historicos:3000  (Datos Históricos y Mapa)
-      ▼
-Microfrontends (Next.js)    ← 3 Microservicios Frontend independientes (Next.js Multi-Zones)
-      │  BFF Server-Side: /api/* (ADR-004) despachan eventos vía HTTP interno
-      ▼
-n8n Self-Hosted             ← Event-Driven Orchestrator con @healthradar/core (ADR-001, ADR-012)
-      │
-      ├── Eventos de Ingesta (Cron Semanal, batch)
-      │       ├── Descarga PDF boletín MINSA/CDC Perú (ADR-006)
-      │       ├── Open-Meteo → variables climáticas por coordenadas (ADR-007)
-      │       ├── Google Gemini Flash (3 llaves rotativas) → extracción JSON (ADR-003)
-      │       ├── Validación de esquema e inserción atómica en PostgreSQL (ADR-002)
-      │       └── Traza OTel enviada a Arize Phoenix (ADR-010)
-      │
-      └── Eventos de Interacción de Usuario (Webhooks reactivos)
-              ├── POST /webhook/consulta   (Evento QueryRequested)
-              ├── POST /webhook/tendencia  (Evento TrendRequested)
-              ├── POST /webhook/historicos (Evento HistoricalFiltered)
-              ├── NVIDIA Catalog (Kimi/GLM) / OpenRouter → reporte NLQ analítico (ADR-003)
-              ├── Traza OTel enviada a Arize Phoenix (ADR-010)
-              └── Respuesta estructurada al Microfrontend
-```
+## Versiones del stack
 
-**Regla crítica de arquitectura:** el Frontend no accede directamente a la base de datos ni a ninguna API de IA. Todo pasa por n8n.
+| Componente | Versión | Fuente |
+| --- | --- | --- |
+| Next.js | `16.3.1` | `src/mf-*/package.json` |
+| React / React DOM | `19.2.8` | `src/mf-*/package.json` |
+| n8n | `2.35.7` | `infrastructure/n8n/Dockerfile` |
+| PostgreSQL | `16` + pgvector | `infrastructure/docker-compose.yml` |
+| Arize Phoenix | `20.3.0` | `infrastructure/docker-compose.yml` |
+| nginx | `1.27-alpine` | `infrastructure/docker-compose.yml` |
+| Node.js (paquetes Node) | `20.x` (mínimo `>=20.9.0`; `.nvmrc` fija `20`) | `package.json`, `src/mf-*/Dockerfile`, `.nvmrc` y CI |
+| Python (CI/ETL) | `3.11` | `.github/workflows/`, `requirements.txt` |
 
----
+Node 20 aplica a `src/core`, los tres microfrontends y `tests/playwright`. La imagen `n8nio/n8n:2.35.7` trae su propio runtime Node y se gobierna por la versión de n8n, no por este pin.
 
-## Diagrama de Flujo: Git + DevSecOps + Despliegue automático en Azure
+No se deben cambiar versiones de Node/React/Next en un solo lugar: los tres microfrontends y los paquetes Node deben quedar alineados. El CI lo valida.
 
-El despliegue a producción es **automático** vía GitHub Actions (`.github/workflows/deploy.yml`): todo push a `main` que modifique `src/` (excepto `src/n8n-workflows/`) o `infrastructure/` dispara el pipeline, que se conecta por SSH a la VM de Azure, sincroniza el código con `origin/main` y reconstruye los contenedores con Docker Compose.
+## Arquitectura
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Dev as Desarrollador
-    participant GH as GitHub Repo
-    participant GHA as GitHub Actions (CI/CD)
-    actor Arqui as Arquitecto
-    participant Azure as Azure VM (Host)
-    participant Docker as Docker Compose
-    actor User as Analista Final
+```text
+Internet :3000
+      |
+      v
+nginx-shell (unico puerto publico)
+      |-- /            -> mf-dashboard
+      |-- /consulta    -> mf-consulta
+      `-- /historicos  -> mf-historicos
 
-    %% 1. Desarrollo y PR
-    Dev->>GH: 1. Push a rama feature/nueva-mejora
-    Dev->>GH: 2. Abre Pull Request hacia main
-
-    %% 2. CI DevSecOps
-    GH->>GHA: 3. Dispara los workflows de CI (.github/workflows/)
-    Note over GHA: • frontend-ci.yml: Linter y build Next.js<br/>• n8n-validate-ci.yml: Linter JSON + Secret scan<br/>• ai-testing-ci.yml: SAST CodeQL + Tests de Prompts
-    GHA-->>GH: 4. Reporta estado de validación (Passed)
-
-    %% 3. Revisión y Merge
-    Arqui->>GH: 5. Revisa cambios y aprueba el PR
-    Arqui->>GH: 6. Merge a la rama main
-
-    %% 4. Despliegue automático en Azure VM (deploy.yml)
-    rect rgb(235, 245, 255)
-        Note over GHA,Docker: FASE DE DESPLIEGUE AUTOMÁTICO (deploy.yml)
-        GH->>GHA: 7. Push a main dispara deploy.yml (solo si hay cambios en src/ o infrastructure/)
-        GHA->>Azure: 8. Conexión SSH (secrets AZURE_VM_HOST / USER / SSH_KEY)
-        Azure->>Azure: 9. git fetch + reset --hard origin/main
-        GHA->>Docker: 10. docker compose up -d --build
-        Docker-->>GHA: 11. docker compose ps → servicios healthy
-    end
-
-    %% 5. Disponibilidad
-    User->>Docker: 12. Ingresa a http://IP_AZURE:3000 (Página actualizada)
+Microfrontends -> /api/* (BFF server-side) -> n8n:5678
+                                              |-- PostgreSQL 16 + pgvector
+                                              `-- Arize Phoenix
 ```
 
----
+Regla perimetral: solo `nginx-shell` publica `3000`. PostgreSQL, n8n y Phoenix quedan en la red interna `healthradar-net` (`172.20.0.0/16`).
 
-## Flujo del Dato — Consulta en Lenguaje Natural (NLQ)
+## Contratos HTTP
 
-El siguiente diagrama muestra el recorrido completo de una consulta desde que el analista la escribe hasta que recibe el reporte:
+| BFF | Webhook n8n | Workflow |
+| --- | --- | --- |
+| `POST /api/consulta` | `/webhook/consulta` | `Conexion posgrestV4` |
+| `POST /api/tendencia` | `/webhook/tendencia` | `Conexion de posgrestV4` |
+| `POST /api/historicos` | `/webhook/historicos` | `Conexion de posgrestV4` |
+| `POST /api/panorama` | `/webhook/panorama` | `PanoramaV4` |
+| `POST /api/departamentos` | `/webhook/departamentos` | `Casos por departamentoV4` |
+| `POST /api/auth/login` | `/webhook/auth-login` | `Autenticacion HealthRadarV4` |
+| `POST /api/auth/sesion` | `/webhook/auth-sesion` | `Autenticacion HealthRadarV4` |
+| `POST /api/auth/logout` | `/webhook/auth-logout` | `Autenticacion HealthRadarV4` |
 
-```mermaid
-sequenceDiagram
-    actor Analista as Analista de Salud
-    participant FE as Frontend Next.js
-    participant API as /api/query (server-side)
-    participant N8N as n8n Self-Hosted
-    participant CORE as @healthradar/core
-    participant PG as PostgreSQL + pgvector
-    participant NVIDIA as NVIDIA API Catalog (Kimi/GLM)
-    participant GEMINI as Google Gemini Flash (3 llaves, failover)
-    participant PHX as Arize Phoenix
+El navegador nunca llama a n8n, PostgreSQL ni proveedores de IA. Todas las llamadas pasan por las rutas server-side `/api/*` de cada microfrontend.
 
-    Analista->>FE: Escribe consulta en lenguaje natural
-    FE->>API: POST /api/query { pregunta }
-    Note over API: Credenciales de n8n permanecen<br/>en el servidor, nunca en el navegador
+## Flujos de datos
 
-    API->>N8N: Webhook POST /webhook/consulta (Evento QueryRequested)
-    N8N->>CORE: require('@healthradar/core')<br/>parsers, filtros y ventanas por defecto sin LLM
-    CORE-->>N8N: Filtros y contexto normalizados
-    N8N->>PG: Consulta SQL por distrito, semana y enfermedad
-    PG-->>N8N: Datos epidemiológicos y climáticos estructurados
+- **Histórico:** `src/database/limpiar_datasets_minsa.py` + `src/database/cargar_datos_minsa.py` cargan los casos en las tablas `caso_dengue`, `caso_eda`, `caso_ira_neumonia` y `caso_ira_no_neumonia`.
+- **Boletines:** Fase A descubre enlaces cada 7 días y los encola en `boletin_descubierto`. Fase B corre cada 30 minutos, procesa un boletín pendiente y guarda un resumen validado con marcador `[CIFRAS]` en `boletin_descubierto`.
+- **Clima:** la rama de clima de Fase B consulta Open-Meteo para los 25 departamentos y hace upsert en `dato_climatico` mediante `fn_insertar_dato_climatico`.
+- **Embeddings:** el indexador corre cada 30 minutos, genera vectores de 768 dimensiones con `gemini-embedding-001` y los guarda en `boletin_descubierto.embedding`.
+- **NLQ:** n8n consulta los datos, arma el contexto y usa la cadena Kimi K3 -> GLM 5.3 -> Gemini 3.5 Flash Lite con failover. Las respuestas y las trazas HTTP se envían a Phoenix.
+- **OpenRouter:** no está implementado. Solo aparece en ADR-003 como contingencia futura.
 
-    N8N->>NVIDIA: Prompt con los datos + pregunta del analista (ADR-003)
-    alt NVIDIA disponible
-        NVIDIA-->>N8N: Reporte analítico en lenguaje natural
-    else Error 429 / saturación (failover automático)
-        N8N->>GEMINI: Conmuta a la siguiente clave Gemini disponible
-        GEMINI-->>N8N: Reporte analítico en lenguaje natural
-    end
+## Decisiones de arquitectura
 
-    N8N->>CORE: Validador de contratos (shape-check) sobre la respuesta
-    CORE-->>N8N: Estructura uniforme (sin importar el modelo)
+| ADR | Título | Estado |
+| --- | --- | --- |
+| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md) | n8n Self-Hosted como capa de orquestación | Vigente |
+| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md) | PostgreSQL con pgvector como única base de datos | Vigente |
+| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md) | División de LLMs por momento de operación | Vigente |
+| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md) | Next.js con rutas de API como capa de seguridad | Vigente |
+| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md) | Langfuse como plataforma de observabilidad | Reemplazado por ADR-010 |
+| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos | Vigente |
+| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md) | Open-Meteo como fuente de datos climáticos | Vigente |
+| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md) | Docker Compose como estrategia de despliegue | Vigente |
+| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md) | OCI Always Free como proveedor de hosting | Reemplazado por ADR-011 |
+| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md) | Arize Phoenix Self-Hosted como plataforma de observabilidad | Vigente |
+| [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md) | Microsoft Azure Virtual Machines como proveedor de hosting | Vigente |
+| [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md) | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente |
+| [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) | Microservicios Frontend con Next.js y Nginx | Vigente |
+| [ADR-014](infrastructure/ADRs/ADR-014-autenticacion-sesion-nginx-auth-request.md) | Autenticación de sesión con Nginx auth_request | Vigente |
 
-    N8N->>PHX: Traza completa HTTP/OTel (prompt, respuesta, tokens, latencia)
-    PHX-->>N8N: Confirmación de registro
+## Levantar el sistema localmente
 
-    N8N-->>API: Reporte generado
-    API-->>FE: Respuesta JSON
-    FE-->>Analista: Reporte visualizado en el dashboard
-```
-
----
-
-## Flujo del Dato — Ingesta Semanal Automatizada
-
-```mermaid
-sequenceDiagram
-    participant SCH as Schedule Trigger (n8n)
-    participant N8N as n8n Self-Hosted
-    participant MINSA as MINSA/CDC Perú
-    participant OM as Open-Meteo API
-    participant GEMINI as Google Gemini Flash
-    participant PG as PostgreSQL + pgvector
-    participant PHX as Arize Phoenix
-
-    SCH->>N8N: Dispara workflow cada semana
-    N8N->>MINSA: Descarga boletín epidemiológico en PDF
-    MINSA-->>N8N: PDF de la semana epidemiológica
-
-    N8N->>OM: GET coordenadas de distritos del Perú
-    OM-->>N8N: Temperatura máxima y precipitación acumulada
-
-    N8N->>GEMINI: PDF nativo + esquema JSON de extracción
-    GEMINI-->>N8N: JSON estructurado con casos y tablas por distrito
-
-    Note over N8N: Validación de esquema JSON<br/>Rechaza datos mal formados
-
-    N8N->>PG: INSERT en casos_epidemiologicos y datos_climaticos
-    N8N->>PHX: Traza de extracción (Monitoreo de Data Drift)
-```
-
----
-
-## Decisiones de Arquitectura (ADRs)
-
-Cada decisión técnica relevante del proyecto está documentada en `infrastructure/ADRs/`.
-
-| ADR                                                                              | Título                                                       | Estado                  |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------- |
-| [ADR-001](infrastructure/ADRs/ADR-001-n8n-self-hosted-orquestacion.md)           | n8n Self-Hosted como capa de orquestación                    | Vigente                 |
-| [ADR-002](infrastructure/ADRs/ADR-002-postgresql-pgvector-base-de-datos.md)      | PostgreSQL con pgvector como única base de datos             | Vigente                 |
-| [ADR-003](infrastructure/ADRs/ADR-003-division-llms-por-momento-operacion.md)    | División de LLMs por momento de operación (Gemini + Claude)  | Vigente                 |
-| [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md)         | Next.js con rutas de API como capa de seguridad              | Vigente                 |
-| [ADR-005](infrastructure/ADRs/ADR-005-langfuse-observabilidad-llms.md)           | Langfuse como plataforma de observabilidad                   | Reemplazado por ADR-010 |
-| [ADR-006](infrastructure/ADRs/ADR-006-minsa-cdc-fuente-datos-epidemiologicos.md) | MINSA/CDC Perú como fuente de datos epidemiológicos          | Vigente                 |
-| [ADR-007](infrastructure/ADRs/ADR-007-open-meteo-fuente-datos-climaticos.md)     | Open-Meteo como fuente de datos climáticos                   | Vigente                 |
-| [ADR-008](infrastructure/ADRs/ADR-008-docker-compose.md)                         | Docker Compose como estrategia de despliegue                 | Vigente                 |
-| [ADR-009](infrastructure/ADRs/ADR-009-oci-always-free-hosting.md)                | OCI Always Free como proveedor de hosting                    | Reemplazadp por ADR-011 |
-| [ADR-010](infrastructure/ADRs/ADR-010-arize-phoenix-observabilidad-llms.md)      | Arize Phoenix Self-Hosted como plataforma de observabilidad  | Vigente                 |
-| [ADR-011](infrastructure/ADRs/ADR-011-azure-vm-hosting.md)                       | Microsoft Azure Virtual Machines como proveedor de hosting   | Vigente                 |
-| [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md)          | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente                 |
-| [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) | Microservicios Frontend (Microfrontends) con Next.js y Nginx  | Vigente                 |
-| [ADR-014](infrastructure/ADRs/ADR-014-autenticacion-usuarios.md)                 | Autenticación de Sesión con Nginx auth_request y Login Centralizado | Vigente                 |
-
----
-
-## Levantar el Sistema Localmente
-
-**Requisito previo:** tener Docker Desktop instalado y activo.
+Requisitos: Docker Desktop activo, Git y Bash (Git Bash o WSL) para ejecutar el migrador.
 
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/Equipo5-Aqp/HealthRadar.git
-cd HealthRadar
-cd infrastructure
+git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git
+cd Celula5_HealthRadar/infrastructure
 
-# 2. Configurar variables de entorno
-cp infrastructure/.env.example infrastructure/.env
-# Editar infrastructure/.env con las credenciales propias
+cp .env.example .env
+# Editar .env con credenciales propias
 
-# 3. Levantar los 7 servicios
-cd infrastructure
 docker compose up -d
-
-# 4. Verificar que todos los contenedores están activos (7/7 Up)
+bash scripts-poc-arquitectura/migrate.sh
 docker compose ps
 ```
 
-El sistema queda disponible en `http://localhost:3000` (Nginx Shell Router).  
-Para el despliegue en producción en la nube, consultar el [Manual de Despliegue en Azure VM](infrastructure/manuals/Manual_Despliegue_Azure_VM.md).
+El sistema queda disponible en `http://localhost:3000`.
 
-### Desarrollo local de Microfrontends (sin Docker)
+Notas:
+
+- Las migraciones ya no se ejecutan desde `/docker-entrypoint-initdb.d`; el único migrador es `infrastructure/scripts-poc-arquitectura/migrate.sh`.
+- El migrador registra cada archivo en `healthradar_schema_migrations` y falla si una migración no aplica.
+- En una base existente creada por el mecanismo anterior, el migrador marca las migraciones actuales como baseline y luego aplica solo las nuevas.
+
+### Desarrollo local de microfrontends
 
 ```bash
-# Terminal 1 — mf-dashboard (Panorama general):
-cd src/mf-dashboard && npm run dev     # http://localhost:3000
+# Terminal 1
+cd src/mf-dashboard && npm ci && npm run dev   # http://localhost:3003
 
-# Terminal 2 — mf-consulta (Chat NLQ):
-cd src/mf-consulta && npm run dev      # http://localhost:3001
+# Terminal 2
+cd src/mf-consulta && npm ci && npm run dev    # http://localhost:3001
 
-# Terminal 3 — mf-historicos (Datos históricos):
-cd src/mf-historicos && npm run dev    # http://localhost:3002
-```
-> **Nota de navegación:** Los enlaces cross-zone (`/`, `/consulta`, `/historicos`) resuelven a través de `nginx-shell` (puerto 3000). En desarrollo local sin Nginx, abrir manualmente el puerto correspondiente de cada MF.
-
-
----
-
-## Estructura del Repositorio
-
-```
-/
-├── AGENTS.md                    # Guía de arquitectura y gobernanza para agentes de IA
-├── .github/
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── workflows/               # Pipelines de CI/CD
-├── infrastructure/
-│   ├── ADRs/                    # Decisiones de arquitectura (ADR-001 al ADR-014)
-│   ├── manuals/                 # Manuales de despliegue y redes (Azure)
-│   ├── scripts-poc-arquitectura/ # Scripts de verificación y PoCs de arquitectura
-│   ├── nginx/                   # Configuración de Nginx Shell Router (ADR-013)
-│   ├── docker-compose.yml       # Orquestación de los 7 contenedores (ADR-008)
-│   └── .env.example             # Plantilla de variables de entorno
-├── src/
-│   ├── core/                    # Biblioteca pura @healthradar/core (ADR-012)
-│   ├── mf-dashboard/            # Microfrontend 1: Panorama general y KPIs (ADR-013)
-│   ├── mf-consulta/             # Microfrontend 2: Chat NLQ y tendencias (ADR-004, ADR-013)
-│   ├── mf-historicos/           # Microfrontend 3: Datos históricos y mapa (ADR-013)
-│   ├── n8n-workflows/           # Workflows de n8n (JSON versionados)
-│   ├── database/
-│   │   ├── migrations/          # Migraciones SQL numeradas
-│   │   └── test_poc_adr002.sql  # Script de prueba pgvector
-│   └── ia-ops/                  # Prompts versionados y QA de modelos
-└── README.md
+# Terminal 3
+cd src/mf-historicos && npm ci && npm run dev  # http://localhost:3002
 ```
 
----
+En desarrollo sin Nginx se abre directamente el puerto de cada microfrontend. La navegación cross-zone (`/`, `/consulta`, `/historicos`) solo funciona a través de `nginx-shell` en `http://localhost:3000`.
+
+## CI/CD
+
+- **`deploy.yml`:** push a `main` que toque `src/**` (excepto `src/n8n-workflows/**` y `src/ia-ops/**`), `src/database/migrations/**` o `infrastructure/**` (excepto ADRs, manuales, Markdown y `.env.example`). Despliega el SHA del evento, compila solo los servicios afectados y aplica migraciones con `infrastructure/scripts-poc-arquitectura/migrate.sh`.
+- **`n8n-deploy-cd.yml`:** solo con tag `v*.*.*` o `workflow_dispatch`. Despliega el tag/ref exacto y requiere el environment `production`.
+- **CI:** `frontend-ci.yml` compila los microfrontends y valida que React/Next estén alineados; `core-ci.yml` prueba `@healthradar/core`; `n8n-validate-ci.yml` valida JSON, secretos, Phoenix y la versión fijada de n8n.
+
+## Estructura
+
+```text
+src/
+  core/                 @healthradar/core (dominio puro)
+  mf-dashboard/         / y autenticación
+  mf-consulta/          /consulta
+  mf-historicos/        /historicos
+  database/             ETL histórico y migraciones SQL
+  n8n-workflows/        workflows versionados
+infrastructure/
+  ADRs/                 decisiones de arquitectura
+  manuals/              despliegue y backups
+  n8n/                  imagen de n8n con @healthradar/core
+  nginx/                Shell Router
+  scripts-poc-arquitectura/  migrador y utilidades de infraestructura
+  docker-compose.yml
+```
 
 ## Seguridad
 
-- Las credenciales se gestionan exclusivamente mediante variables de entorno (`.env`).
-- El archivo `.env` está excluido del control de versiones por el `.gitignore`.
-- La plantilla [`infrastructure/.env.example`](infrastructure/.env.example) documenta las variables requeridas sin valores reales.
-- Los tokens de n8n nunca se exponen al navegador (ver [ADR-004](infrastructure/ADRs/ADR-004-nextjs-frontend-capa-seguridad.md)).
+- `.env` nunca se versiona; la plantilla es `infrastructure/.env.example`.
+- No usar `NEXT_PUBLIC_*` para credenciales ni URLs internas.
+- Las credenciales de n8n y de los LLMs viven solo en el servidor.
+- La cookie de sesión usa `HttpOnly` y `SameSite=Lax`; el detalle de TLS está en ADR-014.

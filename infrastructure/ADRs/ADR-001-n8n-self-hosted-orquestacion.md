@@ -20,16 +20,16 @@ Se utilizará **n8n Self-Hosted** como **única capa de orquestación y transpor
 - **Sin lógica de negocio interna:** En concordancia con ADR-012, n8n **no contiene reglas de dominio complejas hardcodeadas en sus nodos**. La lógica de decisión, inferencia de periodos, armado de consultas y cálculo epidemiológico reside en la biblioteca del repositorio `@healthradar/core` (`src/core/`), la cual n8n embebe e invoca desde sus nodos Code (`require('@healthradar/core')`).
 
 ### Flujos de producción implementados
-El orquestador administra cuatro flujos principales en el entorno de producción (`src/n8n-workflows/production/`):
+El orquestador administra los flujos de `src/n8n-workflows/production/`:
 
 1. **Ingesta Fase A — Recolección de Links (Schedule Trigger):**  
-   Rastrea el portal del CDC/MINSA, descubre nuevos boletines epidemiológicos publicados y encola los registros pendientes en la tabla `boletin_descubierto` de PostgreSQL.
-2. **Ingesta Fase B — Procesamiento de Boletín (Schedule / Subflujo):**  
-   Toma un boletín pendiente de la cola, descarga el archivo PDF oficial, coordina la extracción estructurada con Gemini Flash (ADR-003) e inserta los registros depurados en las tablas epidemiológicas.
-3. **Consulta NLQ — Asistente de Lenguaje Natural (Webhook Trigger):**  
-   Expone el endpoint `/webhook/consulta` consumido por el frontend. Invoca a `@healthradar/core` para normalizar la pregunta, consulta datos en PostgreSQL, solicita la síntesis analítica al LLM (NVIDIA / Gemini) y entrega la respuesta final al usuario.
-4. **Datos Históricos y Casos por Departamento (Webhook Trigger):**  
-   Expone endpoints auxiliares (`/webhook/historicos`) para alimentar las vistas tabulares y mapas del frontend con paginación y filtros estructurados.
+   Rastrea el portal del CDC/MINSA cada 7 días, descubre nuevos boletines y los encola en `boletin_descubierto`.
+2. **Ingesta Fase B — Procesamiento de Boletín (Schedule cada 30 minutos):**
+   Toma un boletín pendiente, descarga el PDF, genera un resumen con Gemini 3.5 Flash Lite (ADR-003), valida el marcador `[CIFRAS]` y actualiza `boletin_descubierto`.
+3. **Clima (rama de Fase B):** consulta Open-Meteo para los 25 departamentos y hace upsert en `dato_climatico` mediante `fn_insertar_dato_climatico`.
+4. **Embeddings (Schedule cada 30 minutos):** indexa los boletines con `gemini-embedding-001` (768 dimensiones) en `boletin_descubierto.embedding`.
+5. **Consulta NLQ (Webhook `/webhook/consulta`):** invoca `@healthradar/core`, consulta PostgreSQL, arma el contexto RAG y usa la cadena Kimi K3 -> GLM 5.3 -> Gemini 3.5 Flash Lite; envía la traza a Phoenix (ADR-010).
+6. **Webhooks auxiliares:** `tendencia`, `historicos`, `panorama`, `departamentos` y los tres de autenticación (`auth-login`, `auth-sesion`, `auth-logout`).
 
 ## Consecuencias
 

@@ -3,6 +3,13 @@ name: Deploy CD
 on:
   push:
     branches: [ main ]
+  # Ejecución manual: build_all=true recompila los 4 servicios (recupera desfases tras un deploy fallido).
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Recompilar los 4 servicios (n8n, mf-dashboard, mf-consulta, mf-historicos)'
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -12,107 +19,157 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── 1. ¿Hay algo desplegable? ─────────────────────────────────────────────
+      # predicate-quantifier 'every': un archivo cuenta solo si cumple TODOS los patrones del filtro,
+      # así '!src/n8n-workflows/**' realmente excluye (con 'some' cualquier archivo lo cumpliría).
+      # Por eso src e infrastructure van en filtros separados (un archivo no puede estar en ambos).
+      # Los workflows de n8n se publican con n8n-deploy-cd.yml (tag v*.*.*), no con este pipeline.
+      # No llegan a la VM (no despliegan nada): src/ia-ops (tests y prompts de QA; n8n lee los prompts
+      # de SYSTEM_PROMPT_* en infrastructure/.env), scripts ETL de src/database, documentación y plantillas.
+      # Las migraciones (src/database/migrations) sí se despliegan: filtro propio.
       - name: Detectar cambios desplegables
+        if: github.event_name == 'push'
+        uses: dorny/paths-filter@v3
+        id: deployable
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            src:
+              - 'src/**'
+              - '!src/n8n-workflows/**'
+              - '!src/ia-ops/**'
+              - '!src/database/**'
+              - '!**/*.md'
+            migraciones:
+              - 'src/database/migrations/**'
+            infra:
+              - 'infrastructure/**'
+              - '!infrastructure/ADRs/**'
+              - '!infrastructure/manuals/**'
+              - '!infrastructure/.env*.example'
+              - '!**/*.md'
+
+      # ── 2. ¿Qué servicios hay que compilar? (ADR-008: proteger los 4 GiB de la VM) ──
+      # Cada microfrontend se construye con su propia carpeta como contexto; la imagen de
+      # n8n solo copia src/core/ (infrastructure/n8n/Dockerfile, ADR-012).
+      # Un cambio en el compose puede alterar entorno/redes de cualquier servicio → los 4.
+      - name: Detectar cambios por servicio
+        if: github.event_name == 'push'
         uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
-            deployable:
-              - 'src/**'
-              - '!src/n8n-workflows/**'
-              - 'infrastructure/**'
+            n8n:
+              - 'src/core/**'
+              - 'infrastructure/n8n/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_dashboard:
+              - 'src/mf-dashboard/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_consulta:
+              - 'src/mf-consulta/**'
+              - 'infrastructure/docker-compose.yml'
+            mf_historicos:
+              - 'src/mf-historicos/**'
+              - 'infrastructure/docker-compose.yml'
+
+      - name: Decidir despliegue
+        id: decide
+        env:
+          EVENTO: ${{ github.event_name }}
+          HAY_SRC: ${{ steps.deployable.outputs.src }}
+          HAY_MIGRACIONES: ${{ steps.deployable.outputs.migraciones }}
+          HAY_INFRA: ${{ steps.deployable.outputs.infra }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ] || [ "$HAY_SRC" = "true" ] || [ "$HAY_MIGRACIONES" = "true" ] || [ "$HAY_INFRA" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Desplegar vía SSH
-        if: steps.filter.outputs.deployable == 'true'
+        if: steps.decide.outputs.deploy == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          # VM B2als_v2 (2 vCPU, 4 GB) puede tardar >10min en build + recreate + healthchecks
-          command_timeout: 20m
+          # VM B2als_v2 (2 vCPU, 4 GB): incluye la espera del candado si hay otro deploy en curso
+          command_timeout: 30m
           script: |
             set -e
 
             REPO_DIR="/home/azureuser/HealthRadar"
-            DB_CONTAINER="healthradar-postgres"
-            MIGRATIONS_DIR="$REPO_DIR/src/database/migrations"
+            TARGET_SHA="${{ github.sha }}"
+
+            # Un solo deploy a la vez en la VM. Los pushes en cola esperan su turno (no se cancelan):
+            # cada uno conserva su propia decisión de qué compilar, así ningún cambio queda sin construir.
+            exec 9>/tmp/healthradar-deploy.lock
+            echo "🔒 Esperando turno de despliegue (máx. 20 min)..."
+            flock -w 1200 9
 
             cd "$REPO_DIR"
-            echo "📥 Actualizando código..."
-            git fetch origin main
-            git reset --hard origin/main
+            echo "📥 Desplegando SHA $TARGET_SHA..."
+            git fetch origin "${{ github.ref_name }}"
+            git checkout --detach "$TARGET_SHA"
+            git reset --hard "$TARGET_SHA"
             cd infrastructure
-            echo "🔨 [ADR-008] Compilando imágenes secuencialmente para proteger RAM de la VM..."
-            docker compose build n8n
-            docker compose build mf-dashboard
-            docker compose build mf-consulta
-            docker compose build mf-historicos
+
+            # ── Decisiones calculadas por GitHub Actions (valores 'true'/'false') ──
+            BUILD_ALL="${{ inputs.build_all }}"
+            BUILD_N8N="${{ steps.filter.outputs.n8n }}"
+            BUILD_DASHBOARD="${{ steps.filter.outputs.mf_dashboard }}"
+            BUILD_CONSULTA="${{ steps.filter.outputs.mf_consulta }}"
+            BUILD_HISTORICOS="${{ steps.filter.outputs.mf_historicos }}"
+
+            BUILT=0
+
+            echo "🔨 [ADR-008] Compilación condicional y secuencial para proteger RAM de la VM..."
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_N8N" = "true" ]; then
+              echo "  ▶️  Compilando n8n (cambió core, Dockerfile o compose)..."
+              docker compose build n8n
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo n8n (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_DASHBOARD" = "true" ]; then
+              echo "  ▶️  Compilando mf-dashboard..."
+              docker compose build mf-dashboard
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-dashboard (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_CONSULTA" = "true" ]; then
+              echo "  ▶️  Compilando mf-consulta..."
+              docker compose build mf-consulta
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-consulta (sin cambios)"
+            fi
+
+            if [ "$BUILD_ALL" = "true" ] || [ "$BUILD_HISTORICOS" = "true" ]; then
+              echo "  ▶️  Compilando mf-historicos..."
+              docker compose build mf-historicos
+              BUILT=$((BUILT + 1))
+            else
+              echo "  ⏭️  Omitiendo mf-historicos (sin cambios)"
+            fi
+
+            echo "📊 Resumen: se compilaron $BUILT de 4 servicios."
             echo "🐳 Levantando contenedores actualizados..."
-            docker compose up -d
-            docker compose restart nginx-shell
+            docker compose up -d --wait --wait-timeout 180
+            # nginx monta su configuracion como bind mount: Compose no detecta cambios
+            # de contenido, por eso se recrea para aplicar nginx.conf.
+            docker compose up -d --no-deps --force-recreate --wait nginx-shell
             echo "✅ Verificando estado de los servicios..."
             docker compose ps
 
-            # ── Migraciones SQL idempotentes (trasladadas de n8n-deploy-cd.yml) ──
-            # Cada migración se ejecuta solo una vez: se registra en la tabla de control
-            # healthradar_schema_migrations. Si ya existe el registro, NO se escribe ni se ejecuta.
-            echo "🗄️  Ejecutando migraciones SQL idempotentes..."
-
-            echo "⏳ Esperando disponibilidad de PostgreSQL..."
-            for i in $(seq 1 30); do
-              if docker exec "$DB_CONTAINER" pg_isready -q; then break; fi
-              sleep 2
-            done
-
-            PG_USER=$(docker exec "$DB_CONTAINER" printenv POSTGRES_USER)
-            PG_DB=$(docker exec "$DB_CONTAINER" printenv POSTGRES_DB)
-
-            echo "  📌 Inicializando tabla de control healthradar_schema_migrations..."
-            docker exec "$DB_CONTAINER" psql -q -U "$PG_USER" -d "$PG_DB" \
-              -c "CREATE TABLE IF NOT EXISTS healthradar_schema_migrations (
-                    filename   TEXT PRIMARY KEY,
-                    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                  );"
-
-            COUNT_SKIP=0
-            COUNT_APPLIED=0
-
-            for f in "$MIGRATIONS_DIR"/*.sql; do
-              [ -f "$f" ] || continue
-              FNAME=$(basename "$f")
-
-              ALREADY=$(docker exec "$DB_CONTAINER" psql -q -tA -U "$PG_USER" -d "$PG_DB" \
-                -c "SELECT 1 FROM healthradar_schema_migrations WHERE filename='$FNAME';")
-
-              if [ "$ALREADY" = "1" ]; then
-                echo "  ⏭️  $FNAME ya fue aplicada — no se escribe ni se ejecuta."
-                COUNT_SKIP=$((COUNT_SKIP + 1))
-                continue
-              fi
-
-              echo "  ▶️  Aplicando $FNAME..."
-              RC=0
-              OUTPUT=$(docker exec -i "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -q -U "$PG_USER" \
-                -d "$PG_DB" < "$f" 2>&1) || RC=$?
-
-              # Se registra SIEMPRE (aplicada o con errores) para que cada migración
-              # se ejecute únicamente una única vez en todo el ciclo de vida.
-              docker exec "$DB_CONTAINER" psql -q -U "$PG_USER" -d "$PG_DB" \
-                -c "INSERT INTO healthradar_schema_migrations(filename) VALUES ('$FNAME') ON CONFLICT DO NOTHING;"
-
-              if [ "$RC" -eq 0 ]; then
-                echo "  ✅ $FNAME aplicada correctamente."
-                COUNT_APPLIED=$((COUNT_APPLIED + 1))
-              else
-                echo "  ⚠️  $FNAME terminó con errores (queda registrada para no re-ejecutarse):"
-                echo "$OUTPUT" | tail -n 8
-              fi
-            done
-
-            echo "--------------------------------------------"
-            echo "📋 Migraciones: $COUNT_APPLIED aplicadas, $COUNT_SKIP omitidas."
+            echo "🗄️  Aplicando migraciones..."
+            bash scripts-poc-arquitectura/migrate.sh
 
       - name: Sin cambios desplegables
-        if: steps.filter.outputs.deployable == 'false'
-        run: echo "✅ Este push no toca src/ ni infrastructure/ — se omite el despliegue"
+        if: steps.decide.outputs.deploy == 'false'
+        run: echo "✅ Este push no toca nada desplegable (src/ sin n8n-workflows/ia-ops/docs, migraciones, infrastructure/ sin docs) — se omite el despliegue"

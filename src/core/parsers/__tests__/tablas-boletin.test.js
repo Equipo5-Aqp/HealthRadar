@@ -83,6 +83,28 @@ describe('extraerCifrasTablas', () => {
     expect(extraerCifrasTablas('Ofidismo 42 0 1186 0 6 3,48 39 0 1181 0 5').ofidismo_total).toBeUndefined();
   });
 
+  test('lee la fila "Perú" de la Tabla 3 partida en 5 líneas (Boletín SE 27-2025)', () => {
+    const SE27_EDA = [
+      'Tabla 3. Episodios de las enfermedades diarréicas agudas por Direcciones de Salud, semana epidemiológica 27,',
+      'años 2024-2025',
+      'Ucayali Ucayali 1015 23316 34 915 301 1 24231 817 25992 41 990 84 1 26982',
+      'Perú ',
+      '23950 704293 ',
+      '347 9744 ',
+      '5406 38 ',
+      '714037 20569 665786 ',
+      '289 10375 6101 20 676161',
+      'Apurímac',
+    ].join('\n');
+    expect(extraerCifrasTablas(SE27_EDA)).toEqual({ eda_acuosas: 665786, eda_disentericas: 10375, eda_total: 676161 });
+  });
+
+  test('una fila con más líneas de continuación que el máximo no se toma (nunca se adivina)', () => {
+    const demasiadas = ['Tabla 3. Episodios de las enfermedades diarréicas agudas por Direcciones de Salud, semana 27,', 'Perú ']
+      .concat(Array.from({ length: 12 }, () => '1 ')).join('\n');
+    expect(extraerCifrasTablas(demasiadas)).toEqual({});
+  });
+
   test('entradas inválidas devuelven objeto vacío', () => {
     expect(extraerCifrasTablas(undefined)).toEqual({});
     expect(extraerCifrasTablas('')).toEqual({});
