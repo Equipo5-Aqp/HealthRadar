@@ -1,5 +1,5 @@
 {
-  "name": "Conexion posgrestV4",
+  "name": "Conexion posgrest V5",
   "nodes": [
     {
       "parameters": {
@@ -114,7 +114,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { construirContextoPrompt } = require('@healthradar/core');\nconst boletines = $('Filtrar boletines del periodo').all().map(i => i.json).filter(b => !b._sin_boletines);\nconst clima = $('Filtrar clima del periodo').all().map(i => i.json);\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nlet textoTendencia = '';\ntry { textoTendencia = $('Armar texto de tendencia').first().json.texto_tendencia || ''; } catch(e) {}\nreturn [{ json: construirContextoPrompt(boletines, clima, periodo, textoTendencia) }];"
+        "jsCode": "const { construirContextoPrompt, armarTextoTendenciaBoletines } = require('@healthradar/core');\nconst boletines = $('Filtrar boletines del periodo').all().map(i => i.json).filter(b => !b._sin_boletines);\nconst clima = $('Filtrar clima del periodo').all().map(i => i.json);\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nlet textoTendencia = '';\ntry { textoTendencia = $('Armar texto de tendencia').first().json.texto_tendencia || ''; } catch(e) {}\n// Sprint 4: los periodos de 2025 en adelante no tienen tendencia de Postgres. Se arma con los boletines\n// (casos de cada semana = diferencia entre acumulados) para que el modelo pueda emitir el nivel de riesgo.\n// Si no hay al menos 3 semanas calculables queda vacia y el modelo no escribe riesgo.\nif (!textoTendencia) {\n  try {\n    const todos = $('Get row(s)1').all().map(i => i.json);\n    const enfermedad = $('Detectar enfermedad en la pregunta').first().json;\n    textoTendencia = armarTextoTendenciaBoletines(todos, periodo, enfermedad);\n  } catch(e) {}\n}\nreturn [{ json: construirContextoPrompt(boletines, clima, periodo, textoTendencia) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1641,7 +1641,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "6234fe5f-678a-4482-9a4f-8b126a126103",
+  "versionId": "b8b75c00-a192-4620-b9dd-2288d84d421f",
   "meta": {
     "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },

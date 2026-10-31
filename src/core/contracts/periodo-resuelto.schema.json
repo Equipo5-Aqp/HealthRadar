@@ -28,6 +28,10 @@
     "ventana_por_defecto": {
       "type": "integer"
     },
+    "rango_anios": {
+      "type": "boolean",
+      "description": "true cuando el analista pidió varios años (\"2023 y 2024\"): anio es null y el rango va en anio_desde/anio_hasta (años completos)"
+    },
     "criterio_usado": {
       "type": "string"
     }

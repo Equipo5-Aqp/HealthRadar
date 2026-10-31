@@ -14,32 +14,32 @@ const DEPARTAMENTOS = {
   'puno': '21', 'san martin': '22', 'tacna': '23', 'tumbes': '24', 'ucayali': '25',
 };
 
+const sinTildes = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 /**
  * Detecta si la pregunta menciona un departamento peruano.
  *
- * @param {string} pregunta - Texto en lenguaje natural del analista
+ * El nombre se busca como PALABRA COMPLETA: "ica" no debe salir de "epidemiológica" ni de "publicada".
+ * Si se mencionan varios departamentos, se toma el que aparece primero en la pregunta.
+ *
+ * @param {string} pregunta - Texto en lenguaje natural del analista (si no es texto, se trata como vacío)
  * @returns {{ departamento_detectado: string|null, codigo_departamento: string|null }}
  */
 function detectarDepartamento(pregunta) {
-  const texto = (pregunta || '')
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const texto = sinTildes((typeof pregunta === 'string' ? pregunta : '').toLowerCase());
 
-  let departamentoDetectado = null;
-  let codigoDetectado = null;
-
+  let mejor = null; // { nombre, codigo, indice }
   for (const [nombre, codigo] of Object.entries(DEPARTAMENTOS)) {
-    const nombreSinTildes = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (texto.includes(nombreSinTildes)) {
-      departamentoDetectado = nombre;
-      codigoDetectado = codigo;
-      break;
+    // Letras y dígitos como límite: el texto ya no trae tildes, así que "ñ" quedó como "n".
+    const coincidencia = new RegExp(`(?<![a-z0-9])${sinTildes(nombre)}(?![a-z0-9])`).exec(texto);
+    if (coincidencia && (mejor === null || coincidencia.index < mejor.indice)) {
+      mejor = { nombre, codigo, indice: coincidencia.index };
     }
   }
 
   return {
-    departamento_detectado: departamentoDetectado,
-    codigo_departamento: codigoDetectado,
+    departamento_detectado: mejor ? mejor.nombre : null,
+    codigo_departamento: mejor ? mejor.codigo : null,
   };
 }
 
