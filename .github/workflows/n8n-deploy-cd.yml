@@ -110,14 +110,37 @@ jobs:
 
             echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
 
-            N8N_IP=$(docker inspect -f '{{(index .NetworkSettings.Networks "healthradar-net").IPAddress}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
+            # La IP fija de n8n se lee de docker-compose.yml (fuente de verdad), no se escribe a mano.
+            # Compose antepone el proyecto al nombre de la red (p. ej. infrastructure_healthradar-net),
+            # por eso el nombre real también sale de docker compose config.
+            COMPOSE_INFO=$(cd "$REPO_DIR/infrastructure" && docker compose config --format json | python3 -c \
+              "import sys, json; c=json.load(sys.stdin); n=sys.argv[1]; print(c['networks'][n]['name'], c['services'][sys.argv[2]]['networks'][n]['ipv4_address'])" \
+              healthradar-net n8n) || {
+              echo "❌ No se pudo leer la red/IP de n8n desde infrastructure/docker-compose.yml."
+              exit 1
+            }
+            NETWORK_NAME="${COMPOSE_INFO% *}"
+            EXPECTED_IP="${COMPOSE_INFO#* }"
 
-            if [ -z "$N8N_IP" ]; then
-              echo "❌ No se pudo resolver la IP interna de $CONTAINER_NAME en healthradar-net."
+            ACTUAL_IP=$(docker inspect -f "{{with index .NetworkSettings.Networks \"$NETWORK_NAME\"}}{{.IPAddress}}{{end}}" "$CONTAINER_NAME") || {
+              echo "❌ docker inspect falló sobre $CONTAINER_NAME."
+              exit 1
+            }
+
+            if [ -z "$ACTUAL_IP" ]; then
+              echo "❌ $CONTAINER_NAME no está conectado a la red $NETWORK_NAME. Redes actuales:"
+              docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}   - {{$k}}: {{$v.IPAddress}}{{"\n"}}{{end}}' "$CONTAINER_NAME"
               exit 1
             fi
 
-            echo "  📡 IP interna de n8n en la red Docker: $N8N_IP:5678"
+            if [ "$ACTUAL_IP" != "$EXPECTED_IP" ]; then
+              echo "❌ $CONTAINER_NAME tiene $ACTUAL_IP en $NETWORK_NAME, pero docker-compose.yml declara $EXPECTED_IP."
+              echo "   El contenedor no refleja el compose actual: recrearlo con 'docker compose up -d n8n'."
+              exit 1
+            fi
+
+            N8N_IP="$EXPECTED_IP"
+            echo "  📡 IP interna de n8n en $NETWORK_NAME (verificada contra el compose): $N8N_IP:5678"
 
             for json_file in "$WORKFLOWS_DIR"/*.json; do
               [ -f "$json_file" ] || continue
