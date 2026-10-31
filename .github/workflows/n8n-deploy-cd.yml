@@ -192,7 +192,9 @@ jobs:
               exit 1
             fi
 
-      # ── PASO 5: Pruebas de humo (bloqueantes) ────────────────────────────────
+      # ── PASO 5: Pruebas de humo ──────────────────────────────────────────────
+      # Bloqueantes: webhook NLQ y logs de n8n. Phoenix solo advierte: la observabilidad
+      # es pasiva (ADR-010) y su caída no debe revertir un despliegue de workflows.
       - name: Verificar que Phoenix responde internamente
         uses: appleboy/ssh-action@v1
         with:

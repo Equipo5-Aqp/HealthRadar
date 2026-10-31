@@ -62,6 +62,9 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
+      # Informativa por ahora: N8N_NLQ_WEBHOOK_URL pasa por nginx auth_request (ADR-014) y los
+      # tests no inician sesión → 401 SIN_SESION. Volverá a ser bloqueante cuando el test se
+      # autentique y omita (skip) los 503 por cuota de IA (plan de Prompt Injection con QA).
       - name: "QA · Seguridad — Prompt Injection (HU-04)"
         if: steps.check_webhook.outputs.skip == 'false'
         continue-on-error: true

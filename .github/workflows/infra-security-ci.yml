@@ -6,9 +6,8 @@ on:
 
 jobs:
   verify-docker-ports:
-    name: Verificar exposición de puertos (ADR-008 / ADR-010 / ADR-011)
+    name: Verificar exposición de puertos y variables (ADR-008 / ADR-013 / ADR-014)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -19,45 +18,68 @@ jobs:
           filters: |
             infra:
               - 'infrastructure/**'
+              - '.github/workflows/infra-security-ci.yml'
 
-      - name: Verificar que solo el Frontend expone puerto público
+      - name: Verificar que solo nginx-shell expone puerto público
+        if: steps.filter.outputs.infra == 'true'
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+
+          COMPOSE_FILE = "infrastructure/docker-compose.yml"
+          PUBLICO = "nginx-shell"  # ADR-013/ADR-014: único punto de entrada (3000)
+
+          # Servicios = claves con 2 espacios bajo "services:"; se ignoran líneas comentadas.
+          servicios, actual, en_services = {}, None, False
+          with open(COMPOSE_FILE, encoding="utf-8") as fh:
+              for linea in fh:
+                  if not linea.strip() or linea.lstrip().startswith("#"):
+                      continue
+                  if re.match(r"^\S", linea):
+                      en_services = linea.startswith("services:")
+                      actual = None
+                      continue
+                  if not en_services:
+                      continue
+                  m = re.match(r"^  ([A-Za-z0-9_.-]+):", linea)
+                  if m:
+                      actual = m.group(1)
+                      servicios[actual] = False
+                  elif actual and re.match(r"^    ports:", linea):
+                      servicios[actual] = True
+
+          if PUBLICO not in servicios:
+              print(f"❌ No se encontró el servicio '{PUBLICO}' en {COMPOSE_FILE}")
+              sys.exit(1)
+
+          FAIL = 0
+          for nombre, expone in servicios.items():
+              if nombre == PUBLICO:
+                  print(f"{'✅' if expone else '❌'} '{nombre}' {'expone' if expone else 'NO expone'} el puerto público")
+                  FAIL |= not expone
+              elif expone:
+                  print(f"❌ '{nombre}' expone puertos al host (viola ADR-008: solo '{PUBLICO}' es público)")
+                  FAIL = 1
+              else:
+                  print(f"✅ '{nombre}' no expone puertos al host")
+          sys.exit(FAIL)
+          PYEOF
+
+      - name: Verificar que cada variable del compose está en .env.example
         if: steps.filter.outputs.infra == 'true'
         run: |
           COMPOSE_FILE="infrastructure/docker-compose.yml"
-          echo "Revisando $COMPOSE_FILE..."
-
-          if [ ! -f "$COMPOSE_FILE" ]; then
-            echo "⚠️ No se encontró $COMPOSE_FILE — se omite esta validación"
-            exit 0
-          fi
-
+          TEMPLATE="infrastructure/.env.example"
           FAIL=0
-
-          check_service_no_ports() {
-            local service=$1
-            local adr=$2
-            if awk "/^  ${service}:/{flag=1; next} /^  [a-zA-Z]/{flag=0} flag" "$COMPOSE_FILE" \
-                | grep -vE '^\s*#' \
-                | grep -q "ports:"; then
-              echo "⚠️ El servicio '$service' expone puertos al host (viola $adr)"
-              FAIL=1
+          for VAR in $(grep -oE '\$\{[A-Z0-9_]+' "$COMPOSE_FILE" | sed 's/^\${//' | sort -u); do
+            if grep -qE "^${VAR}=" "$TEMPLATE"; then
+              echo "✅ $VAR"
             else
-              echo "✅ '$service' no expone puertos al host"
+              echo "❌ $VAR se usa en $COMPOSE_FILE pero no está documentada en $TEMPLATE"
+              FAIL=1
             fi
-          }
-
-          check_service_no_ports "phoenix" "ADR-008/ADR-010"
-          check_service_no_ports "n8n" "ADR-008"
-          check_service_no_ports "postgres" "ADR-008/ADR-011"
-
-          if [ "$FAIL" -eq 1 ]; then
-            echo ""
-            echo "Solo 'frontend' (puerto 3000) y SSH (22, a nivel de NSG de Azure) deben estar expuestos públicamente."
-            echo "Hallazgo reportado al Arquitecto — pendiente de corrección, no bloquea este PR."
-          else
-            echo ""
-            echo "✅ Cumple ADR-008/ADR-010/ADR-011: solo el Frontend expone puerto público"
-          fi
+          done
+          exit $FAIL
 
       - name: Sin cambios relevantes
         if: steps.filter.outputs.infra == 'false'
