@@ -37,20 +37,54 @@ jobs:
       - name: Instalar Newman
         run: npm install -g newman
 
-      # TEMPORAL (se retirará cuando el VM tenga la arquitectura multi-zone desplegada):
-      # La colección apunta a /historicos/api/historicos, ruta que SOLO existe tras
-      # desplegar los microfrontends en el VM (el deploy ocurre por tag v*.*.*, no por PR).
-      # Mientras el VM siga con el frontend monolítico, el 404 es esperado y este check
-      # no debe bloquear el PR. Quitar continue-on-error al validar en producción.
+      # La VM de Azure no está encendida 24 h: una VM apagada no debe bloquear los PR del equipo.
+      #   200                          -> disponible: se ejecuta Newman (si falla, el check es ROJO)
+      #   sin respuesta (000) o HTTP 5xx -> se omite con ADVERTENCIA visible
+      #   otro código / secrets vacíos -> ROJO (problema de configuración)
+      - name: Verificar disponibilidad del sistema (VM)
+        id: gate
+        env:
+          HR_BASE_URL: ${{ secrets.HR_BASE_URL }}
+          HR_USER: ${{ secrets.HR_USER }}
+          HR_PASS: ${{ secrets.HR_PASS }}
+        run: |
+          BASE="${HR_BASE_URL:-http://20.9.78.118:3000}"
+          if [ -z "$HR_USER" ] || [ -z "$HR_PASS" ]; then
+            echo "::error title=Secrets faltantes::HR_USER / HR_PASS no estan configurados en el repositorio"
+            exit 1
+          fi
+          BODY=$(jq -n --arg e "$HR_USER" --arg p "$HR_PASS" '{email:$e,password:$p}')
+          CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d "$BODY" || true)
+          CODE=${CODE:-000}
+          echo "Login de verificacion: HTTP $CODE"
+          if [ "$CODE" = "200" ]; then
+            echo "disponible=true" >> "$GITHUB_OUTPUT"
+          elif [ "$CODE" = "000" ] || [ "${CODE:0:1}" = "5" ]; then
+            echo "disponible=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Sistema no disponible::La VM no respondio (HTTP $CODE: apagada o inalcanzable). Newman NO se ejecuto; este check queda en verde sin haber validado nada."
+            echo "### ⚠️ Colección Postman NO ejecutada" >> "$GITHUB_STEP_SUMMARY"
+            echo "La VM no respondió (HTTP $CODE). El check queda en verde **sin haber validado nada**. Reintenta cuando la VM esté encendida." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=Login inesperado::HTTP $CODE. Revisa HR_USER / HR_PASS (clave cambiada o cuenta bloqueada) o cambios en /api/auth/login"
+            exit 1
+          fi
+
       - name: "QA · Colección Postman - Datos Históricos (HU-13)"
-        continue-on-error: true
+        if: steps.gate.outputs.disponible == 'true'
+        env:
+          HR_BASE_URL: ${{ secrets.HR_BASE_URL }}
+          HR_USER: ${{ secrets.HR_USER }}
+          HR_PASS: ${{ secrets.HR_PASS }}
         run: |
           newman run tests/postman/healthradar-data-collection.json \
+            --env-var "base_url=${HR_BASE_URL:-http://20.9.78.118:3000}" \
+            --env-var "hr_user=${HR_USER}" \
+            --env-var "hr_pass=${HR_PASS}" \
             --reporters cli,junit \
             --reporter-junit-export newman-report.xml
 
       - name: Publicar reporte de Newman
-        if: always()
+        if: always() && steps.gate.outputs.disponible == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: newman-report
