@@ -5,6 +5,9 @@
 
 'use strict';
 
+// Enfermedades que traen los boletines pero no tienen serie propia en la base (texto sin tildes ni mayúsculas).
+const OTRAS_ENFERMEDADES = /malaria|paludismo|sarampion|rubeola|paralisis flacida|\bpfa\b|ofidismo|mordedura de serpiente|\bmuertes? maternas?\b|mortalidad materna/;
+
 /**
  * Detecta qué enfermedad(es) se mencionan en la pregunta del analista.
  *
@@ -15,13 +18,20 @@
  *  - "ira" o "respiratoria/o" sin "neumonía" → IRA combinada (ambas)
  *  - Sin keywords → las 4 fuentes activas
  *
- * @param {string} pregunta - Texto en lenguaje natural del analista
+ * Adem\u00e1s informa (sin cambiar lo anterior):
+ *  - enfermedad_especifica: true si la pregunta nombra dengue, EDA o IRA.
+ *  - otra_enfermedad_mencionada: true si nombra una enfermedad de los boletines que no tiene serie
+ *    propia (malaria, sarampi\u00f3n, rub\u00e9ola, PFA, ofidismo, muerte materna). Con esto la tendencia y el
+ *    nivel de riesgo de boletines no se arman con dengue/EDA/IRA cuando la pregunta es de otra cosa.
+ *
+ * @param {string} pregunta - Texto en lenguaje natural del analista (si no es texto, se trata como vac\u00edo)
  * @returns {{ incluir_dengue: boolean, incluir_eda: boolean,
  *             incluir_ira_neumonia: boolean, incluir_ira_no_neumonia: boolean,
- *             enfermedades_activas: string[], criterio_enfermedad: string }}
+ *             enfermedades_activas: string[], criterio_enfermedad: string,
+ *             enfermedad_especifica: boolean, otra_enfermedad_mencionada: boolean }}
  */
 function detectarEnfermedad(pregunta) {
-  const texto = (pregunta || '')
+  const texto = (typeof pregunta === 'string' ? pregunta : '')
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
@@ -29,6 +39,7 @@ function detectarEnfermedad(pregunta) {
   const mencionaEda = /\beda\b|diarrea|diarreic/.test(texto);
   const mencionaNeumonia = /neumonia/.test(texto);
   const mencionaIraGeneral = /\bira\b|respirator/.test(texto);
+  const mencionaOtra = OTRAS_ENFERMEDADES.test(texto);
 
   let incluirDengue = false;
   let incluirEda = false;
@@ -68,6 +79,8 @@ function detectarEnfermedad(pregunta) {
     criterio_enfermedad: algunaDetectada
       ? `detectadas: ${enfermedadesActivas.join(', ')}`
       : 'sin enfermedad especifica detectada: se consultan las 4',
+    enfermedad_especifica: algunaDetectada,
+    otra_enfermedad_mencionada: mencionaOtra,
   };
 }
 

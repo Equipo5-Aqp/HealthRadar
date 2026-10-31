@@ -6,6 +6,31 @@
 
 'use strict';
 
+const MAX_ANIOS_CON_DETALLE = 2; // preguntas de varios años: hasta aquí se muestra cada semana
+const SEMANAS_FINALES = 6;       // con más años: solo las últimas semanas en detalle
+
+/**
+ * Total, máximo semanal y semana del máximo de cada año presente en las filas (ordenado por año).
+ * El orden de las filas no importa; si hay varias semanas con el mismo máximo gana la primera.
+ */
+function resumenPorAnio(filas) {
+  const porAnio = new Map();
+  for (const f of filas) {
+    const anio = Number(f.anio);
+    const semana = Number(f.semana);
+    const casos = Number(f.total_casos) || 0;
+    if (!Number.isInteger(anio)) continue;
+    const r = porAnio.get(anio) || { anio, total: 0, maximo: -1, semanaMaximo: null };
+    r.total += casos;
+    if (casos > r.maximo || (casos === r.maximo && semana < r.semanaMaximo)) {
+      r.maximo = casos;
+      r.semanaMaximo = semana;
+    }
+    porAnio.set(anio, r);
+  }
+  return [...porAnio.values()].sort((a, b) => a.anio - b.anio);
+}
+
 /**
  * Arma el texto de tendencia histórica a partir de las filas de Postgres.
  *
@@ -42,6 +67,27 @@ function armarTextoTendencia(decision, filas) {
     if (filasBloque.length === 0) {
       return `${titulo} ${ambitoTexto}: no se encontraron casos historicos registrados en el periodo consultado (hasta 2024).\n`;
     }
+
+    // Pregunta de varios años ("2023 y 2024"): total por año para poder comparar sin sumar semanas a ojo.
+    // Hasta 2 años se conserva el detalle semanal; con 3 o más solo el resumen por año y las últimas
+    // semanas, para que el texto no crezca sin límite (p. ej. "de 2015 a 2024").
+    const resumen = decision.rango_anios === true ? resumenPorAnio(filasBloque) : [];
+    if (resumen.length >= 2) {
+      const conDetalle = resumen.length <= MAX_ANIOS_CON_DETALLE;
+      const aviso = conDetalle
+        ? ''
+        : `; periodo de ${resumen.length} anios: se muestra el resumen por anio y las ultimas ${SEMANAS_FINALES} semanas`;
+      let texto = `${titulo} ${ambitoTexto} (datos oficiales hasta 2024${aviso}):\n`;
+      for (const f of conDetalle ? filasBloque : filasBloque.slice(-SEMANAS_FINALES)) {
+        texto += `SE ${f.semana}-${f.anio}: ${f.total_casos} casos${climaTextoDe(f)}\n`;
+      }
+      texto += 'Resumen por anio:\n';
+      for (const r of resumen) {
+        texto += `${r.anio}: ${r.total} casos en el anio (maximo semanal: ${r.maximo} casos en la SE ${r.semanaMaximo}-${r.anio})\n`;
+      }
+      return texto;
+    }
+
     let texto = `${titulo} ${ambitoTexto} (datos oficiales hasta 2024):\n`;
     for (const f of filasBloque) {
       texto += `SE ${f.semana}-${f.anio}: ${f.total_casos} casos${climaTextoDe(f)}\n`;

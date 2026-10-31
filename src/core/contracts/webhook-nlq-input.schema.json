@@ -9,6 +9,10 @@
       "type": "string",
       "description": "Pregunta epidemiológica en lenguaje natural realizada por el analista",
       "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Id de la conversación, creado por el navegador; el flujo guarda el historial de esa sesión. Opcional: sin él no se guarda historial"
     }
   },
   "additionalProperties": true

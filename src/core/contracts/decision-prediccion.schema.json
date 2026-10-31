@@ -50,6 +50,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "rango_anios": {
+      "type": "boolean",
+      "description": "true solo cuando el analista pidió varios años (\"2023 y 2024\"); la tendencia agrega el total por año"
     }
   },
   "additionalProperties": true
