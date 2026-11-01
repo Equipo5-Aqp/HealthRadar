@@ -5,6 +5,8 @@ import { formatoNumero } from '@/modules/shared/formato'
 import { etiquetaFuente } from '@/modules/shared/constants/fuentes'
 import { DEPARTAMENTOS } from '@/modules/shared/constants/departamentos'
 import { POR_PAGINA } from '../hooks/useHistoricos'
+import { filasACsv, nombreArchivoCsv } from '../lib/csv'
+import { descargarCsv } from '../lib/descargarCsv'
 
 function celda(clave, valor) {
   if (valor === null || valor === undefined || valor === '') return '—'
@@ -45,11 +47,19 @@ export default function TablaDatos({ h }) {
   }
 
   const hayMas = filas.length >= POR_PAGINA
+  function exportar() {
+    descargarCsv(filasACsv(columnas, filas), nombreArchivoCsv({
+      tabla: aplicado.tabla, departamento: aplicado.departamento ? dep : '', anio: aplicado.anio, pagina,
+    }))
+  }
   return (
     <section className="card table-card" aria-label="Resultados">
       <div className="table-meta">
         <h2>{titulo}</h2>
-        <span>Registros de la base de datos</span>
+        <div className="table-acciones">
+          <span>Registros de la base de datos</span>
+          <button type="button" className="btn-ghost" onClick={exportar} aria-label={`Exportar CSV de esta página (${filas.length} registros)`}>Exportar CSV</button>
+        </div>
       </div>
       <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabla de registros, desplazable">
         <table className="data">

@@ -5,6 +5,7 @@ import Sidebar from '@/modules/shared/components/Sidebar'
 import { useConsultaNLQ } from '../hooks/useConsultaNLQ'
 import { SUGERENCIAS } from '../constants'
 import ChatMensaje from './ChatMensaje'
+import EstadoProgreso from './EstadoProgreso'
 
 export default function ConsultaView() {
   const c = useConsultaNLQ()
@@ -45,13 +46,7 @@ export default function ConsultaView() {
                 </div>
               )}
               {c.mensajes.map((m) => <ChatMensaje key={m.id} m={m} />)}
-              {c.cargando && (
-                <div className="msg-bot escribiendo" role="status">
-                  <span className="sr-only">Analizando los datos epidemiológicos…</span>
-                  <span className="puntos" aria-hidden="true"><i /><i /><i /></span>
-                  <span aria-hidden="true">Analizando los datos epidemiológicos…</span>
-                </div>
-              )}
+              {c.cargando && <EstadoProgreso />}
               <div ref={finRef} />
             </div>
 
