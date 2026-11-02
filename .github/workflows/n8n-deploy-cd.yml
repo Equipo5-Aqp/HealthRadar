@@ -13,7 +13,7 @@ on:
 jobs:
   deploy-n8n:
     name: Desplegar y Publicar Workflows en n8n Producción
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     steps:
       - name: Checkout del repositorio
@@ -98,14 +98,14 @@ jobs:
             WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
 
             if [ -z "$N8N_API_KEY" ]; then
-              echo "⚠️  Secret N8N_API_KEY no configurado en GitHub."
+              echo "❌ Secret N8N_API_KEY no configurado en GitHub."
               echo "   Los flujos fueron importados en la BD pero NO se publicaron."
               echo ""
               echo "   👉 Para completar la automatización:"
               echo "   1. Ir a la UI de n8n → Settings → n8n API → Create new API key"
               echo "   2. GitHub repo → Settings → Secrets → New → N8N_API_KEY"
-              echo "   3. Volver a hacer push para que este paso se ejecute."
-              exit 0
+              echo "   3. Volver a lanzar el despliegue."
+              exit 1
             fi
 
             echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
@@ -142,6 +142,7 @@ jobs:
             N8N_IP="$EXPECTED_IP"
             echo "  📡 IP interna de n8n en $NETWORK_NAME (verificada contra el compose): $N8N_IP:5678"
 
+            FALLOS=0
             for json_file in "$WORKFLOWS_DIR"/*.json; do
               [ -f "$json_file" ] || continue
               FNAME=$(basename "$json_file")
@@ -168,9 +169,15 @@ jobs:
               if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
                 echo "  ✅ Publicado: $WF_NAME (ID: $WF_ID)"
               else
-                echo "  ⚠️  No se pudo publicar $WF_NAME (ID: $WF_ID) — HTTP $HTTP_STATUS"
+                echo "  ❌ No se pudo publicar $WF_NAME (ID: $WF_ID) — HTTP $HTTP_STATUS"
+                FALLOS=$((FALLOS + 1))
               fi
             done
+
+            if [ "$FALLOS" -gt 0 ]; then
+              echo "❌ $FALLOS workflow(s) no se publicaron."
+              exit 1
+            fi
 
             echo "✅ Todos los flujos procesados."
 
@@ -246,10 +253,18 @@ jobs:
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
-            RESPONSE=$(docker exec healthradar-n8n wget -qO- --header="Content-Type: application/json" \
+            # La consulta puede tardar cerca de 94 s: se espera hasta 180 s.
+            # Solo se da por buena una respuesta que traiga el campo "output".
+            RESPONSE=$(docker exec healthradar-n8n wget -qO- -T 180 --header="Content-Type: application/json" \
               --post-data='{"pregunta":"prueba de humo produccion"}' \
-              http://localhost:5678/webhook/consulta || echo "FAIL")
-            echo "$RESPONSE" | grep -q "FAIL" && (echo "❌ Webhook NLQ no respondió" && exit 1) || echo "✅ Webhook NLQ respondió"
+              http://localhost:5678/webhook/consulta 2>/dev/null || echo "FAIL")
+            if echo "$RESPONSE" | grep -q '"output"'; then
+              echo "✅ Webhook NLQ respondió"
+            else
+              echo "❌ Webhook NLQ no respondió correctamente"
+              echo "   Respuesta (primeros 300 caracteres): $(echo "$RESPONSE" | head -c 300)"
+              exit 1
+            fi
 
       - name: Verificar logs por errores fatales
         uses: appleboy/ssh-action@v1
@@ -258,7 +273,8 @@ jobs:
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
-            if docker logs healthradar-n8n 2>&1 | grep -qiE "fatal|unhandled"; then
+            # Solo los logs recientes, para que un error antiguo no haga fallar todos los despliegues.
+            if docker logs --since 15m healthradar-n8n 2>&1 | grep -qiE "fatal|unhandled"; then
               echo "❌ Errores fatales en n8n"
               exit 1
             else
