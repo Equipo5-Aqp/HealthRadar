@@ -174,10 +174,57 @@ jobs:
               fi
             done
 
-            if [ "$FALLOS" -gt 0 ]; then
-              echo "❌ $FALLOS workflow(s) no se publicaron."
+            # ── Workflows retirados del repositorio (S4-HU-03) ──
+            # El import de n8n no borra los workflows que ya no están en el repo.
+            # Se guarda en la VM la lista de ids que desplegó el CD; los que estaban
+            # en el despliegue anterior y ya no están en este se DESACTIVAN (no se borran).
+            # Solo se tocan workflows desplegados por el CD, nunca los creados a mano en n8n.
+            STATE_DIR="/home/azureuser/.healthradar-cd"
+            STATE_FILE="$STATE_DIR/workflows-desplegados.txt"
+            mkdir -p "$STATE_DIR"
+
+            ACTUALES=$(python3 -c "import sys, json, glob; print('\n'.join(sorted({json.load(open(f, encoding='utf-8')).get('id', '') for f in glob.glob(sys.argv[1] + '/*.json')} - {''})))" "$WORKFLOWS_DIR") || {
+              echo "❌ No se pudo leer la lista de ids de $WORKFLOWS_DIR."
+              exit 1
+            }
+            if [ -z "$ACTUALES" ]; then
+              echo "❌ La lista de workflows del repositorio está vacía; no se retira nada."
               exit 1
             fi
+            echo "$ACTUALES" > "$STATE_DIR/actuales.tmp"
+
+            if [ -f "$STATE_FILE" ]; then
+              RETIRADOS=$(grep -vxF -f "$STATE_DIR/actuales.tmp" "$STATE_FILE" || true)
+              if [ -z "$RETIRADOS" ]; then
+                echo "  ℹ️  No hay workflows retirados desde el despliegue anterior."
+              fi
+              for WF_ID in $RETIRADOS; do
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                  -X POST \
+                  -H "X-N8N-API-KEY: $N8N_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  "http://$N8N_IP:5678/api/v1/workflows/$WF_ID/deactivate")
+                if [ "$HTTP_STATUS" = "200" ]; then
+                  echo "  ⏸️  Desactivado (retirado del repositorio): $WF_ID"
+                elif [ "$HTTP_STATUS" = "404" ]; then
+                  echo "  ℹ️  $WF_ID ya no existe en n8n."
+                else
+                  echo "  ❌ No se pudo desactivar $WF_ID — HTTP $HTTP_STATUS"
+                  FALLOS=$((FALLOS + 1))
+                fi
+              done
+            else
+              echo "  ℹ️  Primer registro de workflows desplegados: no se retira nada en esta ejecución."
+            fi
+
+            if [ "$FALLOS" -gt 0 ]; then
+              echo "❌ $FALLOS workflow(s) no se publicaron o no se desactivaron."
+              echo "   No se actualiza el registro: se reintentará en el próximo despliegue."
+              exit 1
+            fi
+
+            mv "$STATE_DIR/actuales.tmp" "$STATE_FILE"
+            echo "  📝 Registro actualizado: $(wc -l < "$STATE_FILE") workflow(s) desplegados por el CD."
 
             echo "✅ Todos los flujos procesados."
 
