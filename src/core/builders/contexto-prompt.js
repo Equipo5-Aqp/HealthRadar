@@ -15,6 +15,37 @@ function agregarNumero(arr, v) {
   if (Number.isFinite(n)) arr.push(n);
 }
 
+// Hasta 2 años de semanas (2 × 53) se muestra cada semana; con más se resume por año.
+const MAX_SEMANAS_CLIMA_DETALLE = 106;
+
+/** Promedio numérico de un arreglo de números (null si está vacío). */
+function mediaNumerica(arr) {
+  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+}
+
+/**
+ * Una línea por año: promedio de los promedios semanales nacionales (ignora las semanas sin dato).
+ * @param {Array<{anio:number|string, temp_max:number[], temp_min:number[], precipitacion:number[]}>} semanas - ordenadas
+ */
+function climaPorAnio(semanas) {
+  const porAnio = new Map();
+  for (const s of semanas) {
+    const a = porAnio.get(s.anio) || { tmax: [], tmin: [], prec: [], semanas: 0 };
+    a.semanas += 1;
+    for (const [dest, origen] of [[a.tmax, s.temp_max], [a.tmin, s.temp_min], [a.prec, s.precipitacion]]) {
+      const m = mediaNumerica(origen);
+      if (m !== null) dest.push(m);
+    }
+    porAnio.set(s.anio, a);
+  }
+  const valor = (v, unidad) => (v === null ? 'sin dato' : `${v.toFixed(1)}${unidad}`);
+  let texto = '';
+  for (const [anio, a] of porAnio) {
+    texto += `Anio ${anio} (promedio de ${a.semanas} semanas): temp. max promedio nacional ${valor(mediaNumerica(a.tmax), '°C')}, temp. min promedio ${valor(mediaNumerica(a.tmin), '°C')}, precipitacion semanal promedio ${valor(mediaNumerica(a.prec), 'mm')}\n`;
+  }
+  return texto;
+}
+
 /**
  * Aviso que reemplaza a los resúmenes cuando el periodo no tiene boletines con resumen.
  * Va en texto_boletines, así lo reciben igual el core (Kimi/GLM) y los agentes de Gemini.
@@ -81,8 +112,14 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
   let textoClima = '';
   const semanasClima = Object.values(climaPorSemana)
     .sort((a, b) => (a.anio - b.anio) || (a.semana - b.semana));
-  for (const s of semanasClima) {
-    textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${valor(promedio(s.temp_max), '°C')}, temp. min promedio ${valor(promedio(s.temp_min), '°C')}, precipitacion promedio ${valor(promedio(s.precipitacion), 'mm')}\n`;
+  if (semanasClima.length > MAX_SEMANAS_CLIMA_DETALLE) {
+    // Periodo de más de 2 años (p. ej. "de 2015 a 2024"): una línea por año en vez de una por semana,
+    // para que el mensaje al modelo no crezca sin límite.
+    textoClima = climaPorAnio(semanasClima);
+  } else {
+    for (const s of semanasClima) {
+      textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${valor(promedio(s.temp_max), '°C')}, temp. min promedio ${valor(promedio(s.temp_min), '°C')}, precipitacion promedio ${valor(promedio(s.precipitacion), 'mm')}\n`;
+    }
   }
 
   return {

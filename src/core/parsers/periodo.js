@@ -44,12 +44,17 @@ function rangoSemanasDeMes(anio, mes) {
 /**
  * Detecta a qué periodo se refiere la pregunta del analista.
  *
- * @param {string} pregunta - Texto en lenguaje natural del analista
+ * Varios años ("2023 y 2024", "de 2022 a 2024", "compara 2023 con 2024"): devuelve el rango de años
+ * COMPLETOS con anio = null, anio_desde, anio_hasta y rango_anios = true (mismo formato que usa la
+ * ventana por defecto, así los demás pasos ya lo entienden).
+ *
+ * @param {string} pregunta - Texto en lenguaje natural del analista (si no es texto, se trata como vacío)
  * @returns {{ anio: number|null, semana_desde: number|null, semana_hasta: number|null,
- *             ventana_por_defecto?: number, criterio_usado: string }}
+ *             ventana_por_defecto?: number, anio_desde?: number, anio_hasta?: number,
+ *             rango_anios?: boolean, criterio_usado: string }}
  */
 function detectarPeriodo(pregunta) {
-  const texto = (pregunta || '').toLowerCase();
+  const texto = (typeof pregunta === 'string' ? pregunta : '').toLowerCase();
 
   // 1. Rango "entre <mes1> y <mes2> de <año>"
   const regexRango = new RegExp(
@@ -104,6 +109,24 @@ function detectarPeriodo(pregunta) {
       semana_desde: r.semanaInicio,
       semana_hasta: r.semanaFin,
       criterio_usado: `mes especifico: ${mesStr} ${anio}`,
+    };
+  }
+
+  // 3.2. Varios años ("2023 y 2024", "de 2022 a 2024", "2023-2024", "compara 2023 con 2024"):
+  // se toma del año más antiguo al más reciente, completos. Va después de semana y mes (que traen su
+  // propio año) y antes del año suelto, que solo miraba el primero.
+  const aniosMencionados = [...new Set((texto.match(/\b20[1-2]\d\b/g) || []).map(Number))];
+  if (aniosMencionados.length >= 2) {
+    const anioDesde = Math.min(...aniosMencionados);
+    const anioHasta = Math.max(...aniosMencionados);
+    return {
+      anio: null,
+      semana_desde: 1,
+      semana_hasta: 53,
+      anio_desde: anioDesde,
+      anio_hasta: anioHasta,
+      rango_anios: true,
+      criterio_usado: `varios anios: ${anioDesde} a ${anioHasta}`,
     };
   }
 
@@ -170,6 +193,12 @@ function resolverVentana(deteccion, boletines) {
 
   if (!esNulo(deteccion.anio)) {
     // Ya se detectó un periodo explícito, se pasa tal cual.
+    return deteccion;
+  }
+
+  // Rango de años pedido por el analista ("2023 y 2024"): también es explícito. Sin esto se
+  // reemplazaría por la ventana de las últimas 12 semanas.
+  if (deteccion.rango_anios === true && !esNulo(deteccion.anio_desde) && !esNulo(deteccion.anio_hasta)) {
     return deteccion;
   }
 

@@ -17,7 +17,7 @@ export default function TablaView() {
         </header>
         <FiltrosPanel h={h} />
         <TablaDatos h={h} />
-        <p className="note-small">Cada página trae hasta 100 registros; «Siguiente» se desactiva cuando llegan menos de 100.</p>
+        <p className="note-small">Cada página trae hasta 100 registros; «Siguiente» se desactiva cuando llegan menos de 100. «Exportar CSV» descarga los registros de la página que estás viendo.</p>
       </main>
     </div>
   )

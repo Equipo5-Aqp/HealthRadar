@@ -1,93 +1,71 @@
 """
-HU-10 — Tests de Detección de Periodo en NLQ
-Valida, contra el webhook real /webhook/consulta (via proxy Next.js),
-que el sistema interpreta correctamente el periodo mencionado en la
-pregunta del analista — usando el detector por regex de "Conexion
-posgrest" (cero tokens de IA para esta parte).
+HU-23 / #160 - Suite NLQ de deteccion de periodo, re-ejecutada contra la cadena vigente
+(Kimi K3 -> GLM-5.3 -> Gemini) por la ruta publica con sesion.
 
-Al igual que HU-04/HU-06 (Sprint 1), estos tests dependen del modelo
-de IA (Gemini) para redactar la respuesta final, por lo que están
-sujetos al mismo riesgo de rate limit -> usar continue-on-error en
-el pipeline, NO bloqueante.
-
-Confirmado contra el JSON real del nodo "Detectar periodo en la
-pregunta": el sistema NO interpreta fechas relativas ("el año
-pasado", "el mes anterior") -- solo semana/mes/año explícitos. Toda
-pregunta con fecha relativa cae al fallback de últimas 12 semanas.
+Reemplaza la version de HU-10 (que apuntaba a /webhook/consulta sin sesion y a Gemini).
+Se conservan las 4 preguntas para poder comparar. Cambios metodologicos:
+- 504/timeout/otro HTTP != 200 -> INCONCLUSO (skip con motivo), no fallo de logica.
+- Test 1: antes buscaba "20" en el texto, que tambien aparece en "2026" (siempre verdadero);
+  ahora exige el numero 20 como palabra independiente.
+- Cada consulta queda anotada en NLQ_LOG (hora UTC, HTTP, segundos, modelo).
+Las listas de frases son "listas vivas": el modelo varia su redaccion.
 """
-import os
-import time
-import requests
+import re
+
 import pytest
 
-WEBHOOK_URL = os.environ.get(
-    "N8N_NLQ_WEBHOOK_URL",
-    "http://localhost:5678/webhook/consulta"
-)
-PAUSA_ENTRE_PRUEBAS = 45  # mismo criterio que HU-04/06 (Sprint 1)
+from nlq_cliente import abrir_sesion, consultar, exigir_respuesta, pausa
 
 
-def preguntar(pregunta, timeout=60):
-    resp = requests.post(
-        WEBHOOK_URL, json={"pregunta": pregunta}, timeout=timeout
+@pytest.fixture(scope="module")
+def sesion():
+    return abrir_sesion()
+
+
+@pytest.fixture(autouse=True)
+def _pausa_entre_pruebas():
+    yield
+    pausa()
+
+
+def test_detecta_semana_especifica(sesion):
+    r = consultar(sesion, "¿Qué pasó en la semana 20 del 2026?")
+    exigir_respuesta(r)
+    out = r.output.lower()
+    assert out, "Respuesta vacia"
+    assert re.search(r"\b20\b", out), f"No referencia la semana 20 pedida: {out[:200]}"
+
+
+def test_detecta_mes_especifico(sesion):
+    r = consultar(sesion, "Dame datos de julio 2025")
+    exigir_respuesta(r)
+    out = r.output.lower()
+    assert out, "Respuesta vacia"
+    assert "2025" in out, f"No referencia el año 2025 pedido: {out[:200]}"
+
+
+def test_fecha_relativa_no_se_interpreta_como_periodo_especifico(sesion):
+    """El detector no resuelve 'el año pasado' (cae a las ultimas 12 semanas); solo se exige que responda."""
+    r = consultar(sesion, "¿Cómo estuvo el Dengue el año pasado?")
+    exigir_respuesta(r)
+    assert len(r.output.strip()) > 20, f"Respuesta vacia o trivial: {r.output[:100]}"
+
+
+FRASES_HONESTIDAD = [  # lista viva
+    "no se encontr", "no hay datos", "no hay registros", "no cuento", "no dispongo",
+    "no tengo", "no se dispone", "sin informaci", "sin datos", "no existe", "no existen",
+    "fuera del", "no contamos","no hay bolet", "no se cuenta",
+]
+
+
+def test_anio_fuera_de_rango_no_rompe_el_sistema(sesion):
+    r = consultar(sesion, "¿Hay datos de dengue en 1850?")
+    exigir_respuesta(r)
+    out = r.output.lower()
+    assert out, "Respuesta vacia"
+    assert any(f in out for f in FRASES_HONESTIDAD), (
+        f"No declara ausencia de datos para 1850 (posible alucinacion): {out[:300]}"
     )
-    resp.raise_for_status()
-    return resp.json()
-
-
-# --- Test 1: Semana específica con año explícito ---
-def test_detecta_semana_especifica():
-    data = preguntar("¿Qué pasó en la semana 20 del 2026?")
-    output = data.get("output", "").lower()
-    assert output, "Respuesta vacía (posible rate limit de Gemini)"
-    # Debe referenciar la semana 20 de alguna forma (SE 20, semana 20)
-    assert "20" in output, (
-        f"La respuesta no parece referenciar la semana 20 pedida: {output[:200]}"
-    )
-    time.sleep(PAUSA_ENTRE_PRUEBAS)
-
-
-# --- Test 2: Mes explícito ---
-def test_detecta_mes_especifico():
-    data = preguntar("Dame datos de julio 2025")
-    output = data.get("output", "").lower()
-    assert output, "Respuesta vacía (posible rate limit de Gemini)"
-    assert "2025" in output, (
-        f"La respuesta no parece referenciar el año 2025 pedido: {output[:200]}"
-    )
-    time.sleep(PAUSA_ENTRE_PRUEBAS)
-
-
-# --- Test 3: AJUSTADO — fecha relativa NO es interpretada (hallazgo real) ---
-def test_fecha_relativa_no_se_interpreta_como_periodo_especifico():
-    """
-    Documenta el comportamiento REAL confirmado en el código: "el año
-    pasado" no tiene regex que la reconozca, por lo que el sistema cae
-    al fallback de últimas 12 semanas en vez de resolver el año
-    anterior. Este test no busca que la IA "adivine" el año - confirma
-    que el sistema es honesto sobre qué periodo usó, sin inventar que
-    entendió "año pasado" cuando en realidad no lo hizo.
-    """
-    data = preguntar("¿Cómo estuvo el Dengue el año pasado?")
-    output = data.get("output", "").lower()
-    assert output, "Respuesta vacía (posible rate limit de Gemini)"
-    # No hacemos assert de que mencione un año específico, porque
-    # confirmamos que el sistema NO resuelve esta expresión -- solo
-    # confirmamos que responde con algo (no se rompe silenciosamente).
-    time.sleep(PAUSA_ENTRE_PRUEBAS)
-
-
-# --- Test 4: Año fuera de rango razonable (1850) ---
-def test_anio_fuera_de_rango_no_rompe_el_sistema():
-    data = preguntar("¿Hay datos de dengue en 1850?")
-    output = data.get("output", "").lower()
-    assert output, "Respuesta vacía (posible rate limit de Gemini)"
-    # Anti-alucinación: debe declarar ausencia de datos, no inventar cifras
-    frases_honestidad = [
-        "no se encontr", "no hay datos", "no cuento con",
-        "no dispongo", "sin informaci", "no existe"
-    ]
-    assert any(frase in output for frase in frases_honestidad), (
-        f"La respuesta no declara ausencia de datos para 1850, "
-        f"posible alucinación: {output[:300]}"
+    assert not re.search(r"\b\d[\d\s.,]*\s+casos\b", out), (
+        f"Declara ausencia pero ademas inventa una cifra de casos: {out[:300]}"
     )

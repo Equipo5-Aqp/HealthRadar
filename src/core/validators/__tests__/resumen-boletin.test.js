@@ -280,6 +280,21 @@ describe('validarResumenBoletin — series adicionales', () => {
       .toThrow('pfa_total: bajó');
   });
 
+  test('defunciones de dengue real SE 28 → 29 (49 → 47, reclasificación) pasa', () => {
+    expect(() => validarResumenBoletin(marca(29, { dengue_defunciones: 47 }), 'g', 29, conPrevio(28, { dengue_defunciones: 49 }))).not.toThrow();
+  });
+
+  test('defunciones de dengue: una baja de hasta 5 pasa (49 → 44) y de 6 o más se rechaza (49 → 43)', () => {
+    expect(() => validarResumenBoletin(marca(29, { dengue_defunciones: 44 }), 'g', 29, conPrevio(28, { dengue_defunciones: 49 }))).not.toThrow();
+    expect(() => validarResumenBoletin(marca(29, { dengue_defunciones: 43 }), 'g', 29, conPrevio(28, { dengue_defunciones: 49 })))
+      .toThrow('dengue_defunciones: bajó');
+  });
+
+  test('defunciones de dengue: el error real de la SE 28 (152 = casos graves) → 47 se sigue rechazando', () => {
+    expect(() => validarResumenBoletin(marca(29, { dengue_defunciones: 47 }), 'g', 29, conPrevio(28, { dengue_defunciones: 152 })))
+      .toThrow('dengue_defunciones: bajó de 152 (SE 28) a 47 (SE 29)');
+  });
+
   test('la tolerancia ampliada de PFA no afecta a los demás acumulados (dengue 35 423 → 33 000 se rechaza)', () => {
     expect(() => validarResumenBoletin(marca(27, { dengue_total: 33000 }), 'g', 27, conPrevio(26, { dengue_total: 35423 })))
       .toThrow('dengue_total: bajó');

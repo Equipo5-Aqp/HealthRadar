@@ -19,11 +19,17 @@
 
 'use strict';
 
-const ES_NUMERO = /^\d+(?:,\d+)?$/;
+// Los decimales llegan con coma (SE 25-27 y 29) o con punto (SE 28: "679.29"). Las cifras de casos
+// van siempre como enteros, sin separador de miles.
+const ES_NUMERO = /^\d+(?:[.,]\d+)?$/;
+const ES_DECIMAL = /[.,]/;
 
 function numeroDe(token) {
   return Number(token.replace(',', '.'));
 }
+
+/** Las columnas de casos/defunciones deben ser enteros: si no lo son, la fila no se toma (nunca se adivina). */
+const sonEnteros = (fila, indices) => indices.every(i => Number.isInteger(fila[i]));
 
 /** Tokens numéricos de una línea; null si la línea trae algo que no es número. */
 function soloNumeros(linea) {
@@ -98,7 +104,7 @@ function pfaNotificados(lineas) {
       tokens.push(...n);
     }
     if (tokens.length !== 8) continue;
-    const dec = x => x.includes(',');
+    const dec = x => ES_DECIMAL.test(x);
     if (dec(tokens[0]) && dec(tokens[1]) && !dec(tokens[2]) && dec(tokens[3]) && dec(tokens[4]) && dec(tokens[5])) {
       return numeroDe(tokens[2]);
     }
@@ -117,7 +123,7 @@ function extraerCifrasTablas(texto) {
 
   // Dengue (Tabla 1): casos acumulados 2025 = confirmados + probables; defunciones en la tercera columna acumulada.
   const filas = ['Dengue sin signos de alarma', 'Dengue con signos de alarma', 'Dengue grave'].map(e => filaPorEtiqueta(lineas, e, 12));
-  if (filas.every(Boolean)) {
+  if (filas.every(Boolean) && filas.every(f => sonEnteros(f, [8, 9, 10]))) {
     const [sin, con, grave] = filas.map(f => f[8] + f[9]);
     cifras.dengue_sin_alarma = sin;
     cifras.dengue_con_alarma = con;
@@ -127,10 +133,10 @@ function extraerCifrasTablas(texto) {
   }
 
   const mm = filaPorEtiqueta(lineas, 'Muerte materna directa', 6);
-  if (mm) cifras.muerte_materna_directa = mm[4];
+  if (mm && sonEnteros(mm, [4])) cifras.muerte_materna_directa = mm[4];
 
   const ofi = filaPorEtiqueta(lineas, 'Ofidismo', 12);
-  if (ofi) cifras.ofidismo_total = ofi[8];
+  if (ofi && sonEnteros(ofi, [8])) cifras.ofidismo_total = ofi[8];
 
   const eda = filaPeruDeTabla(lineas, /^Tabla\s+3\.\s*Episodios de las enfermedades diarr/i, 14);
   if (eda && eda[8] + eda[10] === eda[13]) {

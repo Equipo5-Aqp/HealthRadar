@@ -1,0 +1,41 @@
+{
+  "fecha_utc": "2026-10-11T22:42:57+00:00",
+  "modelo_juez": "gemini-3.5-flash-lite",
+  "resultados": [
+    {
+      "id": 1,
+      "puntaje": 4,
+      "puerta": "D",
+      "justificacion": "La respuesta es correcta y utiliza datos reales, pero omite colocar el marcador de riesgo requerido [NIVEL_RIESGO: bajo] al final del texto a pesar de tenerlo disponible.",
+      "error": ""
+    },
+    {
+      "id": 2,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "La respuesta utiliza boletines recientes sin departamento, no incluye marcador de riesgo y cumple con las reglas del caso.",
+      "error": ""
+    },
+    {
+      "id": 3,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "Ninguna de las anteriores. El sistema declara explícitamente que no tiene información sobre el distrito de Marte cumpliendo con la regla anti-alucinación.",
+      "error": ""
+    },
+    {
+      "id": 4,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "Cumple perfectamente con la regla del caso 4 al advertir el desfase territorial y metodológico entre el clima nacional y los datos de dengue antes de responder.",
+      "error": ""
+    },
+    {
+      "id": 5,
+      "puntaje": 3,
+      "puerta": "C",
+      "justificacion": "La respuesta utiliza cifras que el campo advertencia_cifras marca como no respaldadas por los datos consultados.",
+      "error": ""
+    }
+  ]
+}

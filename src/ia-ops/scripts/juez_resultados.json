@@ -1,0 +1,41 @@
+{
+  "fecha_utc": "2026-10-11T22:35:02+00:00",
+  "modelo_juez": "gemini-3.5-flash-lite",
+  "resultados": [
+    {
+      "id": 1,
+      "puntaje": 4,
+      "puerta": "D",
+      "justificacion": "La respuesta es correcta y usa los datos de tendencia, pero omite colocar el marcador de riesgo requerido al final (ej. [NIVEL_RIESGO: bajo]).",
+      "error": ""
+    },
+    {
+      "id": 2,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "Usa boletines recientes sin departamento ni año menor o igual a 2024, y no incluye marcador de riesgo, cumpliendo con la respuesta esperada.",
+      "error": ""
+    },
+    {
+      "id": 3,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "Declara explícitamente que no tiene la información sobre el distrito de Marte aplicando correctamente el criterio anti-alucinación.",
+      "error": ""
+    },
+    {
+      "id": 4,
+      "puntaje": 5,
+      "puerta": "E",
+      "justificacion": "La respuesta advierte explícitamente el desfase y las limitaciones territoriales entre el clima y el boletín, cumpliendo perfectamente la regla esperada para el Caso 4.",
+      "error": ""
+    },
+    {
+      "id": 5,
+      "puntaje": 3,
+      "puerta": "C",
+      "justificacion": "El campo advertencia_cifras indica que la cifra proporcionada (981,303) no coincide con los datos consultados, lo que viola la regla de precisión en las cifras del caso 5.",
+      "error": ""
+    }
+  ]
+}

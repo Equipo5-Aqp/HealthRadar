@@ -60,6 +60,8 @@ function decidirPrediccion(periodoResuelto, departamentoDetectado, enfermedadDet
     incluir_ira_neumonia: enfermedadDetectada.incluir_ira_neumonia,
     incluir_ira_no_neumonia: enfermedadDetectada.incluir_ira_no_neumonia,
     enfermedades_activas: enfermedadDetectada.enfermedades_activas,
+    // Solo cuando el analista pidió varios años ("2023 y 2024"); el resto de decisiones queda igual.
+    ...(periodoResuelto.rango_anios === true ? { rango_anios: true } : {}),
   };
 }
 

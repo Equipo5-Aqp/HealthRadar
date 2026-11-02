@@ -39,12 +39,46 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      # Informativa (no bloquea): prueba la VM de Azure en vivo vía N8N_HISTORICOS_WEBHOOK_URL,
-      # que debe apuntar a /historicos/api/historicos (ADR-013). El PR todavía no está
-      # desplegado (deploy.yml corre al hacer push a main), así que un fallo aquí refleja
-      # el estado de producción, no necesariamente el cambio del PR.
-      - name: "QA · Webhook Postgres/Switch (HU-07)"
-        continue-on-error: true
+      # La VM de Azure no está encendida 24 h. Para que una VM apagada no bloquee los PR del equipo,
+      # primero se verifica la disponibilidad con un login real:
+      #   200                          -> disponible: se ejecutan las pruebas (y si fallan, el check es ROJO)
+      #   sin respuesta (000) o HTTP 5xx -> VM apagada/inalcanzable: se omiten las pruebas con una ADVERTENCIA visible
+      #   otro código (ej. 401)        -> problema de configuración (secrets/cuenta): el check es ROJO
+      #   secrets vacíos               -> ROJO
+      - name: Verificar disponibilidad del sistema (VM)
+        id: gate
         env:
-          N8N_HISTORICOS_WEBHOOK_URL: ${{ secrets.N8N_HISTORICOS_WEBHOOK_URL }}
+          HR_BASE_URL: ${{ secrets.HR_BASE_URL }}
+          HR_USER: ${{ secrets.HR_USER }}
+          HR_PASS: ${{ secrets.HR_PASS }}
+        run: |
+          BASE="${HR_BASE_URL:-http://20.9.78.118:3000}"
+          if [ -z "$HR_USER" ] || [ -z "$HR_PASS" ]; then
+            echo "::error title=Secrets faltantes::HR_USER / HR_PASS no estan configurados en el repositorio"
+            exit 1
+          fi
+          BODY=$(jq -n --arg e "$HR_USER" --arg p "$HR_PASS" '{email:$e,password:$p}')
+          CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d "$BODY" || true)
+          CODE=${CODE:-000}
+          echo "Login de verificacion: HTTP $CODE"
+          if [ "$CODE" = "200" ]; then
+            echo "disponible=true" >> "$GITHUB_OUTPUT"
+          elif [ "$CODE" = "000" ] || [ "${CODE:0:1}" = "5" ]; then
+            echo "disponible=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Sistema no disponible::La VM no respondio (HTTP $CODE: apagada o inalcanzable). Las pruebas NO se ejecutaron; este check queda en verde sin haber validado nada."
+            echo "### ⚠️ Pruebas de datos NO ejecutadas" >> "$GITHUB_STEP_SUMMARY"
+            echo "La VM no respondió (HTTP $CODE). El check queda en verde **sin haber validado nada**. Reintenta cuando la VM esté encendida." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error title=Login inesperado::HTTP $CODE. Revisa HR_USER / HR_PASS (clave cambiada o cuenta bloqueada) o cambios en /api/auth/login"
+            exit 1
+          fi
+
+      # Sin continue-on-error: con el sistema disponible, un fallo aquí es un defecto real (flujo determinista, sin IA).
+      # GitHub define CI=true: si faltaran credenciales, el test falla en vez de omitirse.
+      - name: "QA · Webhook Postgres/Switch (HU-07)"
+        if: steps.gate.outputs.disponible == 'true'
+        env:
+          HR_BASE_URL: ${{ secrets.HR_BASE_URL }}
+          HR_USER: ${{ secrets.HR_USER }}
+          HR_PASS: ${{ secrets.HR_PASS }}
         run: python -m pytest src/ia-ops/tests/test_datos_epidemiologicos.py -v

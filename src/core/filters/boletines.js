@@ -72,8 +72,16 @@ function filtrarBoletines(periodo, boletines) {
       return claveFila >= claveDesde && claveFila <= claveHasta;
     });
 
-    // Si no hay boletines en la ventana, usar todos los disponibles
     if (filtradas.length === 0) {
+      // Rango de años pedido por el analista ("2023 y 2024"): se trata como un periodo explícito.
+      // "Usar todos los boletines" es solo para la ventana por defecto; aquí traería boletines de
+      // otros años y el modelo los presentaría como si fueran del periodo pedido.
+      if (periodo.rango_anios === true) {
+        return anioHasta < 2025
+          ? [{ _sin_boletines: true }]
+          : [{ _sin_boletines: true, motivo: 'sin_boletin_en_periodo' }];
+      }
+      // Si no hay boletines en la ventana, usar todos los disponibles
       filtradas = filasConResumen;
     }
   }

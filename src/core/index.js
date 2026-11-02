@@ -22,6 +22,7 @@ const { filtrarNuevos } = require('./filters/boletines-nuevos');
 // Builders — armado de contexto para LLM
 const { construirContextoPrompt } = require('./builders/contexto-prompt');
 const { armarTextoTendencia } = require('./builders/tendencia');
+const { armarTextoTendenciaBoletines } = require('./builders/tendencia-boletines');
 const { construirTrazaPhoenix, estimarTokens } = require('./builders/traza-phoenix');
 const mensajesChat = require('./builders/mensajes-chat');
 const contextoRag = require('./builders/contexto-rag');
@@ -74,6 +75,7 @@ module.exports = {
   // Builders
   construirContextoPrompt,
   armarTextoTendencia,
+  armarTextoTendenciaBoletines,
   construirTrazaPhoenix,
   construirErrorNlq,
   estimarTokens,

@@ -6,11 +6,12 @@
 /src/mf-*/ @Andy-2214
 
 # Workflows de n8n - requiere revisión de Backend/Full Stack
-/src/n8n-workflows/ @Andy-2214
+# Revisor suplente (S4-HU-08): Arquitectura, para reversiones si Full Stack no está disponible
+/src/n8n-workflows/ @Andy-2214 @Roberto-Bautista
 
 # Prompts de IA - requiere revisión de QA/Prompt Engineer
 /src/ia-ops/ @edgvrz
 
 # CI/CD, Workflows y Automatizaciones - requiere revisión de Arquitectura y MLOps/DevSecOps
 /.github/workflows/ @Roberto-Bautista @HerbertChCa
-/.github/scripts/ @Roberto-Bautista @HerbertChCa
+/.github/scripts/ @Roberto-Bautista @HerbertChCa

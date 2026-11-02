@@ -13,7 +13,7 @@ on:
 jobs:
   deploy-n8n:
     name: Desplegar y Publicar Workflows en n8n Producción
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     steps:
       - name: Checkout del repositorio
@@ -98,27 +98,51 @@ jobs:
             WORKFLOWS_DIR="$REPO_DIR/src/n8n-workflows/production"
 
             if [ -z "$N8N_API_KEY" ]; then
-              echo "⚠️  Secret N8N_API_KEY no configurado en GitHub."
+              echo "❌ Secret N8N_API_KEY no configurado en GitHub."
               echo "   Los flujos fueron importados en la BD pero NO se publicaron."
               echo ""
               echo "   👉 Para completar la automatización:"
               echo "   1. Ir a la UI de n8n → Settings → n8n API → Create new API key"
               echo "   2. GitHub repo → Settings → Secrets → New → N8N_API_KEY"
-              echo "   3. Volver a hacer push para que este paso se ejecute."
-              exit 0
+              echo "   3. Volver a lanzar el despliegue."
+              exit 1
             fi
 
             echo "🔑 API Key detectada. Publicando flujos vía API de n8n..."
 
-            N8N_IP=$(docker inspect -f '{{(index .NetworkSettings.Networks "healthradar-net").IPAddress}}' "$CONTAINER_NAME" 2>/dev/null || echo "")
+            # La IP fija de n8n se lee de docker-compose.yml (fuente de verdad), no se escribe a mano.
+            # Compose antepone el proyecto al nombre de la red (p. ej. infrastructure_healthradar-net),
+            # por eso el nombre real también sale de docker compose config.
+            COMPOSE_INFO=$(cd "$REPO_DIR/infrastructure" && docker compose config --format json | python3 -c \
+              "import sys, json; c=json.load(sys.stdin); n=sys.argv[1]; print(c['networks'][n]['name'], c['services'][sys.argv[2]]['networks'][n]['ipv4_address'])" \
+              healthradar-net n8n) || {
+              echo "❌ No se pudo leer la red/IP de n8n desde infrastructure/docker-compose.yml."
+              exit 1
+            }
+            NETWORK_NAME="${COMPOSE_INFO% *}"
+            EXPECTED_IP="${COMPOSE_INFO#* }"
 
-            if [ -z "$N8N_IP" ]; then
-              echo "❌ No se pudo resolver la IP interna de $CONTAINER_NAME en healthradar-net."
+            ACTUAL_IP=$(docker inspect -f "{{with index .NetworkSettings.Networks \"$NETWORK_NAME\"}}{{.IPAddress}}{{end}}" "$CONTAINER_NAME") || {
+              echo "❌ docker inspect falló sobre $CONTAINER_NAME."
+              exit 1
+            }
+
+            if [ -z "$ACTUAL_IP" ]; then
+              echo "❌ $CONTAINER_NAME no está conectado a la red $NETWORK_NAME. Redes actuales:"
+              docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}   - {{$k}}: {{$v.IPAddress}}{{"\n"}}{{end}}' "$CONTAINER_NAME"
               exit 1
             fi
 
-            echo "  📡 IP interna de n8n en la red Docker: $N8N_IP:5678"
+            if [ "$ACTUAL_IP" != "$EXPECTED_IP" ]; then
+              echo "❌ $CONTAINER_NAME tiene $ACTUAL_IP en $NETWORK_NAME, pero docker-compose.yml declara $EXPECTED_IP."
+              echo "   El contenedor no refleja el compose actual: recrearlo con 'docker compose up -d n8n'."
+              exit 1
+            fi
 
+            N8N_IP="$EXPECTED_IP"
+            echo "  📡 IP interna de n8n en $NETWORK_NAME (verificada contra el compose): $N8N_IP:5678"
+
+            FALLOS=0
             for json_file in "$WORKFLOWS_DIR"/*.json; do
               [ -f "$json_file" ] || continue
               FNAME=$(basename "$json_file")
@@ -145,9 +169,62 @@ jobs:
               if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
                 echo "  ✅ Publicado: $WF_NAME (ID: $WF_ID)"
               else
-                echo "  ⚠️  No se pudo publicar $WF_NAME (ID: $WF_ID) — HTTP $HTTP_STATUS"
+                echo "  ❌ No se pudo publicar $WF_NAME (ID: $WF_ID) — HTTP $HTTP_STATUS"
+                FALLOS=$((FALLOS + 1))
               fi
             done
+
+            # ── Workflows retirados del repositorio (S4-HU-03) ──
+            # El import de n8n no borra los workflows que ya no están en el repo.
+            # Se guarda en la VM la lista de ids que desplegó el CD; los que estaban
+            # en el despliegue anterior y ya no están en este se DESACTIVAN (no se borran).
+            # Solo se tocan workflows desplegados por el CD, nunca los creados a mano en n8n.
+            STATE_DIR="/home/azureuser/.healthradar-cd"
+            STATE_FILE="$STATE_DIR/workflows-desplegados.txt"
+            mkdir -p "$STATE_DIR"
+
+            ACTUALES=$(python3 -c "import sys, json, glob; print('\n'.join(sorted({json.load(open(f, encoding='utf-8')).get('id', '') for f in glob.glob(sys.argv[1] + '/*.json')} - {''})))" "$WORKFLOWS_DIR") || {
+              echo "❌ No se pudo leer la lista de ids de $WORKFLOWS_DIR."
+              exit 1
+            }
+            if [ -z "$ACTUALES" ]; then
+              echo "❌ La lista de workflows del repositorio está vacía; no se retira nada."
+              exit 1
+            fi
+            echo "$ACTUALES" > "$STATE_DIR/actuales.tmp"
+
+            if [ -f "$STATE_FILE" ]; then
+              RETIRADOS=$(grep -vxF -f "$STATE_DIR/actuales.tmp" "$STATE_FILE" || true)
+              if [ -z "$RETIRADOS" ]; then
+                echo "  ℹ️  No hay workflows retirados desde el despliegue anterior."
+              fi
+              for WF_ID in $RETIRADOS; do
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                  -X POST \
+                  -H "X-N8N-API-KEY: $N8N_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  "http://$N8N_IP:5678/api/v1/workflows/$WF_ID/deactivate")
+                if [ "$HTTP_STATUS" = "200" ]; then
+                  echo "  ⏸️  Desactivado (retirado del repositorio): $WF_ID"
+                elif [ "$HTTP_STATUS" = "404" ]; then
+                  echo "  ℹ️  $WF_ID ya no existe en n8n."
+                else
+                  echo "  ❌ No se pudo desactivar $WF_ID — HTTP $HTTP_STATUS"
+                  FALLOS=$((FALLOS + 1))
+                fi
+              done
+            else
+              echo "  ℹ️  Primer registro de workflows desplegados: no se retira nada en esta ejecución."
+            fi
+
+            if [ "$FALLOS" -gt 0 ]; then
+              echo "❌ $FALLOS workflow(s) no se publicaron o no se desactivaron."
+              echo "   No se actualiza el registro: se reintentará en el próximo despliegue."
+              exit 1
+            fi
+
+            mv "$STATE_DIR/actuales.tmp" "$STATE_FILE"
+            echo "  📝 Registro actualizado: $(wc -l < "$STATE_FILE") workflow(s) desplegados por el CD."
 
             echo "✅ Todos los flujos procesados."
 
@@ -223,10 +300,18 @@ jobs:
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
-            RESPONSE=$(docker exec healthradar-n8n wget -qO- --header="Content-Type: application/json" \
+            # La consulta puede tardar cerca de 94 s: se espera hasta 180 s.
+            # Solo se da por buena una respuesta que traiga el campo "output".
+            RESPONSE=$(docker exec healthradar-n8n wget -qO- -T 180 --header="Content-Type: application/json" \
               --post-data='{"pregunta":"prueba de humo produccion"}' \
-              http://localhost:5678/webhook/consulta || echo "FAIL")
-            echo "$RESPONSE" | grep -q "FAIL" && (echo "❌ Webhook NLQ no respondió" && exit 1) || echo "✅ Webhook NLQ respondió"
+              http://localhost:5678/webhook/consulta 2>/dev/null || echo "FAIL")
+            if echo "$RESPONSE" | grep -q '"output"'; then
+              echo "✅ Webhook NLQ respondió"
+            else
+              echo "❌ Webhook NLQ no respondió correctamente"
+              echo "   Respuesta (primeros 300 caracteres): $(echo "$RESPONSE" | head -c 300)"
+              exit 1
+            fi
 
       - name: Verificar logs por errores fatales
         uses: appleboy/ssh-action@v1
@@ -235,7 +320,8 @@ jobs:
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
-            if docker logs healthradar-n8n 2>&1 | grep -qiE "fatal|unhandled"; then
+            # Solo los logs recientes, para que un error antiguo no haga fallar todos los despliegues.
+            if docker logs --since 15m healthradar-n8n 2>&1 | grep -qiE "fatal|unhandled"; then
               echo "❌ Errores fatales en n8n"
               exit 1
             else

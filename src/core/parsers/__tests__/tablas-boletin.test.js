@@ -164,3 +164,41 @@ describe('bloqueCifrasVerificadas', () => {
     expect(typeof core.bloqueCifrasVerificadas).toBe('function');
   });
 });
+
+// Extracto del Boletín SE 28-2025 (pdftotext): los decimales vienen con PUNTO ("679.29"), no con coma.
+const SE28 = [
+  'Tabla 1. Enfermedades/eventos sujetos a vigilancia epidemiológica, semana epidemiológica 28, años 2024-2025',
+  'Confirmados Probables Confirmados Probables Confirmados Probables Confirmados Probables',
+  'Antrax (carbunco) 0 0 0 0 0 0.00 0 0 0 0 0 0.00',
+  'Dengue sin signos de alarma 569 25 228900 2812 0 679.29 88 527 23148 6355 0 86.74',
+  'Dengue con signos de alarma 96 3 23711 79 0 69.74 16 61 4579 926 1 16.19',
+  'Dengue grave 2 0 687 2 246 2.02 0 2 135 17 48 0.45',
+  'Muerte materna directa 0 83 83 5 64 64',
+  'Ofidismo 34 0 1265 0 7 3.71 27 0 1253 0 5 3.68',
+].join('\n');
+
+describe('extraerCifrasTablas con decimales con punto (Boletín SE 28-2025)', () => {
+  test('lee dengue, muerte materna y ofidismo aunque los decimales lleven punto', () => {
+    expect(extraerCifrasTablas(SE28)).toEqual({
+      dengue_sin_alarma: 29503, dengue_con_alarma: 5505, dengue_graves: 152, dengue_total: 35160,
+      dengue_defunciones: 49, // 0 + 1 + 48
+      muerte_materna_directa: 64, ofidismo_total: 1253,
+    });
+  });
+
+  test('si una columna de casos no es entera, la fila no se toma', () => {
+    const raro = SE28.replace('23148 6355', '23.148 6355');
+    expect(extraerCifrasTablas(raro).dengue_total).toBeUndefined();
+  });
+
+  test('el PFA con decimales con punto también se reconoce', () => {
+    expect(extraerCifrasTablas('Perú 0.63 1.25 49 97.66 73.91 81.40 5 0').pfa_total).toBe(49);
+  });
+
+  test('caso real SE 28: dengue_defunciones=152 (eran los casos graves) se rechaza con el valor de la tabla', () => {
+    const fuente = SE28 + '\n' + 'Texto de relleno del boletín. '.repeat(30) + '\n35 160 casos 152';
+    const resumen = 'SEMANA EPIDEMIOLOGICA: 28\nDengue...\n[CIFRAS: dengue_total=35160; dengue_graves=152; dengue_defunciones=152]';
+    expect(() => validarResumenBoletin(resumen, 'gemini', 28, { textoFuente: fuente }))
+      .toThrow(/dengue_defunciones: el resumen dice 152 y la tabla del boletín dice 49/);
+  });
+});
