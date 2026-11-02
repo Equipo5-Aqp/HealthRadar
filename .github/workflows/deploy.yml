@@ -46,6 +46,7 @@ jobs:
               - 'infrastructure/**'
               - '!infrastructure/ADRs/**'
               - '!infrastructure/manuals/**'
+              - '!infrastructure/terraform/**'
               - '!infrastructure/.env*.example'
               - '!**/*.md'
 
