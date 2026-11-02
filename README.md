@@ -15,6 +15,7 @@ Este README es la entrada única para onboarding, versiones y comandos. No repit
 | Reglas para agentes IA | `AGENTS.md` |
 | Despliegue en Azure | `infrastructure/manuals/Manual_Despliegue_Azure_VM.md` |
 | Backups y restore | `infrastructure/manuals/Manual_Backup_Restore_HU-303.md` |
+| Recuperación desde cero (Terraform) | `infrastructure/terraform/README.md` |
 
 Si un documento contradice el código o un ADR, prevalecen el código y el ADR.
 
@@ -95,6 +96,7 @@ El navegador nunca llama a n8n, PostgreSQL ni proveedores de IA. Todas las llama
 | [ADR-012](infrastructure/ADRs/ADR-012-event-driven-architecture-n8n.md) | Arquitectura Basada en Eventos (EDA) en n8n con core desacoplado | Vigente |
 | [ADR-013](infrastructure/ADRs/ADR-013-microservicios-frontend-microfrontends.md) | Microservicios Frontend con Next.js y Nginx | Vigente |
 | [ADR-014](infrastructure/ADRs/ADR-014-autenticacion-sesion-nginx-auth-request.md) | Autenticación de sesión con Nginx auth_request | Vigente |
+| [ADR-015](infrastructure/ADRs/ADR-015-terraform-iac-recuperacion-azure.md) | Terraform como IaC para la recuperación ante desastres en Azure | Vigente |
 
 ## Levantar el sistema localmente
 
@@ -157,6 +159,7 @@ infrastructure/
   n8n/                  imagen de n8n con @healthradar/core
   nginx/                Shell Router
   scripts-poc-arquitectura/  migrador y utilidades de infraestructura
+  terraform/            recuperación ante desastres en Azure (ADR-015)
   docker-compose.yml
 ```
 
