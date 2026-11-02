@@ -17,6 +17,10 @@
     "modelo_usado": {
       "type": "string",
       "description": "Identificador del modelo LLM que generó la respuesta"
+    },
+    "advertencia_cifras": {
+      "type": ["string", "null"],
+      "description": "Aviso cuando alguna cifra de la respuesta no coincide con los datos consultados (boletines, clima, tendencia), para que el analista la revise. Ausente o null si no hay aviso"
     }
   },
   "additionalProperties": true

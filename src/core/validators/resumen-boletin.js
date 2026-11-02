@@ -44,7 +44,13 @@ const ACUMULADOS = [
  * Pesa poco rechazar de más: un boletín rechazado bloquea la cola de Fase B, y el valor del PFA ya se
  * contrasta contra la tabla del PDF cuando esta se puede leer.
  */
-const TOLERANCIA_BAJA_POR_CLAVE = { pfa_total: { relativa: 0.10, abs: 10 } };
+// Las defunciones por dengue también se reclasifican: la nota (****) de la Tabla 1 dice que las de dengue
+// sin y con signos de alarma "se encuentran en investigación y son sujetas a reclasificación"
+// (SE 28 = 49 y SE 29 = 47 en los boletines reales). Una caída grande (p. ej. 152 → 47) se sigue rechazando.
+const TOLERANCIA_BAJA_POR_CLAVE = {
+  pfa_total: { relativa: 0.10, abs: 10 },
+  dengue_defunciones: { relativa: 0.10, abs: 5 },
+};
 
 /** Acumulados grandes a los que además se aplica un tope de crecimiento semanal. */
 const CON_TOPE = [

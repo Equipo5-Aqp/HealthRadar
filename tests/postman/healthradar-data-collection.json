@@ -2,10 +2,58 @@
   "info": {
     "_postman_id": "a1e5f0a0-7b3c-4e2d-9f8a-2c6d4b1e9c30",
     "name": "HealthRadar - Datos Históricos (HU-07)",
-    "description": "Colección de validación del webhook /api/historicos (Conexion de posgrest). Flujo determinista, sin IA. Valida contrato HTTP y schema exacto de cada rama del Switch (dengue, eda). Confirmado contra las queries SQL reales del workflow.",
+    "description": "Colección de validación del endpoint /historicos/api/historicos (Conexion de posgrest). Flujo determinista, sin IA. Requiere sesión: el primer request hace login (cookie hr_sesion) con las variables hr_user y hr_pass, que se pasan al ejecutar (newman --env-var) y nunca se guardan en este archivo. Valida contrato HTTP y schema exacto de cada rama del Switch (dengue, eda). Confirmado contra las queries SQL reales del workflow.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "POST - Login (sesión de prueba)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{hr_user}}\",\n  \"password\": \"{{hr_pass}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.variables.get('hr_user') || !pm.variables.get('hr_pass')) {",
+              "    throw new Error('Faltan hr_user / hr_pass: pasalos con --env-var (no se guardan en la coleccion)');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login responde 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Login confirma ok:true (sesión creada)', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.ok).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
     {
       "name": "POST - Historicos Dengue (schema check)",
       "request": {
@@ -121,6 +169,16 @@
     {
       "key": "base_url",
       "value": "http://20.9.78.118:3000",
+      "type": "string"
+    },
+    {
+      "key": "hr_user",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hr_pass",
+      "value": "",
       "type": "string"
     }
   ]
