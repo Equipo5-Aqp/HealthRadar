@@ -162,51 +162,11 @@ Es la demostración completa en la nube. Sale del crédito de estudiante, no de 
 
 ## 6. Prueba local en VMware Workstation Pro 17 (US$0)
 
-Terraform solo crea recursos en Azure: no puede crear la VM en VMware. En tu laptop se prueba **lo que corre dentro de la VM** (`bootstrap_vm.sh` + `restore_healthradar.sh`), que es la parte que más puede fallar. La VM local es gratis: la ISO de Ubuntu Server y VMware Workstation Pro 17 (uso personal) no cuestan nada, y la VM usa la RAM y CPU de tu laptop (mínimo 8 GB en total; ideal 16 GB).
+Terraform solo crea recursos en Azure: no puede crear la VM en VMware. En tu laptop se prueba **lo que corre dentro de la VM** (`bootstrap_vm.sh` + `restore_healthradar.sh`), que es la parte que más puede fallar. Es el mismo script que ejecuta cloud-init en Azure, en **modo local** (`--env-file` y `--dump`): no usa Key Vault ni Blob desde la VM.
 
-### 6.1 Crear la VM
+El paso a paso completo está en el [Manual de Backups y Restore, sección 5](../manuals/Manual_Backup_Restore_HU-303.md#5-levantar-healthradar-desde-cero-en-un-ubuntu-nuevo). Cubre la ISO correcta (24.04, no 26.04), la configuración de VMware, cada pantalla del instalador, cómo llevar el backup y el `.env`, tmux, la verificación y la solución de problemas (red, *Login incorrect*, teclado en GRUB).
 
-1. Descarga **Ubuntu Server 24.04 LTS** (ISO) desde ubuntu.com/download/server.
-2. VMware → *Create a New Virtual Machine* → *Typical* → ISO descargada.
-3. Hardware igual a la B2als_v2: **4 GB de RAM, 2 vCPU, disco de 40 GB**. Red **NAT**.
-4. En el instalador: usuario a elección (p. ej. `hradmin`) y marcar **Install OpenSSH server**.
-5. Al terminar, en la VM: `ip -4 addr show` → anota la IP (p. ej. `192.168.x.x`).
-
-### 6.2 Llevar el backup y el `.env` a la VM
-
-Desde tu laptop (PowerShell). Baja el último backup del Storage (o cópialo de la VM actual con `scp`) y el `.env` desde Key Vault:
-
-```powershell
-az storage blob download --account-name <storage_account> -c backups --auth-mode login -n pg_<semana>.dump.gz -f "$env:TEMP\pg.dump.gz"
-az storage blob download --account-name <storage_account> -c backups --auth-mode login -n pg_<semana>.dump.gz.sha256 -f "$env:TEMP\pg.dump.gz.sha256"
-az keyvault secret download --vault-name <key_vault> -n healthradar-env -f "$env:TEMP\hr.env"
-
-scp "$env:TEMP\pg.dump.gz" "$env:TEMP\pg.dump.gz.sha256" "$env:TEMP\hr.env" hradmin@<IP_VM_LOCAL>:~/
-Remove-Item "$env:TEMP\pg.dump.gz*", "$env:TEMP\hr.env"
-```
-
-### 6.3 Levantar el sistema en la VM
-
-```bash
-ssh hradmin@<IP_VM_LOCAL>
-git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git ~/HealthRadar
-sudo bash ~/HealthRadar/infrastructure/scripts-poc-arquitectura/bootstrap_vm.sh \
-  --env-file ~/hr.env --dump ~/pg.dump.gz
-```
-
-Es exactamente lo que ejecuta cloud-init en Azure, pero con el `.env` y el dump locales (modo local: no usa Key Vault ni Blob).
-
-**Éxito:**
-
-- el log termina en `[EXITO] HealthRadar levantado desde cero.`;
-- `http://<IP_VM_LOCAL>:3000` abre desde el navegador de tu laptop y el login funciona;
-- los conteos de la sección 5, paso 2, coinciden con producción.
-
-Al terminar: `shred -u ~/hr.env` y borra la VM (contiene secretos de producción). Aplica la misma advertencia sobre los workflows programados de la sección 5.
-
-### 6.4 Restore en un host que ya tiene Docker (WSL, Docker Desktop, otro servidor)
-
-Si el host ya tiene Docker y el repo clonado, basta con el `.env` en `infrastructure/.env` y:
+En un host que ya tiene Docker y el repo clonado (WSL, Docker Desktop, otro servidor), basta con el `.env` en `infrastructure/.env` y:
 
 ```bash
 bash infrastructure/scripts-poc-arquitectura/restore_healthradar.sh ~/pg.dump.gz
