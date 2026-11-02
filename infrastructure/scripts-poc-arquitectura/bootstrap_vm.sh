@@ -119,15 +119,18 @@ done
 # 5. Restore (una sola vez por VM)
 log "[5/6] Datos..."
 if [ -f "$STATE_DIR/restore.done" ]; then
-  log " -> Restore ya realizado el $(cat "$STATE_DIR/restore.done"); solo se levanta el stack."
+  # restore_healthradar.sh deja la marca apenas verifica los datos: si fallo despues
+  # (migraciones o arranque), aqui se completan esos pasos sin volver a restaurar.
+  log " -> Restore ya realizado el $(cat "$STATE_DIR/restore.done"); se completan migraciones y arranque."
+  "${COMPOSE[@]}" up -d --wait --wait-timeout 180 postgres
+  bash "$SCRIPT_DIR/migrate.sh"
   "${COMPOSE[@]}" up -d --wait --wait-timeout 600
 elif [ -n "$DUMP" ] || [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
   if [ -n "$DUMP" ]; then
-    bash "$SCRIPT_DIR/restore_healthradar.sh" "$DUMP"
+    RESTORE_MARKER="$STATE_DIR/restore.done" bash "$SCRIPT_DIR/restore_healthradar.sh" "$DUMP"
   else
-    bash "$SCRIPT_DIR/restore_healthradar.sh"
+    RESTORE_MARKER="$STATE_DIR/restore.done" bash "$SCRIPT_DIR/restore_healthradar.sh"
   fi
-  date '+%Y-%m-%d %H:%M:%S' > "$STATE_DIR/restore.done"
 else
   log " -> [AVISO] Sin backup (ni --dump ni BACKUP_STORAGE_ACCOUNT): instalacion LIMPIA, sin datos."
   "${COMPOSE[@]}" up -d --wait --wait-timeout 180 postgres

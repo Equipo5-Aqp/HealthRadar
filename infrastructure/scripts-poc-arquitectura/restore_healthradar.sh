@@ -120,6 +120,10 @@ MIGRACIONES="$(psql_db -tAc "SELECT CASE WHEN to_regclass('public.healthradar_sc
 [ "$MIGRACIONES" -gt 0 ] || fail "El restore no dejo la tabla healthradar_schema_migrations: revisar los errores de pg_restore."
 WORKFLOWS="$(psql_db -tAc "SELECT CASE WHEN to_regclass('public.workflow_entity') IS NULL THEN 0 ELSE (SELECT count(*) FROM workflow_entity) END;")"
 log " -> OK: $MIGRACIONES migraciones registradas, $WORKFLOWS workflows de n8n."
+# Marca opcional (bootstrap_vm.sh): si un paso posterior falla, re-ejecutar no vuelve a restaurar.
+if [ -n "${RESTORE_MARKER:-}" ]; then
+  date '+%Y-%m-%d %H:%M:%S' > "$RESTORE_MARKER"
+fi
 
 # 4. Migraciones posteriores al backup
 log "[4/5] Aplicando migraciones nuevas..."

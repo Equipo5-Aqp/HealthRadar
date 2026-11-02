@@ -101,10 +101,17 @@ log " -> OK: $(basename "$PG_FILE") ($(du -h "$PG_FILE" | cut -f1))."
 log "[2/3] Export de workflows n8n..."
 TMP_EXPORT="$(mktemp -d)"
 docker exec "$N8N_CONTAINER" sh -c 'rm -rf /tmp/n8n-export && mkdir -p /tmp/n8n-export'
-docker exec "$N8N_CONTAINER" n8n export:workflow --all --output=/tmp/n8n-export/ >/dev/null
+# --separate: un JSON por flujo en la carpeta. Sin el, n8n exige que --output sea un
+# archivo; con una carpeta termina sin exportar nada y con codigo 0 (tar vacio de 111 B).
+# Sin >/dev/null: el "Successfully exported N workflows" queda en backup.log.
+docker exec "$N8N_CONTAINER" n8n export:workflow --all --separate --output=/tmp/n8n-export/
 docker cp "$N8N_CONTAINER":/tmp/n8n-export/. "$TMP_EXPORT"/
 docker exec "$N8N_CONTAINER" sh -c 'rm -rf /tmp/n8n-export' || true
 N_COUNT=$(ls -1 "$TMP_EXPORT" | wc -l | tr -d '[:space:]')
+if [ "$N_COUNT" -eq 0 ]; then
+  # Aviso, no error: el dump de PostgreSQL del paso [1/3] ya incluye los workflows.
+  log "[AVISO] n8n no exporto ningun flujo (revisar la salida de arriba). El dump de PostgreSQL igual los contiene."
+fi
 tar -czf "$N8N_FILE.tmp" -C "$TMP_EXPORT" .
 chmod 600 "$N8N_FILE.tmp"
 mv -f "$N8N_FILE.tmp" "$N8N_FILE"
