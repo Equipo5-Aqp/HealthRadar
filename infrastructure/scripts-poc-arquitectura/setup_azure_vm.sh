@@ -53,7 +53,7 @@ if [ -d "$REPO_DIR" ]; then
     cd "$REPO_DIR"
     git pull origin main || true
 else
-    git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git "$REPO_DIR" || {
+    git clone https://github.com/Equipo5-Aqp/HealthRadar.git "$REPO_DIR" || {
         echo "ERROR: no se pudo clonar el repositorio. Verifica la URL y tus credenciales."
         exit 1
     }

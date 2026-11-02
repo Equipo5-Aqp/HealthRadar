@@ -57,7 +57,7 @@ variable "ssh_source_cidr" {
 variable "repo_url" {
   description = "Repositorio que clona la VM de recuperación."
   type        = string
-  default     = "https://github.com/Roberto-Bautista/Celula5_HealthRadar.git"
+  default     = "https://github.com/Equipo5-Aqp/HealthRadar.git"
 }
 
 variable "repo_ref" {
