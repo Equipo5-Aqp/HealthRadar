@@ -86,25 +86,63 @@ jobs:
         run: echo "✅ Este PR no toca infrastructure/ — se omite la validación, check en verde"
 
   verify-backup-script:
-    name: Validar script de backups HU-303 (shellcheck)
+    name: Validar scripts de backup y recuperación HU-303 / ADR-015 (shellcheck)
     runs-on: ubuntu-latest
+    env:
+      SCRIPTS_DIR: infrastructure/scripts-poc-arquitectura
+      # Ejecutables (cron/cloud-init) + helper que se carga con source (sin bit ejecutable)
+      EJECUTABLES: backup_healthradar.sh bootstrap_vm.sh restore_healthradar.sh
+      HELPERS: azure_blob.sh
     steps:
       - uses: actions/checkout@v4
 
       - name: Instalar shellcheck
         run: sudo apt-get update -y && sudo apt-get install -y shellcheck
 
-      - name: Analizar backup_healthradar.sh
+      - name: Analizar scripts
         run: |
-          SCRIPT="infrastructure/scripts-poc-arquitectura/backup_healthradar.sh"
-          test -f "$SCRIPT" || { echo "❌ No existe $SCRIPT"; exit 1; }
-          test -x "$SCRIPT" || { echo "❌ $SCRIPT no tiene bit ejecutable"; exit 1; }
-          bash -n "$SCRIPT" && echo "✅ Sintaxis bash OK"
-          shellcheck -S warning "$SCRIPT"
+          cd "$SCRIPTS_DIR"
+          for SCRIPT in $EJECUTABLES $HELPERS; do
+            test -f "$SCRIPT" || { echo "❌ No existe $SCRIPT"; exit 1; }
+            bash -n "$SCRIPT" && echo "✅ Sintaxis bash OK: $SCRIPT"
+          done
+          for SCRIPT in $EJECUTABLES; do
+            test -x "$SCRIPT" || { echo "❌ $SCRIPT no tiene bit ejecutable"; exit 1; }
+          done
+          # -x sigue los `source` de azure_blob.sh (ruta relativa a este directorio)
+          shellcheck -x -S warning $EJECUTABLES $HELPERS
 
-      - name: Sin secretos ni puertos en el script
+      - name: Sin secretos ni puertos en los scripts
         run: |
-          SCRIPT="infrastructure/scripts-poc-arquitectura/backup_healthradar.sh"
-          ! grep -nE "POSTGRES_PASSWORD=|N8N_ENCRYPTION_KEY=|GEMINI_API_KEY=|ports:" "$SCRIPT" \
-            && echo "✅ Sin credenciales hardcodeadas ni ports: en el script" \
-            || { echo "❌ El script contiene secretos o ports:"; exit 1; }
+          cd "$SCRIPTS_DIR"
+          ! grep -nE "POSTGRES_PASSWORD=|N8N_ENCRYPTION_KEY=|GEMINI_API_KEY=|AccountKey=|sig=|ports:" $EJECUTABLES $HELPERS \
+            && echo "✅ Sin credenciales hardcodeadas ni ports: en los scripts" \
+            || { echo "❌ Algún script contiene secretos o ports:"; exit 1; }
+
+  verify-terraform:
+    name: Validar Terraform de recuperación (ADR-015)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+          terraform_wrapper: false
+
+      - name: Formato
+        run: terraform fmt -check -recursive -diff
+
+      - name: Validar (sin backend ni credenciales de Azure)
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Sin estado ni variables reales versionadas
+        run: |
+          ! git ls-files . | grep -E '\.tfstate|(^|/)terraform\.tfvars$' \
+            && echo "✅ Sin tfstate ni terraform.tfvars en git" \
+            || { echo "❌ Hay estado o variables reales de Terraform versionadas"; exit 1; }

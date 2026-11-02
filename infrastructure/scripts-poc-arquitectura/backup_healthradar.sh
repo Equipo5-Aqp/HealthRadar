@@ -27,6 +27,7 @@
 # Uso:
 #   ./backup_healthradar.sh                      # corrida de backup (cron o manual)
 #   BACKUP_DIR=/ruta BACKUP_RETENTION_COUNT=2 ./backup_healthradar.sh
+#   BACKUP_STORAGE_ACCOUNT=<storage> ./backup_healthradar.sh   # + copia off-site (ADR-015)
 #
 # Cron en la VM (crontab -e de azureuser):
 #   TZ=America/Lima
@@ -114,6 +115,21 @@ log " -> OK: $(basename "$N8N_FILE") con $N_COUNT flujos ($(du -h "$N8N_FILE" | 
 sha256sum "$PG_FILE" > "$PG_FILE.sha256"
 sha256sum "$N8N_FILE" > "$N8N_FILE.sha256"
 chmod 600 "$PG_FILE.sha256" "$N8N_FILE.sha256"
+
+# 6b. Copia off-site en Azure Blob (ADR-015): si la VM se borra, los backups sobreviven.
+#     Opcional: sin BACKUP_STORAGE_ACCOUNT el script solo deja la copia local, como antes.
+if [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
+  # shellcheck source=azure_blob.sh
+  . "$(dirname "${BASH_SOURCE[0]}")/azure_blob.sh"
+  log "[off-site] Subiendo a $BACKUP_STORAGE_ACCOUNT/${BACKUP_STORAGE_CONTAINER:-backups}..."
+  for f in "$PG_FILE" "$PG_FILE.sha256" "$N8N_FILE" "$N8N_FILE.sha256"; do
+    if ! blob_put "$f" "$(basename "$f")"; then
+      log "[ERROR] Fallo la subida de $(basename "$f"). La copia local se conserva en $BACKUP_DIR."
+      exit 1
+    fi
+  done
+  log " -> OK: 4 archivos subidos al Storage."
+fi
 
 # 7. Rotacion: conservar solo las N copias mas recientes por tipo.
 #    Al llegar la 3ra (con N=2), la mas antigua se elimina -> disco acotado.

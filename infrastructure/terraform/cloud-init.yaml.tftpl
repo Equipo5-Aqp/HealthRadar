@@ -1,0 +1,28 @@
+#cloud-config
+# ADR-015: arranque de la VM de recuperación. Delgado a propósito: la lógica vive en
+# infrastructure/scripts-poc-arquitectura/bootstrap_vm.sh (versionada y con shellcheck en CI).
+# Log completo en la VM: /var/log/healthradar-bootstrap.log
+
+package_update: true
+packages:
+  - git
+  - curl
+  - python3
+
+runcmd:
+  - |
+    set -eu
+    exec >>/var/log/healthradar-bootstrap.log 2>&1
+    echo "[cloud-init] $(date '+%Y-%m-%d %H:%M:%S') inicio"
+    # Misma ruta que espera .github/workflows/deploy.yml
+    REPO_DIR=/home/azureuser/HealthRadar
+    if [ ! -d "$REPO_DIR/.git" ]; then
+      sudo -u azureuser git clone "${repo_url}" "$REPO_DIR"
+    fi
+    sudo -u azureuser git -C "$REPO_DIR" checkout "${repo_ref}"
+    HR_KEY_VAULT="${key_vault_name}" \
+    HR_ENV_SECRET="${env_secret_name}" \
+    BACKUP_STORAGE_ACCOUNT="${storage_account}" \
+    BACKUP_STORAGE_CONTAINER="${storage_container}" \
+      bash "$REPO_DIR/infrastructure/scripts-poc-arquitectura/bootstrap_vm.sh"
+    echo "[cloud-init] $(date '+%Y-%m-%d %H:%M:%S') fin"

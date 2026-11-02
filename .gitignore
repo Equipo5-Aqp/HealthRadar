@@ -11,6 +11,14 @@ infrastructure/.env
 # === Carpeta de contexto local (solo uso en máquina, nunca al repo) ===
 context/
 
+# === Terraform (ADR-015): estado y variables locales del operador ===
+# .terraform.lock.hcl SI se versiona.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+
 # === Dependencias de Node.js ===
 node_modules/
 **/node_modules/

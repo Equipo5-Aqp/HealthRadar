@@ -5,6 +5,7 @@ Frecuencia: **viernes 20:00 (America/Lima)** vía cron del host.
 Retención: **2 copias** por tipo (`pg_*.dump.gz` + `n8n-workflows_*.tar.gz`); la 3.ª elimina la más antigua.
 Destino: `/home/azureuser/backups/healthradar/` (fuera del repo: sobrevive al `git reset --hard` del deploy).
 RAM adicional: **0 MB** (solo `docker exec` efímeros; sin contenedores ni puertos nuevos, ADR-008).
+Copia off-site (ADR-015): con `BACKUP_STORAGE_ACCOUNT` definido en el crontab, cada backup se sube también al Storage de Azure creado por Terraform. El restore automático (`restore_healthradar.sh`) y la recuperación desde cero están en [`infrastructure/terraform/README.md`](../terraform/README.md).
 
 ## 1. Instalación del cron (una vez, por SSH en la VM)
 

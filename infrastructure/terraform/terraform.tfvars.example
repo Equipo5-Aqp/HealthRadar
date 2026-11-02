@@ -1,0 +1,17 @@
+# Copiar a terraform.tfvars (gitignored) y completar. Sin secretos: el .env va a Key Vault.
+
+subscription_id = "00000000-0000-0000-0000-000000000000" # az account show --query id -o tsv
+sufijo_unico    = "c5aqp"                                # 2-8 minúsculas/números; anotarlo
+
+# Object ID de la identidad de la VM actual (portal → VM → Seguridad → Identidad).
+vm_actual_principal_id = ""
+
+# false = contingencia (solo Storage + Key Vault). true = VM de recuperación.
+# En una recuperación real dejarlo en true aquí: un `terraform apply` sin -var lo respeta.
+crear_vm = false
+
+# Opcionales (valores por defecto en variables.tf):
+# location            = "centralus"
+# vm_size             = "Standard_B2als_v2"
+# ssh_public_key_path = "~/.ssh/healthradar-vm_key.pub"
+# repo_ref            = "main"

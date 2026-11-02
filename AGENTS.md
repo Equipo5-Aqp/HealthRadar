@@ -43,7 +43,7 @@ Guía para agentes IA. El repositorio es la fuente de verdad: si este archivo co
 | Webhooks o contratos | `src/mf-*/src/app/api/`, `src/n8n-workflows/production/` y `src/core/` |
 | Esquema SQL | `src/database/migrations/`, `src/core/` y workflows que escriben esas tablas |
 | Frontend | `src/mf-*/package.json`, `next.config.*` y el CI de frontend |
-| Infraestructura | `infrastructure/docker-compose.yml`, ADRs y `deploy.yml` |
+| Infraestructura | `infrastructure/docker-compose.yml`, ADRs, `deploy.yml` e `infrastructure/terraform/` (ADR-015: debe replicar la VM del ADR-011) |
 | LLMs | ADR-003/ADR-010, variables de entorno y trazas a Phoenix |
 
 ## Flujos y eventos
@@ -60,4 +60,5 @@ Guía para agentes IA. El repositorio es la fuente de verdad: si este archivo co
 - Core: `npm test` dentro de `src/core/`.
 - n8n: validar JSON y referencias con los workflows de `.github/workflows/`.
 - Infraestructura: `docker compose -f infrastructure/docker-compose.yml config`.
+- Terraform: `terraform fmt -check` y `terraform init -backend=false && terraform validate` en `infrastructure/terraform/`. Nunca `apply` sin aprobación del Arquitecto.
 - Si no encuentras el comando correcto, pregunta antes de inventarlo.
