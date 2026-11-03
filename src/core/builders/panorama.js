@@ -2,13 +2,15 @@
 // ─────────────────────────────────────────────────────────
 // Webhook /panorama (mf-dashboard): arma el panorama a partir de los resúmenes de boletines ya
 // procesados en PostgreSQL. Las cifras salen del marcador [CIFRAS: ...] que valida Fase B; este
-// código NO calcula ni estima nada: si una cifra no está, no se muestra.
+// código NO estima cifras: si una cifra no está, no se muestra. El nivel de riesgo (HU2) sí se calcula,
+// por código y solo con esas cifras (riesgo-panorama.js).
 // Puro: sin n8n, sin PostgreSQL, sin red.
 
 'use strict';
 
 const { extraerCifras, quitarMarcadorCifras } = require('../parsers/cifras-boletin');
 const { calcularRangoFechasSemana } = require('./rango-semana');
+const { calcularRiesgoPanorama } = require('./riesgo-panorama');
 
 // Claves de cifras que el panorama muestra (las demás del marcador se ignoran).
 const CLAVES_PANORAMA = [
@@ -145,6 +147,11 @@ function construirPanorama(filas, filtros, conteos) {
   }
 
   const cifras = cifrasDePanorama(elegido.resumen);
+  // HU2: nivel de riesgo nacional calculado por código (ver riesgo-panorama.js). Si no se puede, null.
+  let riesgo = null;
+  try {
+    riesgo = calcularRiesgoPanorama(lista, { anio: elegido.anio, semana: elegido.semana });
+  } catch { /* sin riesgo: el Panorama sigue mostrando «—» */ }
   let fechas = { fecha_inicio: null, fecha_fin: null };
   try {
     const r = calcularRangoFechasSemana(elegido.anio, elegido.semana);
@@ -165,7 +172,7 @@ function construirPanorama(filas, filtros, conteos) {
     alertas: extraerAlertas(elegido.resumen),
     periodos,
     estado,
-    riesgo: null, // HU-4: el nivel de riesgo del panorama aún no se calcula
+    riesgo,
   };
 }
 
