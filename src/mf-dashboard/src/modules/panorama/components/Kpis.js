@@ -39,7 +39,7 @@ export default function Kpis({ cifras, riesgo }) {
         ) : (
           <>
             <span className="kpi-value vacio">—</span>
-            <span className="kpi-note">Aún no disponible en el panorama; el chat sí lo calcula por consulta</span>
+            <span className="kpi-note">No hay suficientes semanas seguidas con cifras para calcular el riesgo de este período</span>
           </>
         )}
       </article>

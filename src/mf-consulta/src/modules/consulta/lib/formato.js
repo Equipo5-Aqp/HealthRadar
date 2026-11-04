@@ -30,6 +30,14 @@ export function etiquetaModelo(modelo) {
     .join(' ')
 }
 
+/** Antigüedad de una respuesta guardada (HU3): 0 → 'hace menos de 1 min' · 35 → 'hace 35 min' · 135 → 'hace 2 h'. */
+export function textoEdadCache(minutos) {
+  if (!Number.isFinite(minutos) || minutos < 0) return null
+  if (minutos < 1) return 'hace menos de 1 min'
+  if (minutos < 60) return `hace ${Math.floor(minutos)} min`
+  return `hace ${Math.floor(minutos / 60)} h`
+}
+
 export const ETIQUETA_RIESGO = { alto: 'Riesgo alto', medio: 'Riesgo medio', bajo: 'Riesgo bajo' }
 
 /** Divide la respuesta del modelo en bloques: párrafos y listas (con viñetas o numeradas). */

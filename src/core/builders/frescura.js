@@ -27,9 +27,13 @@ const aEntero = v => {
   return Number.isInteger(n) ? n : NaN;
 };
 
+// OJO: no usar `instanceof Date`. El Code node de n8n corre en otro contexto (vm) y su `new Date()` da false:
+// «hoy» quedaba en null y toda la frescura salía «sin_datos». Esta comprobación sirve entre contextos.
+const esFecha = v => Object.prototype.toString.call(v) === '[object Date]';
+
 // Date o texto «AAAA-MM-DD…» → milisegundos UTC a las 00:00 de ese día; si no es una fecha, null.
 function aDiaUtc(v) {
-  if (v instanceof Date) {
+  if (esFecha(v)) {
     return Number.isNaN(v.getTime()) ? null : Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate());
   }
   if (typeof v === 'string') {
