@@ -3,15 +3,25 @@
   "title": "WebhookNLQOutput",
   "description": "Contrato de salida del webhook de consulta NLQ hacia el frontend",
   "type": "object",
-  "required": ["output"],
+  "required": [
+    "output"
+  ],
   "properties": {
     "output": {
       "type": "string",
       "description": "Texto de respuesta redactado por el AI Agent, limpio de marcadores internos"
     },
     "nivel_riesgo": {
-      "type": ["string", "null"],
-      "enum": ["alto", "medio", "bajo", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "alto",
+        "medio",
+        "bajo",
+        null
+      ],
       "description": "Nivel de riesgo epidemiológico evaluado o null si no aplica"
     },
     "modelo_usado": {
@@ -19,8 +29,23 @@
       "description": "Identificador del modelo LLM que generó la respuesta"
     },
     "advertencia_cifras": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Aviso cuando alguna cifra de la respuesta no coincide con los datos consultados (boletines, clima, tendencia), para que el analista la revise. Ausente o null si no hay aviso"
+    },
+    "desde_cache": {
+      "type": "boolean",
+      "description": "Sprint 4 (HU3): true si la respuesta salió de la caché de preguntas frecuentes (sin llamar al modelo). Ausente en respuestas nuevas"
+    },
+    "cache_edad_minutos": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Sprint 4 (HU3): minutos desde que se generó la respuesta guardada. Solo con desde_cache=true"
     }
   },
   "additionalProperties": true
