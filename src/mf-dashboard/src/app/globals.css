@@ -125,6 +125,11 @@ ul { padding: 0; list-style: none; }
 /* ───────── ESTADOS ───────── */
 .vacio-msg { padding: 32px 12px; text-align: center; color: var(--muted); }
 .aviso { padding: 12px 14px; border-radius: 10px; background: var(--mediobg); color: var(--medio); }
+.chip-frescura { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--surface2); color: var(--muted); }
+.chip-frescura i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip-frescura b { font-weight: 600; }
+.chip-frescura.al_dia { background: var(--bajobg); color: var(--bajo); }
+.chip-frescura.desactualizado { background: var(--mediobg); color: var(--medio); }
 .error-box { padding: 14px 16px; border-radius: 10px; background: var(--errbg); border: 1px solid var(--err); color: var(--err); }
 .skeleton { background: linear-gradient(90deg, var(--surface2), var(--border), var(--surface2)); background-size: 200% 100%; animation: brillo 1.4s linear infinite; border-radius: 8px; }
 @keyframes brillo { to { background-position: -200% 0; } }

@@ -1,5 +1,6 @@
 'use strict';
 
+const vm = require('vm');
 const { construirFrescura, UMBRAL_BOLETINES_DIAS, UMBRAL_CLIMA_DIAS } = require('../frescura');
 
 // SE 36-2025 termina el 2025-09-06.
@@ -164,5 +165,39 @@ describe('construirFrescura · pendientes y casos', () => {
     const d = base();
     d.cargas = 'x';
     expect(construirFrescura(d, '2025-09-20').casos.estado).toBe('sin_datos');
+  });
+});
+
+// En n8n el Code node corre en otro contexto (vm): su `new Date()` NO es `instanceof Date` del core.
+// Antes, «hoy» quedaba en null y toda la frescura salía «sin_datos» aunque hubiera boletines y clima.
+describe('construirFrescura · fechas creadas en otro contexto (sandbox de n8n)', () => {
+  const deOtroContexto = iso => vm.runInNewContext(`new Date("${iso}")`);
+
+  test('el caso es real: la fecha de otro contexto no es instanceof Date', () => {
+    expect(deOtroContexto('2025-09-20T00:00:00Z') instanceof Date).toBe(false);
+  });
+
+  test('hoy de otro contexto da el mismo resultado que un Date local', () => {
+    const local = construirFrescura(base(), new Date('2025-09-20T23:30:00Z'));
+    const otro = construirFrescura(base(), deOtroContexto('2025-09-20T23:30:00Z'));
+    expect(otro).toEqual(local);
+    expect(otro.estado).toBe('al_dia');
+    expect(otro.generado_en).toBe('2025-09-20');
+    expect(otro.boletines.dias).toBe(8);
+  });
+
+  test('datos viejos con hoy de otro contexto salen «desactualizado», no «sin_datos»', () => {
+    const d = { boletin_procesado: { anio: 2025, semana: 45, fecha_publicacion: '2025-11-12' }, pendientes: 39, clima: { anio: 2026, semana: 8 }, cargas: [] };
+    const f = construirFrescura(d, deOtroContexto('2026-11-04T01:48:00Z'));
+    expect(f.estado).toBe('desactualizado');
+    expect(f.boletines.estado).toBe('desactualizado');
+    expect(f.clima.estado).toBe('desactualizado');
+    expect(f.boletines.dias).toBeGreaterThan(UMBRAL_BOLETINES_DIAS);
+  });
+
+  test('fecha de publicación de otro contexto', () => {
+    const d = base();
+    d.boletin_procesado = { anio: 2025, semana: 36, fecha_publicacion: deOtroContexto('2025-09-12T05:00:00Z') };
+    expect(construirFrescura(d, '2025-09-20').boletines.dias).toBe(8);
   });
 });

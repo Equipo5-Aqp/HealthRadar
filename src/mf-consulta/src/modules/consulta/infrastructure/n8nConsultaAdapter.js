@@ -1,6 +1,6 @@
 // CONTRATO: webhook /consulta (core/contracts/webhook-nlq-{input,output}.schema.json)
 //   entrada: { pregunta, sessionId }
-//   200:     { output, modelo_usado?, nivel_riesgo?, advertencia_cifras? }
+//   200:     { output, modelo_usado?, nivel_riesgo?, advertencia_cifras?, desde_cache?, cache_edad_minutos? }   (desde_cache: Sprint 4 · HU3)
 //   503:     { error:true, codigo, mensaje }  (fallaron todos los proveedores de IA, HU-12)
 // Referencia: ADR-012 → Contratos entre capas
 // PROHIBIDO: import desde fuera de este MF (Regla 1 de gobernanza)
@@ -55,5 +55,9 @@ export async function consultar(pregunta, sessionId) {
     modelo_usado: typeof data.modelo_usado === 'string' ? data.modelo_usado : null,
     nivel_riesgo: ['alto', 'medio', 'bajo'].includes(data.nivel_riesgo) ? data.nivel_riesgo : null,
     advertencia_cifras: typeof data.advertencia_cifras === 'string' && data.advertencia_cifras ? data.advertencia_cifras : null,
+    // HU3: la respuesta salió de la caché de preguntas frecuentes (no se llamó al modelo). Campos opcionales.
+    desde_cache: data.desde_cache === true,
+    cache_edad_minutos: data.desde_cache === true && Number.isFinite(Number(data.cache_edad_minutos)) && Number(data.cache_edad_minutos) >= 0
+      ? Math.floor(Number(data.cache_edad_minutos)) : null,
   }
 }

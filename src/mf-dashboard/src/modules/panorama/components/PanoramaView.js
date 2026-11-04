@@ -4,6 +4,7 @@ import { usePanorama } from '../hooks/usePanorama'
 import { useTendenciaPanorama } from '../hooks/useTendenciaPanorama'
 import Kpis from './Kpis'
 import TrendChart from './TrendChart'
+import { ChipFrescura, AvisoFrescura } from './Frescura'
 import { ENFERMEDADES, ANIO_MIN_CASOS, ANIO_MAX_CASOS } from '@/modules/shared/constants/enfermedades'
 import { DEPARTAMENTOS } from '@/modules/shared/constants/departamentos'
 import { rangoFechas } from '@/modules/shared/formato'
@@ -34,6 +35,7 @@ export default function PanoramaView() {
         <div>
           <h1>Panorama epidemiológico</h1>
           <p>{subtitulo}</p>
+          <ChipFrescura frescura={d?.frescura} />
         </div>
         {d?.periodos?.length > 0 && (
           <div className="field">
@@ -53,6 +55,8 @@ export default function PanoramaView() {
           <button type="button" className="btn-primary" style={{ display: 'inline-flex', minHeight: 32, padding: '0 12px', marginLeft: 8 }} onClick={p.reintentar}>Reintentar</button>
         </div>
       )}
+
+      <AvisoFrescura frescura={d?.frescura} />
 
       {d && b && !d.tieneCifras && (
         <div className="aviso" role="status">
@@ -117,6 +121,15 @@ export default function PanoramaView() {
               <div className="dl-row"><dt>Último boletín procesado</dt><dd>{b ? `SE ${b.semana} · ${b.anio}` : '—'}</dd></div>
               <div className="dl-row"><dt>Fuente</dt><dd>CDC Perú · DGE / MINSA</dd></div>
               <div className="dl-row"><dt>Resúmenes con cifras verificadas</dt><dd>{d ? `${d.estado.conCifras} de ${d.estado.procesados}` : '—'}</dd></div>
+              {d?.frescura && (
+                <>
+                  <div className="dl-row"><dt>Boletines por procesar</dt><dd>{d.frescura.boletines.pendientes}</dd></div>
+                  <div className="dl-row"><dt>Clima hasta</dt><dd>{d.frescura.clima.semana != null ? `SE ${d.frescura.clima.semana} · ${d.frescura.clima.anio}` : '—'}</dd></div>
+                  {d.frescura.casosHastaAnio != null && (
+                    <div className="dl-row"><dt>Casos históricos hasta</dt><dd>{d.frescura.casosHastaAnio}</dd></div>
+                  )}
+                </>
+              )}
             </dl>
           </section>
         </div>
