@@ -134,7 +134,9 @@ To sign in, use a web browser to open the page https://microsoft.com/devicelogin
 and enter the code ABCD1234 to authenticate.
 ```
 
-En el **navegador de tu laptop**, abre esa página, escribe el código y entra con **tu** cuenta `@usmp.pe`. Tu contraseña nunca pasa por el Ubuntu.
+En el **navegador de tu laptop**, abre esa página, escribe el código y entra con **tu** cuenta `@usmp.pe`. Tu contraseña nunca pasa por el Ubuntu. Si el navegador ya tenía tu sesión de la USMP abierta, no vuelve a pedir la contraseña: es normal.
+
+Si después aparece una lista de suscripciones (*Select a subscription and tenant*), presiona **Enter**. Da igual cuál quede: el script solo usa los permisos sobre el Key Vault y el Storage.
 
 | Etapa | Qué hace |
 | --- | --- |

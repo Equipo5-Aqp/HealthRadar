@@ -110,7 +110,9 @@ if [ "${#FALTAN[@]}" -gt 0 ]; then
   sudo apt-get update -y
   sudo apt-get install -y "${FALTAN[@]}"
 fi
-if ! command -v az >/dev/null 2>&1; then
+# Se exige el Azure CLI de Linux. En WSL el PATH incluye el az de Windows (/mnt/c/...):
+# no recibe las variables de este script (AZURE_CONFIG_DIR) y responde con CRLF.
+if [ ! -x /usr/bin/az ]; then
   # Repositorio oficial de Microsoft (mismo patron que Docker en tf_bootstrap_vm.sh)
   sudo install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
@@ -122,6 +124,7 @@ if ! command -v az >/dev/null 2>&1; then
   sudo apt-get update -y
   sudo apt-get install -y azure-cli
 fi
+[ "$(command -v az)" = "/usr/bin/az" ] || fail "Se esta usando otro az ($(command -v az)); se necesita el de Linux en /usr/bin/az."
 log " -> Azure CLI $(az version --query '"azure-cli"' -o tsv)"
 
 # 3. Sesion de Azure aislada: carpeta temporal que se borra al salir (no toca ~/.azure)
@@ -173,6 +176,7 @@ log "[5/5] Ultimo backup desde $STORAGE/$CONTAINER..."
 BLOB="$(az storage blob list --account-name "$STORAGE" --container-name "$CONTAINER" --auth-mode login \
   --prefix pg_ --query "sort_by([?ends_with(name, '.dump.gz')], &properties.lastModified)[-1].name" -o tsv)" \
   || fail "No se pudo listar el Storage. ¿Tu cuenta tiene el rol 'Storage Blob Data Reader'? (operadores_lectura en rbac.tf)"
+BLOB="${BLOB%$'\r'}" # por si algun az devuelve CRLF
 [ -n "$BLOB" ] || fail "No hay ningun pg_*.dump.gz en $STORAGE/$CONTAINER."
 
 install -d -m 700 "$RESTORE_DIR"
