@@ -28,6 +28,7 @@
 #   ./backup_healthradar.sh                      # corrida de backup (cron o manual)
 #   BACKUP_DIR=/ruta BACKUP_RETENTION_COUNT=2 ./backup_healthradar.sh
 #   BACKUP_STORAGE_ACCOUNT=<storage> ./backup_healthradar.sh   # + copia off-site (ADR-015)
+#   HR_KEY_VAULT=<vault> ./backup_healthradar.sh   # + aviso si el .env de Key Vault quedo viejo
 #
 # Cron en la VM (crontab -e de azureuser):
 #   TZ=America/Lima
@@ -126,8 +127,8 @@ chmod 600 "$PG_FILE.sha256" "$N8N_FILE.sha256"
 # 6b. Copia off-site en Azure Blob (ADR-015): si la VM se borra, los backups sobreviven.
 #     Opcional: sin BACKUP_STORAGE_ACCOUNT el script solo deja la copia local, como antes.
 if [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
-  # shellcheck source=azure_blob.sh
-  . "$(dirname "${BASH_SOURCE[0]}")/azure_blob.sh"
+  # shellcheck source=tf_azure_blob.sh
+  . "$(dirname "${BASH_SOURCE[0]}")/tf_azure_blob.sh"
   log "[off-site] Subiendo a $BACKUP_STORAGE_ACCOUNT/${BACKUP_STORAGE_CONTAINER:-backups}..."
   for f in "$PG_FILE" "$PG_FILE.sha256" "$N8N_FILE" "$N8N_FILE.sha256"; do
     if ! blob_put "$f" "$(basename "$f")"; then
@@ -136,6 +137,37 @@ if [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
     fi
   done
   log " -> OK: 4 archivos subidos al Storage."
+fi
+
+# 6c. ¿El .env de Key Vault sigue igual al de esta VM? Solo AVISA: la VM tiene permiso de
+#     lectura, no de escritura (rbac.tf). Si no coincide, una restauracion arrancaria con el
+#     .env viejo. Se comparan las lineas VAR=valor (sin CRLF ni comentarios) y en el log solo
+#     se escriben NOMBRES de variables, nunca valores.
+if [ -n "${HR_KEY_VAULT:-}" ]; then
+  # shellcheck source=tf_azure_blob.sh
+  . "$(dirname "${BASH_SOURCE[0]}")/tf_azure_blob.sh"
+  ENV_LOCAL="$(dirname "${BASH_SOURCE[0]}")/../.env"
+  ENV_KV="$(mktemp)"
+  chmod 600 "$ENV_KV"
+  variables_env() {
+    tr -d '\r' < "$1" | { grep -E '^(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' || true; } | LC_ALL=C sort
+  }
+  log "[env] Comparando infrastructure/.env con Key Vault $HR_KEY_VAULT..."
+  if [ ! -f "$ENV_LOCAL" ]; then
+    log "[AVISO] No existe $ENV_LOCAL: no se pudo comparar con Key Vault."
+  elif ! kv_get_secret "$HR_KEY_VAULT" "${HR_ENV_SECRET:-healthradar-env}" > "$ENV_KV"; then
+    log "[AVISO] No se pudo leer el .env de Key Vault $HR_KEY_VAULT (¿rol Key Vault Secrets User de la VM?)."
+  else
+    DISTINTAS="$(LC_ALL=C comm -3 <(variables_env "$ENV_LOCAL") <(variables_env "$ENV_KV") \
+      | sed 's/^[[:space:]]*//; s/^export[[:space:]]*//; s/=.*//' | LC_ALL=C sort -u | tr '\n' ' ')"
+    if [ -z "$DISTINTAS" ]; then
+      log " -> OK: el .env de Key Vault coincide con el de esta VM."
+    else
+      log "[AVISO] El .env de Key Vault esta DESACTUALIZADO. Variables distintas: $DISTINTAS"
+      log "        Una restauracion usaria el .env viejo. Volver a subirlo: infrastructure/terraform/README.md, seccion 5, paso 3."
+    fi
+  fi
+  rm -f "$ENV_KV"
 fi
 
 # 7. Rotacion: conservar solo las N copias mas recientes por tipo.

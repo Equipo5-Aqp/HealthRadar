@@ -91,8 +91,8 @@ jobs:
     env:
       SCRIPTS_DIR: infrastructure/scripts-poc-arquitectura
       # Ejecutables (cron/cloud-init) + helper que se carga con source (sin bit ejecutable)
-      EJECUTABLES: backup_healthradar.sh bootstrap_vm.sh restore_healthradar.sh
-      HELPERS: azure_blob.sh
+      EJECUTABLES: backup_healthradar.sh tf_bootstrap_vm.sh tf_restore_healthradar.sh tf_preparar_host.sh
+      HELPERS: tf_azure_blob.sh
     steps:
       - uses: actions/checkout@v4
 
@@ -109,7 +109,7 @@ jobs:
           for SCRIPT in $EJECUTABLES; do
             test -x "$SCRIPT" || { echo "❌ $SCRIPT no tiene bit ejecutable"; exit 1; }
           done
-          # -x sigue los `source` de azure_blob.sh (ruta relativa a este directorio)
+          # -x sigue los `source` de tf_azure_blob.sh (ruta relativa a este directorio)
           shellcheck -x -S warning $EJECUTABLES $HELPERS
 
       - name: Sin secretos ni puertos en los scripts

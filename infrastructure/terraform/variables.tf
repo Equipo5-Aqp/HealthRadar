@@ -72,6 +72,17 @@ variable "vm_actual_principal_id" {
   default     = ""
 }
 
+variable "operadores_lectura" {
+  description = "Object IDs de las personas que pueden restaurar en un Ubuntu propio (tf_preparar_host.sh): solo leen el .env y bajan backups. az ad user show --id <correo> --query id -o tsv"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for id in var.operadores_lectura : can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", id))])
+    error_message = "Cada elemento de operadores_lectura debe ser un Object ID (GUID en minúsculas), no un correo."
+  }
+}
+
 variable "retencion_backups_dias" {
   description = "Días que se conserva cada backup en el Storage. Generoso a propósito: si la VM deja de respaldar, la política de ciclo de vida no debe borrar el último backup bueno."
   type        = number
