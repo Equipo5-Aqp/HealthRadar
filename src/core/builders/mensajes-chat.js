@@ -81,7 +81,7 @@ function construirPromptUsuario(p) {
     ' (' + aTexto(p.cantidadBoletines) + ' boletin(es) encontrados para ese periodo).' +
     '\n\nResumenes de los boletines epidemiologicos de ese periodo:\n' + aTexto(p.textoBoletines) +
     rag +
-    '\n\nDatos climaticos (promedio nacional) de las mismas semanas:\n' + aTexto(p.textoClima) +
+    '\n\nDatos climaticos de las mismas semanas:\n' + aTexto(p.textoClima) +
     '\n\n' + tendencia +
     'El analista pregunta lo siguiente:\n' + aTexto(p.pregunta)
   );

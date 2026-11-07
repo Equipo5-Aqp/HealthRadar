@@ -81,9 +81,14 @@ describe('construirPromptUsuario', () => {
     expect(construirPromptUsuario(base)).toBe(
       'PROMPT\n\nEl analista pregunto por el siguiente periodo: SE 9 de 2025 (1 boletin(es) encontrados para ese periodo).' +
       '\n\nResumenes de los boletines epidemiologicos de ese periodo:\nBOLETIN' +
-      '\n\nDatos climaticos (promedio nacional) de las mismas semanas:\nCLIMA' +
+      '\n\nDatos climaticos de las mismas semanas:\nCLIMA' +
       '\n\nEl analista pregunta lo siguiente:\n¿Cuántos casos?'
     );
+  });
+  test('el encabezado del clima no fija el ámbito: lo dice cada línea (nacional o de un departamento)', () => {
+    const p = construirPromptUsuario({ ...base, textoClima: 'SE 9-2025: temp. max promedio en Ica 28.1°C' });
+    expect(p).toContain('Datos climaticos de las mismas semanas:\nSE 9-2025: temp. max promedio en Ica 28.1°C');
+    expect(p).not.toContain('(promedio nacional)');
   });
   test('incluye la tendencia cuando existe', () => {
     const t = construirPromptUsuario({ ...base, textoTendencia: 'TEND' });
