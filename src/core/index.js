@@ -7,6 +7,7 @@
 const { detectarPeriodo, resolverVentana } = require('./parsers/periodo');
 const { detectarDepartamento } = require('./parsers/departamento');
 const { detectarEnfermedad } = require('./parsers/enfermedad');
+const { esSeguimiento, detectarPeriodoConHistorial, detectarDepartamentoConHistorial, detectarEnfermedadConHistorial } = require('./parsers/seguimiento');
 const { extraerNivelRiesgo } = require('./parsers/riesgo');
 const { extraerRespuestaLlm } = require('./parsers/respuesta-llm');
 const { extraerLinksBoletines } = require('./parsers/boletines-dge');
@@ -63,6 +64,10 @@ module.exports = {
   resolverVentana,
   detectarDepartamento,
   detectarEnfermedad,
+  esSeguimiento,
+  detectarPeriodoConHistorial,
+  detectarDepartamentoConHistorial,
+  detectarEnfermedadConHistorial,
   extraerNivelRiesgo,
   extraerLinksBoletines,
   extraerRespuestaLlm,

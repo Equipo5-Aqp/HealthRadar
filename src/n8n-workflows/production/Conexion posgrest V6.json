@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { detectarPeriodo } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nreturn [{ json: detectarPeriodo(pregunta) }];"
+        "jsCode": "const { detectarPeriodoConHistorial } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\n// Preguntas anteriores de la sesion (la mas reciente primero), leidas junto con la busqueda en cache\nlet previas = []; try { previas = $('Buscar en cache (Postgres)').first().json.preguntas_previas || []; } catch (e) {}\n// Seguimiento sin periodo (\"¿y en Piura?\"): toma el de la pregunta anterior\nreturn [{ json: detectarPeriodoConHistorial(pregunta, previas) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -101,7 +101,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { filtrarClima, detectarDepartamento } = require('@healthradar/core');\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\n// Si la pregunta nombra un departamento, solo su clima (sin departamento: los 25, como antes)\nconst { codigo_departamento } = detectarDepartamento($('Webhook').first().json.body.pregunta || '');\nconst clima = $('Get row(s)').all().map(i => i.json);\nreturn filtrarClima(periodo, clima, codigo_departamento).map(c => ({ json: c }));"
+        "jsCode": "const { filtrarClima, detectarDepartamentoConHistorial } = require('@healthradar/core');\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\n// Si la pregunta nombra un departamento, solo su clima (sin departamento: los 25, como antes)\n// Preguntas anteriores de la sesion (la mas reciente primero), leidas junto con la busqueda en cache\nlet previas = []; try { previas = $('Buscar en cache (Postgres)').first().json.preguntas_previas || []; } catch (e) {}\nconst { codigo_departamento } = detectarDepartamentoConHistorial($('Webhook').first().json.body.pregunta || '', previas);\nconst clima = $('Get row(s)').all().map(i => i.json);\nreturn filtrarClima(periodo, clima, codigo_departamento).map(c => ({ json: c }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -114,7 +114,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { construirContextoPrompt, armarTextoTendenciaBoletines, detectarDepartamento } = require('@healthradar/core');\nconst boletines = $('Filtrar boletines del periodo').all().map(i => i.json).filter(b => !b._sin_boletines);\nconst clima = $('Filtrar clima del periodo').all().map(i => i.json);\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nlet textoTendencia = '';\ntry { textoTendencia = $('Armar texto de tendencia').first().json.texto_tendencia || ''; } catch(e) {}\nif (!textoTendencia) {\n  try {\n    const todos = $('Get row(s)1').all().map(i => i.json);\n    const enfermedad = $('Detectar enfermedad en la pregunta').first().json;\n    textoTendencia = armarTextoTendenciaBoletines(todos, periodo, enfermedad);\n  } catch(e) {}\n}\n// Departamento de la pregunta: el texto de clima dice \"en Ica\" en vez de \"nacional\"\nconst departamento = detectarDepartamento($('Webhook').first().json.body.pregunta || '');\nreturn [{ json: construirContextoPrompt(boletines, clima, periodo, textoTendencia, departamento) }];"
+        "jsCode": "const { construirContextoPrompt, armarTextoTendenciaBoletines, detectarDepartamentoConHistorial } = require('@healthradar/core');\nconst boletines = $('Filtrar boletines del periodo').all().map(i => i.json).filter(b => !b._sin_boletines);\nconst clima = $('Filtrar clima del periodo').all().map(i => i.json);\nconst periodo = $('Resolver ventana por defecto (si aplica)').first().json;\nlet textoTendencia = '';\ntry { textoTendencia = $('Armar texto de tendencia').first().json.texto_tendencia || ''; } catch(e) {}\nif (!textoTendencia) {\n  try {\n    const todos = $('Get row(s)1').all().map(i => i.json);\n    const enfermedad = $('Detectar enfermedad en la pregunta').first().json;\n    textoTendencia = armarTextoTendenciaBoletines(todos, periodo, enfermedad);\n  } catch(e) {}\n}\n// Departamento de la pregunta: el texto de clima dice \"en Ica\" en vez de \"nacional\"\n// Preguntas anteriores de la sesion (la mas reciente primero), leidas junto con la busqueda en cache\nlet previas = []; try { previas = $('Buscar en cache (Postgres)').first().json.preguntas_previas || []; } catch (e) {}\nconst departamento = detectarDepartamentoConHistorial($('Webhook').first().json.body.pregunta || '', previas);\nreturn [{ json: construirContextoPrompt(boletines, clima, periodo, textoTendencia, departamento) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -175,7 +175,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { detectarDepartamento } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nreturn [{ json: detectarDepartamento(pregunta) }];"
+        "jsCode": "const { detectarDepartamentoConHistorial } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\n// Preguntas anteriores de la sesion (la mas reciente primero), leidas junto con la busqueda en cache\nlet previas = []; try { previas = $('Buscar en cache (Postgres)').first().json.preguntas_previas || []; } catch (e) {}\nreturn [{ json: detectarDepartamentoConHistorial(pregunta, previas) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -246,7 +246,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { detectarEnfermedad } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\nreturn [{ json: detectarEnfermedad(pregunta) }];"
+        "jsCode": "const { detectarEnfermedadConHistorial } = require('@healthradar/core');\nconst pregunta = $('Webhook').first().json.body.pregunta || '';\n// Preguntas anteriores de la sesion (la mas reciente primero), leidas junto con la busqueda en cache\nlet previas = []; try { previas = $('Buscar en cache (Postgres)').first().json.preguntas_previas || []; } catch (e) {}\nreturn [{ json: detectarEnfermedadConHistorial(pregunta, previas) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -980,7 +980,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- HU3 (caché): busca la respuesta guardada. Siempre devuelve UNA fila.\n--   $1 clave (la arma el core) · $2 ¿la pregunta es cacheable? · $3 session_id\n-- version_datos = fn_cache_version_datos() (migración 011): huella de boletines procesados + clima.\n-- Solo sirve si la sesión no tiene historial (los seguimientos dependen de lo conversado).\nWITH v AS (\n  SELECT fn_cache_version_datos() AS version\n),\nsin_historial AS (\n  SELECT NOT EXISTS (SELECT 1 FROM chat_mensaje m WHERE m.session_id = $3::text) AS ok\n),\nacierto AS (\n  UPDATE cache_consulta c\n     SET aciertos = c.aciertos + 1, ultimo_acierto = now()\n    FROM v, sin_historial h\n   WHERE $2::boolean AND h.ok\n     AND c.clave = $1::text\n     AND c.version_datos = v.version\n     AND c.expira_en > now()\n  RETURNING c.respuesta, c.creado_en\n)\nSELECT (SELECT version FROM v)                                  AS version_datos,\n       ($2::boolean AND (SELECT ok FROM sin_historial))          AS consultada,\n       EXISTS (SELECT 1 FROM acierto)                            AS hit,\n       (SELECT respuesta  FROM acierto)                          AS respuesta,\n       (SELECT creado_en  FROM acierto)                          AS creado_en;",
+        "query": "-- HU3 (caché): busca la respuesta guardada. Siempre devuelve UNA fila.\n--   $1 clave (la arma el core) · $2 ¿la pregunta es cacheable? · $3 session_id\n-- version_datos = fn_cache_version_datos() (migración 011): huella de boletines procesados + clima.\n-- Solo sirve si la sesión no tiene historial (los seguimientos dependen de lo conversado).\nWITH v AS (\n  SELECT fn_cache_version_datos() AS version\n),\nsin_historial AS (\n  SELECT NOT EXISTS (SELECT 1 FROM chat_mensaje m WHERE m.session_id = $3::text) AS ok\n),\nprevias AS (\n  -- Ultimas preguntas del usuario en la sesion (la mas reciente primero): los seguimientos (\"¿y en Piura?\")\n  -- heredan de ellas el periodo, el departamento y la enfermedad que no repiten.\n  SELECT COALESCE(json_agg(t.contenido ORDER BY t.id_mensaje DESC), '[]'::json) AS lista\n    FROM (SELECT m.id_mensaje, m.contenido\n            FROM chat_mensaje m\n           WHERE m.session_id = $3::text AND m.rol = 'user'\n           ORDER BY m.id_mensaje DESC\n           LIMIT 4) t\n),\nacierto AS (\n  UPDATE cache_consulta c\n     SET aciertos = c.aciertos + 1, ultimo_acierto = now()\n    FROM v, sin_historial h\n   WHERE $2::boolean AND h.ok\n     AND c.clave = $1::text\n     AND c.version_datos = v.version\n     AND c.expira_en > now()\n  RETURNING c.respuesta, c.creado_en\n)\nSELECT (SELECT version FROM v)                                  AS version_datos,\n       ($2::boolean AND (SELECT ok FROM sin_historial))          AS consultada,\n       EXISTS (SELECT 1 FROM acierto)                            AS hit,\n       (SELECT respuesta  FROM acierto)                          AS respuesta,\n       (SELECT creado_en  FROM acierto)                          AS creado_en,\n       (SELECT lista FROM previas)                               AS preguntas_previas;",
         "options": {
           "queryReplacement": "={{ [ $json.clave, $json.consultar, $json.session_id ] }}"
         }

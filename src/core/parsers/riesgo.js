@@ -4,11 +4,15 @@
 // al final de su respuesta, lo separa a un campo estructurado, y limpia
 // esa línea del texto que ve el analista.
 //
+// Tolera las variantes que el modelo escribe mal: [NIVEL_RISK: medio], [NIVEL DE RIESGO: Alto],
+// [NIVEL-RIESGO = bajo] y el marcador sin el corchete de cierre. Antes esas variantes no se
+// reconocían: el marcador quedaba visible en el texto y la respuesta salía sin nivel de riesgo.
+//
 // Extraído del nodo "Extraer y limpiar nivel de riesgo" del workflow NLQ.
 
 'use strict';
 
-const REGEX_MARCADOR = /\[NIVEL_RIESGO:\s*(alto|medio|bajo)\]/i;
+const REGEX_MARCADOR = /\[\s*NIVEL[\s_-]*(?:DE[\s_-]*)?RI(?:ESGO|SK)\s*[:=]\s*(alto|medio|bajo)\b\s*\]?/i;
 
 /**
  * Extrae nivel de riesgo del output del AI Agent y limpia el texto.

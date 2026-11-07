@@ -40,4 +40,48 @@ describe('extraerNivelRiesgo', () => {
     const r = extraerNivelRiesgo(null);
     expect(r.nivel_riesgo).toBeNull();
   });
+  describe('variantes mal escritas por el modelo', () => {
+    test.each([
+      ['[NIVEL_RISK: medio]', 'medio'],
+      ['[NIVEL_RISK: medio', 'medio'],
+      ['[NIVEL DE RIESGO: Alto]', 'alto'],
+      ['[NIVEL_DE_RIESGO: bajo]', 'bajo'],
+      ['[nivel-riesgo = BAJO]', 'bajo'],
+      ['[ NIVEL_RIESGO : alto ]', 'alto'],
+    ])('%s -> %s y sale del texto', (marcador, nivel) => {
+      const r = extraerNivelRiesgo({ output: `Respuesta.\n\n${marcador}` });
+      expect(r.nivel_riesgo).toBe(nivel);
+      expect(r.output).toBe('Respuesta.');
+    });
+
+    test('el caso del chat: marcador RISK al final de un párrafo largo', () => {
+      const texto = 'La suma de los casos semanales es **17,597 casos** (desde 249 hasta 37).';
+      const r = extraerNivelRiesgo({ output: `${texto}\n\n[NIVEL_RISK: medio]` });
+      expect(r.output).toBe(texto);
+      expect(r.nivel_riesgo).toBe('medio');
+    });
+
+    test('marcador en medio del texto: se quita y el resto se conserva', () => {
+      const r = extraerNivelRiesgo({ output: 'Antes.\n[NIVEL_RISK: bajo]\nDespués.' });
+      expect(r.nivel_riesgo).toBe('bajo');
+      expect(r.output).not.toMatch(/NIVEL/i);
+      expect(r.output).toContain('Antes.');
+      expect(r.output).toContain('Después.');
+    });
+
+    test('no toca texto normal que nombra el nivel de riesgo', () => {
+      const texto = 'El nivel de riesgo es medio según el boletín.';
+      const r = extraerNivelRiesgo({ output: texto });
+      expect(r.nivel_riesgo).toBeNull();
+      expect(r.output).toBe(texto);
+    });
+
+    test('un nivel desconocido no se reconoce (se deja el texto como está)', () => {
+      for (const t of ['[NIVEL_RIESGO: moderado]', '[NIVEL_RISK: medioambiente]']) {
+        const r = extraerNivelRiesgo({ output: `Texto.\n${t}` });
+        expect(r.nivel_riesgo).toBeNull();
+        expect(r.output).toBe(`Texto.\n${t}`);
+      }
+    });
+  });
 });
