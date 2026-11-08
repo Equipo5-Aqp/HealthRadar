@@ -1,5 +1,5 @@
 # Copia off-site de los backups semanales (HU-303). backup_healthradar.sh sube aquí
-# el dump de PostgreSQL y el export de n8n; restore_healthradar.sh descarga el último.
+# el dump de PostgreSQL y el export de n8n; tf_restore_healthradar.sh descarga el último.
 
 resource "azurerm_storage_account" "backups" {
   name                            = local.storage_account_name

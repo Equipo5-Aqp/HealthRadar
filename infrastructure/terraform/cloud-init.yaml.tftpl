@@ -1,6 +1,6 @@
 #cloud-config
 # ADR-015: arranque de la VM de recuperación. Delgado a propósito: la lógica vive en
-# infrastructure/scripts-poc-arquitectura/bootstrap_vm.sh (versionada y con shellcheck en CI).
+# infrastructure/scripts-poc-arquitectura/tf_bootstrap_vm.sh (versionada y con shellcheck en CI).
 # Log completo en la VM: /var/log/healthradar-bootstrap.log
 
 package_update: true
@@ -24,5 +24,5 @@ runcmd:
     HR_ENV_SECRET="${env_secret_name}" \
     BACKUP_STORAGE_ACCOUNT="${storage_account}" \
     BACKUP_STORAGE_CONTAINER="${storage_container}" \
-      bash "$REPO_DIR/infrastructure/scripts-poc-arquitectura/bootstrap_vm.sh"
+      bash "$REPO_DIR/infrastructure/scripts-poc-arquitectura/tf_bootstrap_vm.sh"
     echo "[cloud-init] $(date '+%Y-%m-%d %H:%M:%S') fin"

@@ -74,8 +74,8 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # 3. Clonar el repositorio
-git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git
-cd Celula5_HealthRadar/infrastructure
+git clone https://github.com/Equipo5-Aqp/HealthRadar.git
+cd HealthRadar/infrastructure
 
 # 4. Configurar variables de entorno
 cp .env.example .env

@@ -13,8 +13,8 @@
     Retira la VM de recuperacion (fin de un simulacro). No toca backups ni secretos.
 
 .EXAMPLE
-    .\recuperar_healthradar.ps1
-    .\recuperar_healthradar.ps1 -Destruir
+    .\tf_recuperar_healthradar.ps1
+    .\tf_recuperar_healthradar.ps1 -Destruir
 #>
 
 [CmdletBinding()]
@@ -92,4 +92,4 @@ Write-Host ""
 Write-Host "Si esta VM queda como PRODUCCION:" -ForegroundColor Yellow
 Write-Host "  1. Poner crear_vm = true en terraform.tfvars (un apply sin -var la borraria)."
 Write-Host "  2. Actualizar el secreto AZURE_VM_HOST de GitHub con $ip (Settings > Secrets > Actions)."
-Write-Host "Si es un SIMULACRO, al terminar:  .\recuperar_healthradar.ps1 -Destruir"
+Write-Host "Si es un SIMULACRO, al terminar:  .\tf_recuperar_healthradar.ps1 -Destruir"

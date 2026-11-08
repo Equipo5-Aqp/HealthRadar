@@ -6,6 +6,10 @@ sufijo_unico    = "c5aqp"                                # 2-8 minúsculas/núme
 # Object ID de la identidad de la VM actual (portal → VM → Seguridad → Identidad).
 vm_actual_principal_id = ""
 
+# Personas que pueden restaurar en un Ubuntu propio (solo lectura del .env y los backups).
+# Object ID de cada una: az ad user show --id <correo@usmp.pe> --query id -o tsv
+operadores_lectura = []
+
 # false = contingencia (solo Storage + Key Vault). true = VM de recuperación.
 # En una recuperación real dejarlo en true aquí: un `terraform apply` sin -var lo respeta.
 crear_vm = false

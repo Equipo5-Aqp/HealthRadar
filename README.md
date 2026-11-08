@@ -103,8 +103,8 @@ El navegador nunca llama a n8n, PostgreSQL ni proveedores de IA. Todas las llama
 Requisitos: Docker Desktop activo, Git y Bash (Git Bash o WSL) para ejecutar el migrador.
 
 ```bash
-git clone https://github.com/Roberto-Bautista/Celula5_HealthRadar.git
-cd Celula5_HealthRadar/infrastructure
+git clone https://github.com/Equipo5-Aqp/HealthRadar.git
+cd HealthRadar/infrastructure
 
 cp .env.example .env
 # Editar .env con credenciales propias
