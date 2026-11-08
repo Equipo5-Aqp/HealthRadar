@@ -73,10 +73,11 @@ function filtrarBoletines(periodo, boletines) {
     });
 
     if (filtradas.length === 0) {
-      // Rango de años pedido por el analista ("2023 y 2024"): se trata como un periodo explícito.
+      // Rango de años pedido por el analista ("2023 y 2024") o ventana móvil relativa a hoy ("el último
+      // año"): se trata como un periodo explícito.
       // "Usar todos los boletines" es solo para la ventana por defecto; aquí traería boletines de
       // otros años y el modelo los presentaría como si fueran del periodo pedido.
-      if (periodo.rango_anios === true) {
+      if (periodo.rango_anios === true || periodo.ventana_relativa === true) {
         return anioHasta < 2025
           ? [{ _sin_boletines: true }]
           : [{ _sin_boletines: true, motivo: 'sin_boletin_en_periodo' }];

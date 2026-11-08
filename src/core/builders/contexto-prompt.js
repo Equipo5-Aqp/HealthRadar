@@ -18,16 +18,32 @@ function agregarNumero(arr, v) {
 // Hasta 2 años de semanas (2 × 53) se muestra cada semana; con más se resume por año.
 const MAX_SEMANAS_CLIMA_DETALLE = 106;
 
+/**
+ * Nombre para el texto del prompt a partir de lo que devuelve detectarDepartamento
+ * ({ departamento_detectado: 'san martin', ... }) o de un nombre suelto. null si no hay departamento.
+ * 'san martin' → 'San Martin', 'madre de dios' → 'Madre de Dios'.
+ */
+function etiquetaDepartamento(departamento) {
+  const nombre = typeof departamento === 'string'
+    ? departamento
+    : (departamento && departamento.departamento_detectado);
+  if (typeof nombre !== 'string' || nombre.trim() === '') return null;
+  return nombre.trim().split(/\s+/)
+    .map(p => (p === 'de' ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .join(' ');
+}
+
 /** Promedio numérico de un arreglo de números (null si está vacío). */
 function mediaNumerica(arr) {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 }
 
 /**
- * Una línea por año: promedio de los promedios semanales nacionales (ignora las semanas sin dato).
+ * Una línea por año: promedio de los promedios semanales (ignora las semanas sin dato).
  * @param {Array<{anio:number|string, temp_max:number[], temp_min:number[], precipitacion:number[]}>} semanas - ordenadas
+ * @param {string} ambito - 'nacional' o 'en <Departamento>'
  */
-function climaPorAnio(semanas) {
+function climaPorAnio(semanas, ambito) {
   const porAnio = new Map();
   for (const s of semanas) {
     const a = porAnio.get(s.anio) || { tmax: [], tmin: [], prec: [], semanas: 0 };
@@ -41,7 +57,7 @@ function climaPorAnio(semanas) {
   const valor = (v, unidad) => (v === null ? 'sin dato' : `${v.toFixed(1)}${unidad}`);
   let texto = '';
   for (const [anio, a] of porAnio) {
-    texto += `Anio ${anio} (promedio de ${a.semanas} semanas): temp. max promedio nacional ${valor(mediaNumerica(a.tmax), '°C')}, temp. min promedio ${valor(mediaNumerica(a.tmin), '°C')}, precipitacion semanal promedio ${valor(mediaNumerica(a.prec), 'mm')}\n`;
+    texto += `Anio ${anio} (promedio de ${a.semanas} semanas): temp. max promedio ${ambito} ${valor(mediaNumerica(a.tmax), '°C')}, temp. min promedio ${valor(mediaNumerica(a.tmin), '°C')}, precipitacion semanal promedio ${valor(mediaNumerica(a.prec), 'mm')}\n`;
   }
   return texto;
 }
@@ -64,10 +80,13 @@ function avisoSinBoletines(criterio) {
  * @param {Array<{anio: number, semana_epidemiologica: number, temp_max_promedio, temp_min_promedio, precipitacion_total}>} clima
  * @param {object} periodo - Output de resolverVentana (con criterio_usado)
  * @param {string} textoTendencia - Texto de tendencia ya armado (puede ser '')
+ * @param {{departamento_detectado: string|null}|string|null} [departamento] - Lo que devuelve
+ *   detectarDepartamento. Si trae departamento, el texto de clima dice "en <Departamento>" en vez de
+ *   "nacional"; las filas de `clima` ya deben venir filtradas a ese departamento (filtrarClima).
  * @returns {{ texto_boletines: string, texto_tendencia: string, texto_clima: string,
  *             criterio_periodo: string, cantidad_boletines: number }}
  */
-function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
+function construirContextoPrompt(boletines, clima, periodo, textoTendencia, departamento) {
   // Ordenar boletines cronológicamente
   const boletinesOrdenados = [...(boletines || [])].sort((a, b) => {
     if (a.anio !== b.anio) return a.anio - b.anio;
@@ -85,7 +104,10 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
     textoBoletines += `\n--- Boletin SE ${b.semana_epidemiologica}-${b.anio} ---\n${quitarMarcadorCifras(b.resumen)}\n`;
   }
 
-  // Promedio nacional de clima por semana (agrupando los 25 departamentos).
+  // Sin departamento: promedio nacional por semana (agrupando los 25 departamentos).
+  // Con departamento: las filas ya vienen de uno solo, así que el "promedio" es el valor de ese departamento.
+  const etiqueta = etiquetaDepartamento(departamento);
+  const ambito = etiqueta ? `en ${etiqueta}` : 'nacional';
   // Postgres entrega NUMERIC como texto ('23.10') y las semanas sin dato como null:
   // se convierte a número y se ignoran los vacíos. Sin esto el promedio daba NaN
   // (texto concatenado) o quedaba subestimado (null contado como 0).
@@ -115,10 +137,10 @@ function construirContextoPrompt(boletines, clima, periodo, textoTendencia) {
   if (semanasClima.length > MAX_SEMANAS_CLIMA_DETALLE) {
     // Periodo de más de 2 años (p. ej. "de 2015 a 2024"): una línea por año en vez de una por semana,
     // para que el mensaje al modelo no crezca sin límite.
-    textoClima = climaPorAnio(semanasClima);
+    textoClima = climaPorAnio(semanasClima, ambito);
   } else {
     for (const s of semanasClima) {
-      textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio nacional ${valor(promedio(s.temp_max), '°C')}, temp. min promedio ${valor(promedio(s.temp_min), '°C')}, precipitacion promedio ${valor(promedio(s.precipitacion), 'mm')}\n`;
+      textoClima += `SE ${s.semana}-${s.anio}: temp. max promedio ${ambito} ${valor(promedio(s.temp_max), '°C')}, temp. min promedio ${valor(promedio(s.temp_min), '°C')}, precipitacion promedio ${valor(promedio(s.precipitacion), 'mm')}\n`;
     }
   }
 

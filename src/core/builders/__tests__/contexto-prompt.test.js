@@ -92,4 +92,71 @@ describe('construirContextoPrompt', () => {
       expect(r.texto_boletines).not.toContain('CIFRAS');
     });
   });
+
+  describe('clima con departamento', () => {
+    const periodo = { criterio_usado: 'x' };
+    const climaIca = [
+      { anio: 2026, semana_epidemiologica: 21, temp_max_promedio: '28.1', temp_min_promedio: '17.0', precipitacion_total: '0.0' },
+      { anio: 2026, semana_epidemiologica: 22, temp_max_promedio: '29.4', temp_min_promedio: '17.8', precipitacion_total: '0.2' },
+    ];
+
+    test('con departamento detectado el texto dice "en Ica" y no "nacional"', () => {
+      const r = construirContextoPrompt([], climaIca, periodo, '', { departamento_detectado: 'ica', codigo_departamento: '11' });
+      expect(r.texto_clima).toBe(
+        'SE 21-2026: temp. max promedio en Ica 28.1°C, temp. min promedio 17.0°C, precipitacion promedio 0.0mm\n' +
+        'SE 22-2026: temp. max promedio en Ica 29.4°C, temp. min promedio 17.8°C, precipitacion promedio 0.2mm'
+      );
+      expect(r.texto_clima).not.toContain('nacional');
+    });
+
+    test('nombres compuestos: San Martin, La Libertad, Madre de Dios', () => {
+      const texto = (nombre) => construirContextoPrompt([], climaIca, periodo, '', { departamento_detectado: nombre }).texto_clima;
+      expect(texto('san martin')).toContain('promedio en San Martin ');
+      expect(texto('la libertad')).toContain('promedio en La Libertad ');
+      expect(texto('madre de dios')).toContain('promedio en Madre de Dios ');
+    });
+
+    test('acepta el nombre suelto en vez del objeto de detectarDepartamento', () => {
+      const r = construirContextoPrompt([], climaIca, periodo, '', 'piura');
+      expect(r.texto_clima).toContain('promedio en Piura 28.1°C');
+    });
+
+    test('sin departamento (undefined, null, vacío) sigue diciendo "nacional", igual que antes', () => {
+      const base = construirContextoPrompt([], climaIca, periodo, '').texto_clima;
+      expect(base).toContain('promedio nacional 28.1°C');
+      for (const sinDepto of [undefined, null, '', {}, { departamento_detectado: null, codigo_departamento: null }]) {
+        expect(construirContextoPrompt([], climaIca, periodo, '', sinDepto).texto_clima).toBe(base);
+      }
+    });
+
+    test('periodo de más de 2 años: la línea por año también dice "en Ica"', () => {
+      const clima = [];
+      for (let anio = 2020; anio <= 2023; anio++) {
+        for (let sem = 1; sem <= 52; sem++) {
+          clima.push({ anio, semana_epidemiologica: sem, temp_max_promedio: '25.0', temp_min_promedio: '15.0', precipitacion_total: '1.0' });
+        }
+      }
+      const r = construirContextoPrompt([], clima, periodo, '', { departamento_detectado: 'ica' });
+      expect(r.texto_clima).toContain('Anio 2020 (promedio de 52 semanas): temp. max promedio en Ica 25.0°C');
+      expect(r.texto_clima).not.toContain('nacional');
+
+      const nacional = construirContextoPrompt([], clima, periodo, '');
+      expect(nacional.texto_clima).toContain('temp. max promedio nacional 25.0°C');
+    });
+
+    test('integración: filtrarClima + construirContextoPrompt no mezcla departamentos', () => {
+      const { filtrarClima } = require('../../filters/clima');
+      const filas = [
+        { id_departamento: '11', anio: 2026, semana_epidemiologica: 21, temp_max_promedio: '28.0', temp_min_promedio: '17.0', precipitacion_total: '0.0' },
+        { id_departamento: '15', anio: 2026, semana_epidemiologica: 21, temp_max_promedio: '20.0', temp_min_promedio: '15.0', precipitacion_total: '2.0' },
+        { id_departamento: '20', anio: 2026, semana_epidemiologica: 21, temp_max_promedio: '32.0', temp_min_promedio: '21.0', precipitacion_total: '4.0' },
+      ];
+      const ventana = { anio: 2026, semana_desde: 21, semana_hasta: 21 };
+      const ica = construirContextoPrompt([], filtrarClima(ventana, filas, '11'), periodo, '', { departamento_detectado: 'ica' });
+      expect(ica.texto_clima).toBe('SE 21-2026: temp. max promedio en Ica 28.0°C, temp. min promedio 17.0°C, precipitacion promedio 0.0mm');
+
+      const todos = construirContextoPrompt([], filtrarClima(ventana, filas), periodo, '');
+      expect(todos.texto_clima).toContain('temp. max promedio nacional 26.7°C');
+    });
+  });
 });
