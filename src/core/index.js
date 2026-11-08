@@ -41,8 +41,11 @@ const { extraerCifras, quitarMarcadorCifras } = require('./parsers/cifras-boleti
 const { verificarCifras } = require('./validators/cifras-respuesta');
 const { verificarCifrasContraFuente } = require('./validators/cifras-en-fuente');
 const { validarFiltrosPanorama, extraerAlertas, construirPanorama } = require('./builders/panorama');
+const { calcularRiesgoPanorama } = require('./builders/riesgo-panorama');
+const { construirFrescura } = require('./builders/frescura');
 const { extraerCifrasTablas, bloqueCifrasVerificadas } = require('./parsers/tablas-boletin');
 const { validarFiltrosConsulta } = require('./validators/filtros-consulta');
+const cacheConsulta = require('./builders/cache-consulta');
 
 // Presentación — constantes compartidas con el frontend
 const presentacion = {
@@ -117,9 +120,17 @@ module.exports = {
   validarFiltrosConsulta,
   validarFiltrosPanorama,
 
+  // Caché de preguntas frecuentes (HU3)
+  prepararBusquedaCache: cacheConsulta.prepararBusquedaCache,
+  prepararGuardadoCache: cacheConsulta.prepararGuardadoCache,
+  construirRespuestaCache: cacheConsulta.construirRespuestaCache,
+  normalizarPreguntaCache: cacheConsulta.normalizarPregunta,
+
   // Builders de panorama (mf-dashboard)
   extraerAlertas,
   construirPanorama,
+  calcularRiesgoPanorama,
+  construirFrescura,
 
   // Presentación
   presentacion,

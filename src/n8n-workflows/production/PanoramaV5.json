@@ -1,5 +1,5 @@
 {
-  "name": "Panorama HealthRadarV4",
+  "name": "Panorama HealthRadar V5",
   "nodes": [
     {
       "parameters": {
@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -1000,
-        0
+        0,
+        272
       ],
-      "id": "5811218c-617b-4448-984c-b0fb1a67a904",
+      "id": "3833b759-5343-4a46-bda8-86410849273f",
       "name": "Webhook",
       "webhookId": "d42291ea-98f1-4e55-9f5e-701b3460a0da"
     },
@@ -25,10 +25,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -780,
-        0
+        224,
+        272
       ],
-      "id": "f8c55f8c-283e-4a17-981b-dc94d8f58cb5",
+      "id": "79d907d7-93a3-4f43-9f37-892840f1d4ba",
       "name": "Validar entrada"
     },
     {
@@ -59,10 +59,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -560,
-        0
+        448,
+        272
       ],
-      "id": "07a359f3-598d-4aa7-8e42-13c2c44bf71c",
+      "id": "d385cf5e-21e0-408f-9b76-b56a09130505",
       "name": "Entrada valida?"
     },
     {
@@ -76,25 +76,25 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        -340,
-        160
+        672,
+        432
       ],
-      "id": "22c5621e-0c83-4500-86d6-f4073d4cf08a",
+      "id": "5ed74d2e-f997-450c-a44c-346273f2cd18",
       "name": "Responder 400"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  anio,\n  semana_epidemiologica AS semana,\n  fecha_publicacion::text AS fecha_publicacion,\n  resumen\nFROM boletin_descubierto\nWHERE procesado = TRUE\n  AND resumen <> ''\nORDER BY anio DESC, semana_epidemiologica DESC\nLIMIT 30;",
+        "query": "SELECT\n  anio,\n  semana_epidemiologica AS semana,\n  fecha_publicacion::text AS fecha_publicacion,\n  resumen\nFROM boletin_descubierto\nWHERE procesado = TRUE\n  AND resumen <> ''\nORDER BY anio DESC, semana_epidemiologica DESC\nLIMIT 150;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        -340,
-        -120
+        672,
+        144
       ],
-      "id": "2ad587ea-1bec-4139-b622-d9424bd4bfee",
+      "id": "062459e2-79b8-4807-a0c6-f3d0c438c311",
       "name": "Boletines procesados",
       "alwaysOutputData": true,
       "credentials": {
@@ -113,10 +113,10 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.7,
       "position": [
-        -120,
-        -120
+        880,
+        144
       ],
-      "id": "3e4cf0c8-fdf4-452c-a102-f1e49c26e256",
+      "id": "dc9257a8-446c-4e72-bcbd-ea4577557981",
       "name": "Conteos",
       "alwaysOutputData": true,
       "credentials": {
@@ -128,18 +128,18 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sprint 3 (ADR-012): la logica vive en @healthradar/core (construirPanorama).\n// Las cifras salen del marcador [CIFRAS] que valida Fase B; aqui no se calcula nada.\nconst { construirPanorama } = require('@healthradar/core');\nconst filtros = $('Validar entrada').first().json.filtros;\nconst filas = $('Boletines procesados').all().map(i => i.json);\nconst conteos = $('Conteos').first().json;\nreturn [{ json: construirPanorama(filas, filtros, conteos) }];"
+        "jsCode": "const { construirPanorama, construirFrescura } = require('@healthradar/core');\nconst filtros = $('Validar entrada').first().json.filtros;\nconst filas = $('Boletines procesados').all().map(i => i.json);\nconst conteos = $('Conteos').first().json;\nconst r = construirPanorama(filas, filtros, conteos);\nif (r.ok) {\n  try {\n    const f = $('Frescura de datos').first().json || {};\n    r.frescura = construirFrescura({\n      boletin_procesado: filas.length ? filas[0] : null,\n      ultimo_descubierto: f.ultimo_descubierto,\n      pendientes: f.pendientes,\n      clima: f.clima,\n      cargas: f.cargas,\n    }, new Date());\n  } catch (e) { r.frescura = null; }\n}\nreturn [{ json: r }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
-        -120
+        1328,
+        144
       ],
-      "id": "9c6913be-cbea-423c-8285-5921315d5ad0",
+      "id": "6261d54f-530f-494c-8a5f-28cd0eb19d28",
       "name": "Armar panorama",
       "notesInFlow": true,
-      "notes": "Sprint 3: adaptador de @healthradar/core"
+      "notes": "Sprint 3: adaptador de @healthradar/core · Sprint 4: riesgo (HU2) y frescura (HU4)"
     },
     {
       "parameters": {
@@ -169,10 +169,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        320,
-        -120
+        1552,
+        144
       ],
-      "id": "8dd1b5cd-5ccb-4dcd-9a22-2ddbf42a263b",
+      "id": "7b8f50cf-69cd-4408-8a30-4f210668c640",
       "name": "Encontrado?"
     },
     {
@@ -184,10 +184,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        540,
-        -200
+        1760,
+        64
       ],
-      "id": "e26f7b97-6f1b-4bde-b5dd-7d6a18c58ac6",
+      "id": "f31ce4d9-e233-4cee-b558-327c70a9a0bc",
       "name": "Responder panorama"
     },
     {
@@ -201,26 +201,37 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        540,
-        -20
+        1760,
+        240
       ],
-      "id": "04857607-2852-4495-8cc5-ba0102b59802",
+      "id": "405c06d9-384d-4992-9249-54acb70afff4",
       "name": "Responder 404"
     },
     {
       "parameters": {
-        "content": "## Panorama (mf-dashboard)\nWebhook `POST /webhook/panorama` · body opcional `{anio, semana}` (sin body = boletin mas reciente con cifras).\nSolo LEE `boletin_descubierto`. Sin LLM: las cifras vienen del marcador `[CIFRAS]` de Fase B.\nLos resumenes anteriores a Fase B V7 no traen `[CIFRAS]`: el front lo avisa en pantalla.",
-        "height": 150,
-        "width": 420
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT row_to_json(t) FROM (\n     SELECT anio, semana_epidemiologica AS semana, fecha_publicacion::text AS fecha_publicacion\n     FROM boletin_descubierto\n     ORDER BY anio DESC, semana_epidemiologica DESC\n     LIMIT 1) t) AS ultimo_descubierto,\n  (SELECT COUNT(*)::int FROM boletin_descubierto WHERE procesado = FALSE) AS pendientes,\n  (SELECT row_to_json(t) FROM (\n     SELECT p.anio, p.semana\n     FROM dato_climatico d\n     JOIN periodo_epidemiologico p ON p.id_periodo = d.id_periodo\n     ORDER BY p.anio DESC, p.semana DESC\n     LIMIT 1) t) AS clima,\n  (SELECT COALESCE(json_agg(t), '[]'::json) FROM (\n     SELECT dataset, MAX(anio) AS hasta_anio, MAX(fecha_ejecucion)::text AS ultima_carga\n     FROM control_carga\n     WHERE estado = 'COMPLETADO' AND anio IS NOT NULL\n     GROUP BY dataset\n     ORDER BY dataset) t) AS cargas;",
+        "options": {}
       },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
       "position": [
-        -1000,
-        -260
+        1104,
+        144
       ],
-      "id": "7d841a04-3c27-4b1f-98b3-8841c69e418a",
-      "name": "Nota"
+      "id": "f1844aab-33fa-474c-a5bf-b1ee8de65358",
+      "name": "Frescura de datos",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "36eYEDLhmN6EB3Jy",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Sprint 4 (HU4): hasta cuando llegan los datos. Si falla, el panorama sale igual (sin frescura)"
     }
   ],
   "pinData": {},
@@ -280,7 +291,7 @@
       "main": [
         [
           {
-            "node": "Armar panorama",
+            "node": "Frescura de datos",
             "type": "main",
             "index": 0
           }
@@ -315,6 +326,17 @@
           }
         ]
       ]
+    },
+    "Frescura de datos": {
+      "main": [
+        [
+          {
+            "node": "Armar panorama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -323,7 +345,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "877ded3b-5acf-400c-87b7-b88040121176",
+  "versionId": "382ed0d2-c15b-4a07-81c4-44a737f30af1",
   "meta": {
     "instanceId": "2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683"
   },

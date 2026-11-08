@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { consultar as consultarAdapter, ErrorConsulta } from '../infrastructure/n8nConsultaAdapter'
 import { nuevoSessionId } from '../lib/formato'
 
-// Mensajes del chat: { id, rol:'user'|'bot'|'error', texto, modelo, nivelRiesgo, advertencia, tipoError }
+// Mensajes del chat: { id, rol:'user'|'bot'|'error', texto, modelo, nivelRiesgo, advertencia, desdeCache, cacheEdadMin, tipoError }
 export function useConsultaNLQ() {
   const [pregunta, setPregunta] = useState('')
   const [mensajes, setMensajes] = useState([])
@@ -32,6 +32,7 @@ export function useConsultaNLQ() {
       setMensajes((prev) => [...prev, {
         id: siguienteId(), rol: 'bot', texto: d.output,
         modelo: d.modelo_usado, nivelRiesgo: d.nivel_riesgo, advertencia: d.advertencia_cifras,
+        desdeCache: d.desde_cache, cacheEdadMin: d.cache_edad_minutos,
       }])
     } catch (err) {
       const tipo = err instanceof ErrorConsulta ? err.tipo : 'servidor'

@@ -1,6 +1,6 @@
 import TextoRespuesta from './TextoRespuesta'
 import RiskBadge from './RiskBadge'
-import { etiquetaModelo } from '../lib/formato'
+import { etiquetaModelo, textoEdadCache } from '../lib/formato'
 
 const TITULO_ERROR = {
   ia: 'Los modelos de IA no están disponibles',
@@ -21,12 +21,18 @@ export default function ChatMensaje({ m }) {
   }
 
   const modelo = etiquetaModelo(m.modelo)
+  const edadCache = m.desdeCache ? textoEdadCache(m.cacheEdadMin) : null
   return (
     <div className="msg-bot" id={`msg-${m.id}`}>
       {m.nivelRiesgo && <RiskBadge nivel={m.nivelRiesgo} />}
       <TextoRespuesta texto={m.texto} />
       {m.advertencia && <div className="aviso" role="note">{m.advertencia}</div>}
-      {modelo && <div className="msg-meta"><span>Modelo: {modelo}</span></div>}
+      {(modelo || m.desdeCache) && (
+        <div className="msg-meta">
+          {m.desdeCache && <span className="meta-cache">Respuesta guardada{edadCache ? ` · ${edadCache}` : ''}</span>}
+          {modelo && <span>Modelo: {modelo}</span>}
+        </div>
+      )}
     </div>
   )
 }

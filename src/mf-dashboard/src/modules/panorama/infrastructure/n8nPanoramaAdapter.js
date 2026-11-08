@@ -2,13 +2,32 @@
 //   200 { ok:true, boletin:{anio,semana,fecha_inicio,fecha_fin,fecha_publicacion}|null,
 //         cifras:{ dengue_total, dengue_defunciones, ira_total, ira_neumonias, eda_total, eda_disentericas }  (solo claves presentes),
 //         tiene_cifras:boolean, alertas:string[], periodos:[{anio,semana}], estado:{boletines_procesados,con_cifras},
-//         riesgo:{nivel:'bajo'|'medio'|'alto', detalle:string}|null }
+//         riesgo:{nivel:'bajo'|'medio'|'alto', detalle:string}|null,
+//         frescura?:{ estado:'al_dia'|'desactualizado'|'sin_datos', mensaje:string,
+//                     boletines:{anio,semana,dias,pendientes}, clima:{anio,semana}, casos:{hasta_anio} } }   (Sprint 4 · HU4)
 // Referencia: ADR-012 → Contratos entre capas
 // mf-dashboard no tiene basePath → las URLs /api/... funcionan directamente.
 // PROHIBIDO: import desde fuera de este MF (Regla 1 de gobernanza).
 
 const BASE = ''
 const NIVELES = ['bajo', 'medio', 'alto']
+const ESTADOS_FRESCURA = ['al_dia', 'desactualizado', 'sin_datos']
+
+const aNumero = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
+
+// `frescura` es opcional (un flujo viejo no la manda): si falta o viene rota, el panorama sale igual sin chip.
+function aFrescura(f) {
+  if (!f || typeof f !== 'object' || !ESTADOS_FRESCURA.includes(f.estado)) return null
+  const b = f.boletines || {}
+  const c = f.clima || {}
+  return {
+    estado: f.estado,
+    mensaje: typeof f.mensaje === 'string' ? f.mensaje : '',
+    boletines: { anio: aNumero(b.anio), semana: aNumero(b.semana), dias: aNumero(b.dias), pendientes: aNumero(b.pendientes) ?? 0 },
+    clima: { anio: aNumero(c.anio), semana: aNumero(c.semana) },
+    casosHastaAnio: aNumero(f.casos?.hasta_anio),
+  }
+}
 
 async function postJson(ruta, cuerpo) {
   const res = await fetch(`${BASE}${ruta}`, {
@@ -43,6 +62,7 @@ export async function cargarPanorama(anio, semana) {
       conCifras: Number(data.estado?.con_cifras) || 0,
     },
     riesgo: r && NIVELES.includes(r.nivel) ? { nivel: r.nivel, detalle: String(r.detalle ?? '') } : null,
+    frescura: aFrescura(data.frescura),
   }
 }
 
