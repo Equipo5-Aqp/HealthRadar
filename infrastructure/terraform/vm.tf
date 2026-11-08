@@ -1,6 +1,6 @@
 # VM de recuperación: solo existe con crear_vm = true. Replica la VM del portal (ADR-011):
 # B2als_v2, Ubuntu 24.04, 30 GiB StandardSSD, IP estática, NSG con 22 y 3000, apagado 02:00.
-# Al primer arranque, cloud-init ejecuta bootstrap_vm.sh, que restaura el último backup.
+# Al primer arranque, cloud-init ejecuta tf_bootstrap_vm.sh, que restaura el último backup.
 
 resource "azurerm_virtual_network" "dr" {
   count               = var.crear_vm ? 1 : 0

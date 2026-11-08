@@ -25,10 +25,10 @@ Se adopta **Terraform (provider `azurerm` 4.x)** en `infrastructure/terraform/`,
   - **Key Vault** (RBAC) con el secreto `healthradar-env` = contenido de `infrastructure/.env`.
   
   Ambos llevan `prevent_destroy`.
-- **Solo en una recuperación o simulacro** (`crear_vm = true`): una VM idéntica a la del ADR-011 (B2als_v2, Ubuntu 24.04, 30 GiB StandardSSD, IP estática, NSG 22/3000, apagado a las 02:00 de Lima) con **identidad administrada**. cloud-init clona el repo y ejecuta `bootstrap_vm.sh`: swap → Docker → `.env` desde Key Vault → build secuencial → `restore_healthradar.sh` (último dump del Storage) → `migrate.sh` → stack → cron de backups.
+- **Solo en una recuperación o simulacro** (`crear_vm = true`): una VM idéntica a la del ADR-011 (B2als_v2, Ubuntu 24.04, 30 GiB StandardSSD, IP estática, NSG 22/3000, apagado a las 02:00 de Lima) con **identidad administrada**. cloud-init clona el repo y ejecuta `tf_bootstrap_vm.sh`: swap → Docker → `.env` desde Key Vault → build secuencial → `tf_restore_healthradar.sh` (último dump del Storage) → `migrate.sh` → stack → cron de backups.
 - **La VM del portal no se importa.** Solo se le activa la identidad administrada para que `backup_healthradar.sh` suba cada backup al Storage (`BACKUP_STORAGE_ACCOUNT`).
-- **Acceso sin claves:** VMs y scripts usan tokens IMDS de la identidad administrada (`azure_blob.sh`: curl + python3, sin az CLI en la VM). El secreto se sube con `az keyvault secret set`, **fuera de Terraform**, para que el `.env` no quede en claro en `terraform.tfstate`.
-- **Restore portable:** `restore_healthradar.sh` funciona en cualquier host con Docker. Así se prueba gratis en una VM local de VMware Workstation (`bootstrap_vm.sh --env-file --dump`) antes del simulacro en Azure.
+- **Acceso sin claves:** VMs y scripts usan tokens IMDS de la identidad administrada (`tf_azure_blob.sh`: curl + python3, sin az CLI en la VM). El secreto se sube con `az keyvault secret set`, **fuera de Terraform**, para que el `.env` no quede en claro en `terraform.tfstate`.
+- **Restore portable:** `tf_restore_healthradar.sh` funciona en cualquier host con Docker. Así se prueba gratis en una VM local de VMware Workstation (`tf_bootstrap_vm.sh --env-file --dump`) antes del simulacro en Azure.
 
 Objetivos: **RPO de 1 semana** (backup de los viernes) y **RTO de ~30–40 min**.
 
@@ -46,7 +46,7 @@ Objetivos: **RPO de 1 semana** (backup de los viernes) y **RTO de ~30–40 min**
 
 **Beneficios:**
 
-- El sistema completo se recrea con `terraform apply -var crear_vm=true` (o `recuperar_healthradar.ps1`), sin pasos manuales en el portal.
+- El sistema completo se recrea con `terraform apply -var crear_vm=true` (o `tf_recuperar_healthradar.ps1`), sin pasos manuales en el portal.
 - Backups y secretos viven fuera de la VM. El borrado de la VM o de su grupo de recursos ya no destruye los datos.
 - Costo en contingencia menor a US$0.10/mes. Un simulacro de 2 h cuesta ~US$0.10.
 - Sin contenedores, RAM ni puertos nuevos (ADR-008).

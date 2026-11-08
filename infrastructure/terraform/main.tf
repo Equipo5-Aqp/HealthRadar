@@ -5,7 +5,7 @@ locals {
   storage_account_name = "${var.prefix}bk${var.sufijo_unico}"
   key_vault_name       = "${var.prefix}-kv-${var.sufijo_unico}"
 
-  # Nombre del secreto que bootstrap_vm.sh convierte en infrastructure/.env
+  # Nombre del secreto que tf_bootstrap_vm.sh convierte en infrastructure/.env
   env_secret_name = "healthradar-env"
 
   tags = {
