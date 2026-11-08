@@ -17,8 +17,8 @@
 #   Local (VMware, sin Azure): --env-file <ruta> --dump <archivo.dump.gz>
 #
 # Uso:
-#   sudo bash bootstrap_vm.sh                                     # modo Azure
-#   sudo bash bootstrap_vm.sh --env-file ~/.env --dump ~/pg_2026-W42.dump.gz
+#   sudo bash tf_bootstrap_vm.sh                                     # modo Azure
+#   sudo bash tf_bootstrap_vm.sh --env-file ~/.env --dump ~/pg_2026-W42.dump.gz
 # ==============================================================================
 
 set -euo pipefail
@@ -59,7 +59,12 @@ echo ""
 
 # 1. Swap de 4 GB antes de compilar (HU-304, anti-OOM en 4 GiB de RAM)
 log "[1/6] Swap..."
-bash "$SCRIPT_DIR/setup_swap_azure_vm.sh"
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  # WSL2 (Windows): la swap la gestiona Windows (.wslconfig); un /swapfile propio no aplica.
+  log " -> WSL detectado: la swap la gestiona Windows; se omite."
+else
+  bash "$SCRIPT_DIR/setup_swap_azure_vm.sh"
+fi
 # Hora de Lima: el cron de backups (viernes 20:00) se interpreta con la zona del sistema.
 timedatectl set-timezone America/Lima || log " -> Aviso: no se pudo fijar la zona horaria."
 
@@ -96,8 +101,8 @@ elif [ -f "$INFRA_DIR/.env" ]; then
   log " -> .env existente conservado."
 else
   [ -n "${HR_KEY_VAULT:-}" ] || fail "Sin .env: pasar --env-file o definir HR_KEY_VAULT."
-  # shellcheck source=azure_blob.sh
-  . "$SCRIPT_DIR/azure_blob.sh"
+  # shellcheck source=tf_azure_blob.sh
+  . "$SCRIPT_DIR/tf_azure_blob.sh"
   con_reintentos 20 descargar_env "$INFRA_DIR/.env.raw" || fail "No se pudo leer el secreto de Key Vault $HR_KEY_VAULT."
   # Un .env subido desde Windows trae CRLF: el \r romperia cada valor.
   tr -d '\r' < "$INFRA_DIR/.env.raw" > "$INFRA_DIR/.env.tmp"
@@ -119,15 +124,18 @@ done
 # 5. Restore (una sola vez por VM)
 log "[5/6] Datos..."
 if [ -f "$STATE_DIR/restore.done" ]; then
-  log " -> Restore ya realizado el $(cat "$STATE_DIR/restore.done"); solo se levanta el stack."
+  # tf_restore_healthradar.sh deja la marca apenas verifica los datos: si fallo despues
+  # (migraciones o arranque), aqui se completan esos pasos sin volver a restaurar.
+  log " -> Restore ya realizado el $(cat "$STATE_DIR/restore.done"); se completan migraciones y arranque."
+  "${COMPOSE[@]}" up -d --wait --wait-timeout 180 postgres
+  bash "$SCRIPT_DIR/migrate.sh"
   "${COMPOSE[@]}" up -d --wait --wait-timeout 600
 elif [ -n "$DUMP" ] || [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
   if [ -n "$DUMP" ]; then
-    bash "$SCRIPT_DIR/restore_healthradar.sh" "$DUMP"
+    RESTORE_MARKER="$STATE_DIR/restore.done" bash "$SCRIPT_DIR/tf_restore_healthradar.sh" "$DUMP"
   else
-    bash "$SCRIPT_DIR/restore_healthradar.sh"
+    RESTORE_MARKER="$STATE_DIR/restore.done" bash "$SCRIPT_DIR/tf_restore_healthradar.sh"
   fi
-  date '+%Y-%m-%d %H:%M:%S' > "$STATE_DIR/restore.done"
 else
   log " -> [AVISO] Sin backup (ni --dump ni BACKUP_STORAGE_ACCOUNT): instalacion LIMPIA, sin datos."
   "${COMPOSE[@]}" up -d --wait --wait-timeout 180 postgres
@@ -141,11 +149,15 @@ install -d -m 700 -o "$APP_USER" "$APP_HOME/backups/healthradar"
 BACKUP_LOG="$APP_HOME/backups/healthradar/backup.log"
 {
   crontab -u "$APP_USER" -l 2>/dev/null \
-    | grep -v -e 'backup_healthradar.sh' -e '^TZ=America/Lima' -e '^BACKUP_STORAGE_' || true
+    | grep -v -e 'backup_healthradar.sh' -e '^TZ=America/Lima' -e '^BACKUP_STORAGE_' -e '^HR_KEY_VAULT=' || true
   echo "TZ=America/Lima"
   if [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ]; then
     echo "BACKUP_STORAGE_ACCOUNT=$BACKUP_STORAGE_ACCOUNT"
     echo "BACKUP_STORAGE_CONTAINER=${BACKUP_STORAGE_CONTAINER:-backups}"
+  fi
+  # Aviso semanal si el .env de Key Vault queda desactualizado (backup_healthradar.sh, paso 6c)
+  if [ -n "${HR_KEY_VAULT:-}" ]; then
+    echo "HR_KEY_VAULT=$HR_KEY_VAULT"
   fi
   echo "0 20 * * 5 $SCRIPT_DIR/backup_healthradar.sh >> $BACKUP_LOG 2>&1"
 } | crontab -u "$APP_USER" -

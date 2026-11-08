@@ -18,9 +18,9 @@
 #   5. Levanta el stack completo y prueba http://127.0.0.1:3000/healthz.
 #
 # Uso:
-#   ./restore_healthradar.sh pg_2026-W42.dump.gz      # dump local (.sha256 al lado, opcional)
-#   ./restore_healthradar.sh                          # ultimo dump del Blob (BACKUP_STORAGE_ACCOUNT)
-#   ./restore_healthradar.sh --force <dump>           # sobrescribe una BD con datos
+#   ./tf_restore_healthradar.sh pg_2026-W42.dump.gz      # dump local (.sha256 al lado, opcional)
+#   ./tf_restore_healthradar.sh                          # ultimo dump del Blob (BACKUP_STORAGE_ACCOUNT)
+#   ./tf_restore_healthradar.sh --force <dump>           # sobrescribe una BD con datos
 # ==============================================================================
 
 set -euo pipefail
@@ -59,8 +59,8 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 if [ -z "$DUMP" ]; then
   [ -n "${BACKUP_STORAGE_ACCOUNT:-}" ] || fail "Pasar un archivo .dump.gz o definir BACKUP_STORAGE_ACCOUNT."
-  # shellcheck source=azure_blob.sh
-  . "$SCRIPT_DIR/azure_blob.sh"
+  # shellcheck source=tf_azure_blob.sh
+  . "$SCRIPT_DIR/tf_azure_blob.sh"
   log "[1/5] Buscando el ultimo backup en $BACKUP_STORAGE_ACCOUNT/${BACKUP_STORAGE_CONTAINER:-backups}..."
   NAME=""
   for intento in $(seq 1 20); do
@@ -120,6 +120,10 @@ MIGRACIONES="$(psql_db -tAc "SELECT CASE WHEN to_regclass('public.healthradar_sc
 [ "$MIGRACIONES" -gt 0 ] || fail "El restore no dejo la tabla healthradar_schema_migrations: revisar los errores de pg_restore."
 WORKFLOWS="$(psql_db -tAc "SELECT CASE WHEN to_regclass('public.workflow_entity') IS NULL THEN 0 ELSE (SELECT count(*) FROM workflow_entity) END;")"
 log " -> OK: $MIGRACIONES migraciones registradas, $WORKFLOWS workflows de n8n."
+# Marca opcional (tf_bootstrap_vm.sh): si un paso posterior falla, re-ejecutar no vuelve a restaurar.
+if [ -n "${RESTORE_MARKER:-}" ]; then
+  date '+%Y-%m-%d %H:%M:%S' > "$RESTORE_MARKER"
+fi
 
 # 4. Migraciones posteriores al backup
 log "[4/5] Aplicando migraciones nuevas..."

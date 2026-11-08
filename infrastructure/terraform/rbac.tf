@@ -1,6 +1,8 @@
 # Permisos por identidad (sin claves de acceso en la VM ni en el repo).
 #   Operador (quien ejecuta terraform): sube el .env y lista/descarga backups desde su laptop.
 #   VM actual (portal) y VM de recuperación: leen el .env y suben/descargan backups vía IMDS.
+#   Operadores de lectura: restauran en un Ubuntu propio con su cuenta (tf_preparar_host.sh);
+#   no pueden modificar el .env ni borrar backups.
 
 resource "azurerm_role_assignment" "operador_kv" {
   scope                = azurerm_key_vault.secretos.id
@@ -44,4 +46,20 @@ resource "azurerm_role_assignment" "vm_dr_kv" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_linux_virtual_machine.dr[0].identity[0].principal_id
   principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "lectores_kv" {
+  for_each             = toset(var.operadores_lectura)
+  scope                = azurerm_key_vault.secretos.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = each.value
+  principal_type       = "User"
+}
+
+resource "azurerm_role_assignment" "lectores_blob" {
+  for_each             = toset(var.operadores_lectura)
+  scope                = azurerm_storage_container.backups.id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = each.value
+  principal_type       = "User"
 }
