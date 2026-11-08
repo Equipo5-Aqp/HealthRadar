@@ -36,9 +36,17 @@ const MAX_RESPUESTA = 12000;
 const CAMPOS_RESPUESTA = ['output', 'nivel_riesgo', 'modelo_usado', 'proveedor', 'agente'];
 
 // Palabras que atan la respuesta al día de hoy (o a la semana calendario en curso). Se buscan sobre la
-// pregunta ya normalizada. «situacion actual» o «ultima semana» SÍ se cachean: dependen solo del último
-// boletín, y eso ya lo cubre version_datos.
-const RELATIVAS = /\b(hoy|ayer|anteayer|manana|ahora|ahorita|actualmente|en este momento|esta semana|semana actual|semana en curso|semana pasada|este mes|mes pasado|esta noche)\b/;
+// pregunta ya normalizada. «situacion actual» o «ultimas semanas» (sin número) SÍ se cachean: dependen solo
+// del último boletín, y eso ya lo cubre version_datos. En cambio lo que detectarPeriodo mide desde la fecha
+// de hoy («este año», «el año pasado», «el ultimo año», «ultimas 4 semanas», «ultimos 6 meses»…) cambia
+// con los días y no entra a la caché.
+const NUMERO = '(?:\\d{1,3}|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)';
+const RELATIVAS = new RegExp(
+  '\\b(hoy|ayer|anteayer|antier|manana|ahora|ahorita|actualmente|en este momento|esta semana|semana actual|semana en curso|' +
+  'semana pasada|semana anterior|ultima semana|este mes|mes pasado|mes anterior|mes actual|mes en curso|esta noche|' +
+  'este ano|ano pasado|ano anterior|ano actual|ano en curso|lo que va del ano|lo que va de este ano|' +
+  'hace ' + NUMERO + ' anos?|ultimo (?:mes|ano|trimestre|semestre)|ultim[oa]s ' + NUMERO + ' (?:semanas|meses|anos))\\b'
+);
 
 const aTexto = v => (typeof v === 'string' ? v : '');
 

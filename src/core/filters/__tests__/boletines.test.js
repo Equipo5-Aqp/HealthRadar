@@ -51,4 +51,25 @@ describe('filtrarBoletines', () => {
     const r = filtrarBoletines(periodo, boletines);
     expect(r.length).toBeGreaterThan(0);
   });
+  test('ventana móvil relativa a hoy sin boletines: no se usan "todos", se avisa que no hay boletín del período', () => {
+    const periodo = { anio: null, semana_desde: 45, semana_hasta: 45, anio_desde: 2025, anio_hasta: 2026, ventana_relativa: true };
+    expect(filtrarBoletines(periodo, [{ anio: 2025, semana_epidemiologica: 10, resumen: 'Resumen SE 10' }]))
+      .toEqual([{ _sin_boletines: true, motivo: 'sin_boletin_en_periodo' }]);
+  });
+
+  test('ventana móvil relativa a hoy con boletines dentro: los devuelve', () => {
+    const periodo = { anio: null, semana_desde: 45, semana_hasta: 20, anio_desde: 2025, anio_hasta: 2026, ventana_relativa: true };
+    expect(filtrarBoletines(periodo, boletines).map(b => `${b.anio}-${b.semana_epidemiologica}`))
+      .toEqual(['2026-18', '2026-19', '2026-20', '2025-50']);
+  });
+
+  test('ventana móvil que termina antes de 2025: _sin_boletines sin motivo (años sin cobertura)', () => {
+    const periodo = { anio: null, semana_desde: 10, semana_hasta: 20, anio_desde: 2023, anio_hasta: 2024, ventana_relativa: true };
+    expect(filtrarBoletines(periodo, boletines)).toEqual([{ _sin_boletines: true }]);
+  });
+
+  test('la ventana por defecto (sin ventana_relativa) sigue usando todos si no hay en el rango', () => {
+    const periodo = { anio: null, semana_desde: 1, semana_hasta: 2, anio_desde: 2027, anio_hasta: 2027 };
+    expect(filtrarBoletines(periodo, boletines)).toHaveLength(4);
+  });
 });

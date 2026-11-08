@@ -10,8 +10,9 @@
 //   · Solo hereda un seguimiento de verdad. Una pregunta completa ("en qué consiste la EDA?",
 //     "pero qué es el dengue?") no hereda nada: tras una preposición o un conector (salvo «y»), una
 //     palabra interrogativa la marca como pregunta nueva.
-//   · Un período relativo ("últimas semanas", "esta semana", "hoy", "el año pasado"…) no se reemplaza por
-//     el de la pregunta anterior: cae en la ventana por defecto, como siempre.
+//   · Un período relativo no se reemplaza por el de la pregunta anterior. Si detectarPeriodo lo interpreta
+//     ("el año pasado", "esta semana", "hoy", "las últimas 4 semanas") se usa esa fecha, medida desde hoy;
+//     si es difuso ("últimas semanas", "actualmente", "reciente") cae en la ventana por defecto, como siempre.
 //   · Pedir otro alcance ("a nivel país", "en la costa", "qué departamento…", "todas las enfermedades")
 //     no hereda el departamento ni la enfermedad.
 //   · La herencia no salta un cambio de tema: el contexto de una pregunta viene de la pregunta anterior
@@ -113,9 +114,9 @@ function ponerAnio(pregunta, anio) {
 // no es seguimiento devuelve lo que dice solo; un seguimiento completa lo que falta con el contexto
 // efectivo de la pregunta anterior, que se calcula igual (por eso una pregunta completa corta la cadena).
 
-function periodoEfectivo(lista) {
+function periodoEfectivo(lista, ahora) {
   const [mensaje, ...anteriores] = lista;
-  const actual = detectarPeriodo(mensaje);
+  const actual = detectarPeriodo(mensaje, ahora);
   const t = normalizar(mensaje);
   if (!esSeguimiento(mensaje) || PERIODO_RELATIVO.test(t)) return actual;
 
@@ -125,10 +126,10 @@ function periodoEfectivo(lista) {
   if (!sinAnio && tienePeriodo(actual)) return actual;
   if (anteriores.length === 0) return actual;
 
-  const previo = periodoEfectivo(anteriores);
+  const previo = periodoEfectivo(anteriores, ahora);
   if (sinAnio) {
     if (previo.anio !== null && previo.anio !== undefined) {
-      const conAnio = detectarPeriodo(ponerAnio(mensaje, previo.anio));
+      const conAnio = detectarPeriodo(ponerAnio(mensaje, previo.anio), ahora);
       if (tienePeriodo(conAnio) && conAnio.anio === previo.anio) {
         return { ...conAnio, criterio_usado: `${conAnio.criterio_usado} (año tomado de la pregunta anterior)`, heredado: true };
       }
@@ -169,10 +170,11 @@ function enfermedadEfectiva(lista) {
  *
  * @param {string} pregunta
  * @param {string[]} [previas] - preguntas anteriores del usuario, la más reciente primero
+ * @param {Date} [ahora] - momento de referencia para lo relativo (solo se inyecta en pruebas)
  * @returns {object} lo mismo que detectarPeriodo
  */
-function detectarPeriodoConHistorial(pregunta, previas) {
-  return periodoEfectivo([pregunta, ...preguntasPrevias(previas)]);
+function detectarPeriodoConHistorial(pregunta, previas, ahora) {
+  return periodoEfectivo([pregunta, ...preguntasPrevias(previas)], ahora);
 }
 
 /**

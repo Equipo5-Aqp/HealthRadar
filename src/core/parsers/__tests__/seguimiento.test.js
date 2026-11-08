@@ -341,10 +341,23 @@ describe('Revisión del PR #214: casos adicionales', () => {
       expect(detectarPeriodoConHistorial('y la semana pasada?', A2024).heredado).toBeUndefined();
     });
 
-    test('una pregunta relativa en medio de la cadena corta la herencia del período', () => {
-      const r = detectarPeriodoConHistorial('y en Lima?', ['y la semana pasada?', 'dengue en Piura en la SE 9 de 2026']);
+    test('una pregunta relativa en medio de la cadena: se hereda la fecha YA resuelta, no la anterior', () => {
+      const hoy = new Date('2026-11-08T15:00:00Z'); // SE 45-2026; la semana pasada es la SE 44
+      const r = detectarPeriodoConHistorial('y en Lima?', ['y la semana pasada?', 'dengue en Piura en la SE 9 de 2026'], hoy);
+      expect(r).toMatchObject({ anio: 2026, semana_desde: 44, semana_hasta: 44, heredado: true });
+    });
+
+    test('un relativo que no se interpreta (actualmente, reciente) corta la herencia del período', () => {
+      const r = detectarPeriodoConHistorial('y en Lima?', ['y actualmente?', 'dengue en Piura en la SE 9 de 2026']);
       expect(r.heredado).toBeUndefined();
       expect(r.ventana_por_defecto).toBe(12);
+    });
+
+    test('un seguimiento relativo se interpreta con la fecha de hoy y no hereda', () => {
+      const hoy = new Date('2026-11-08T15:00:00Z');
+      const r = detectarPeriodoConHistorial('y el año pasado?', ['dengue en Piura en 2024'], hoy);
+      expect(r).toMatchObject({ anio: 2025, semana_desde: 1, semana_hasta: 53 });
+      expect(r.heredado).toBeUndefined();
     });
   });
 

@@ -62,11 +62,20 @@ describe('claveCache', () => {
   });
   test('«semana» a secas o «pasado» en otro sentido sí se cachean', () => {
     expect(claveCache('casos de la semana 22', PROMPT)).not.toBe('');
-    expect(claveCache('casos del año pasado en arequipa', PROMPT)).not.toBe('');
+    expect(claveCache('casos del brote pasado de dengue en arequipa', PROMPT)).not.toBe('');
   });
-  test('«situación actual» y «última semana» dependen solo del último boletín: sí se cachean', () => {
+  test('«situación actual» y «últimas semanas» (sin número) dependen solo del último boletín: sí se cachean', () => {
     expect(claveCache('cual es la situacion actual del dengue', PROMPT)).not.toBe('');
-    expect(claveCache('casos de la ultima semana', PROMPT)).not.toBe('');
+    expect(claveCache('casos de las ultimas semanas', PROMPT)).not.toBe('');
+    expect(claveCache('cual es la tendencia reciente', PROMPT)).not.toBe('');
+  });
+  test('lo que se mide desde la fecha de hoy no se cachea: este año, el año pasado, el último año, últimas N semanas…', () => {
+    for (const q of ['casos de dengue este año', 'casos del año pasado en arequipa', 'y el año anterior', 'casos en lo que va del año',
+      'hace dos años', 'hace 3 años', 'cuantos casos hubo el ultimo año', 'casos en el ultimo mes', 'el ultimo trimestre', 'el ultimo semestre',
+      'casos de la ultima semana', 'la semana anterior', 'las ultimas 4 semanas', 'los ultimos 6 meses', 'los ultimos dos años',
+      'el mes anterior', 'el mes actual', 'antier']) {
+      expect(claveCache(q, PROMPT)).toBe('');
+    }
   });
   test('VERSION_CACHE entra a la clave', () => {
     expect(typeof VERSION_CACHE).toBe('string');
