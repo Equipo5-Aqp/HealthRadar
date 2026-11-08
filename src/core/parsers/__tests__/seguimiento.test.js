@@ -173,3 +173,237 @@ describe('detectarEnfermedadConHistorial', () => {
     expect(r.enfermedades_activas).toEqual(['ira_neumonia', 'ira_no_neumonia']);
   });
 });
+
+describe('Casos del PR #214', () => {
+  const periodo = detectarPeriodoConHistorial;
+  const departamento = detectarDepartamentoConHistorial;
+  const enfermedad = detectarEnfermedadConHistorial;
+
+  const SE9 = ['dengue en Piura en la SE 9 de 2026'];
+  const A2024 = ['dengue en Piura en 2024'];
+
+  describe('Hallazgo 1: un periodo relativo no hereda', () => {
+    test.each([
+      ['y en las ultimas 4 semanas?', SE9],
+      ['y la semana pasada?', SE9],
+      ['y cuantos casos hubo en las ultimas semanas?', SE9],
+      ['ahora como esta el dengue esta semana?', SE9],
+      ['y el año pasado?', A2024],
+      ['y en lo que va del año?', A2024],
+      ['y este año?', A2024],
+      ['y este mes?', A2024],
+      ['y hoy?', A2024],
+      ['y actualmente?', A2024],
+      ['entonces cual es la tendencia reciente?', A2024],
+      ['y el ultimo boletin que dice?', A2024],
+    ])('%s', (pregunta, previas) => {
+      expect(periodo(pregunta, previas).heredado).toBeUndefined();
+    });
+  });
+
+  describe('Hallazgo 2: una pregunta independiente no es seguimiento', () => {
+    test.each([
+      'en que consiste la EDA?',
+      'para que sirve el boletin?',
+      'de donde salen estos datos?',
+      'de que trata el boletin mas reciente?',
+      'con que modelo respondes?',
+      'con que frecuencia aparece la EDA?',
+      'pero que es el dengue?',
+      'entonces que recomiendas para prevenir el dengue?',
+      'entonces cual es la fuente de los datos?',
+      'ademas que enfermedades vigilan?',
+    ])('%s', (pregunta) => {
+      expect(esSeguimiento(pregunta)).toBe(false);
+    });
+  });
+
+  describe('Hallazgo 3: pedir otro alcance no hereda', () => {
+    test.each([
+      'y que departamento tuvo mas casos?',
+      'entonces cual es el departamento con mas casos?',
+      'y en el peru?',
+      'y a nivel pais?',
+      'y en todo Peru?',
+      'y en el resto del pais?',
+      'y en los demas departamentos?',
+      'y en la costa?',
+      'y en la selva?',
+    ])('departamento: %s', (pregunta) => {
+      expect(departamento(pregunta, A2024).codigo_departamento).toBeNull();
+    });
+
+    test.each([
+      'y todas las enfermedades?',
+      'y las otras enfermedades?',
+      'y las demas enfermedades?',
+    ])('enfermedad: %s', (pregunta) => {
+      expect(enfermedad(pregunta, A2024).heredado).toBeUndefined();
+    });
+  });
+
+  describe('Hallazgo 4: la herencia no salta un cambio de tema', () => {
+    test('una pregunta nacional corta la herencia del departamento', () => {
+      expect(departamento('y en 2022?', ['casos a nivel nacional de EDA', 'dengue en Piura en 2023']).codigo_departamento).toBeNull();
+      expect(departamento('y la EDA?', ['como estuvo el clima a nivel nacional', 'dengue en Piura en 2023']).codigo_departamento).toBeNull();
+    });
+  });
+
+  describe('Hallazgo 5: la semana sin año toma el año anterior', () => {
+    test('y en la SE 10? tras 2024', () => {
+      expect(Number(periodo('y en la SE 10?', A2024).anio)).toBe(2024);
+    });
+  });
+
+  describe('Lo que ya funciona y debe seguir igual', () => {
+    test('cambia el departamento y hereda el periodo', () => {
+      const previas = ['clima en Ica en la SE 9 de 2026'];
+      expect(departamento('y en Piura?', previas).departamento_detectado).toBe('piura');
+      expect(periodo('y en Piura?', previas).heredado).toBe(true);
+    });
+    test('cambia el año y hereda el departamento', () => {
+      expect(Number(periodo('y en 2023?', A2024).anio)).toBe(2023);
+      expect(departamento('y en 2023?', A2024).heredado).toBe(true);
+    });
+    test('lo mismo para otro departamento', () => {
+      expect(departamento('lo mismo para Tacna', A2024).departamento_detectado).toBe('tacna');
+      expect(periodo('lo mismo para Tacna', A2024).heredado).toBe(true);
+    });
+    test('a nivel nacional quita el departamento', () => {
+      expect(departamento('a nivel nacional?', A2024).codigo_departamento).toBeNull();
+    });
+    test('una pregunta completa no hereda', () => {
+      expect(esSeguimiento('Cuantos casos de EDA hubo en Tacna en 2023?')).toBe(false);
+    });
+  });
+});
+
+describe('Revisión del PR #214: casos adicionales', () => {
+  const A2024 = ['dengue en Piura en 2024'];
+  const SE9 = ['dengue en Piura, SE 9-2026'];
+  const cuenta = (texto, sub) => texto.split(sub).length - 1;
+
+  describe('semana o mes sin año: toman el año de la pregunta anterior', () => {
+    const campos = (d) => ({ anio: d.anio, semana_desde: d.semana_desde, semana_hasta: d.semana_hasta });
+
+    test('mes sin año tras un año completo', () => {
+      const r = detectarPeriodoConHistorial('y en marzo?', A2024);
+      expect(r).toMatchObject({ ...campos(detectarPeriodo('marzo de 2024')), heredado: true });
+      expect(r.criterio_usado).toBe('mes especifico: marzo 2024 (año tomado de la pregunta anterior)');
+    });
+
+    test('mes sin año tras una semana de otro año: usa el año de esa semana', () => {
+      expect(detectarPeriodoConHistorial('y en enero?', SE9)).toMatchObject({ ...campos(detectarPeriodo('enero de 2026')), heredado: true });
+    });
+
+    test('semana sin año tras otra semana', () => {
+      expect(detectarPeriodoConHistorial('y en la SE 10?', SE9)).toMatchObject({ anio: 2026, semana_desde: 10, semana_hasta: 10, heredado: true });
+      expect(detectarPeriodoConHistorial('y en la SE 10?', A2024)).toMatchObject({ anio: 2024, semana_desde: 10, semana_hasta: 10, heredado: true });
+    });
+
+    test('rango de meses sin año: el año va al final del rango', () => {
+      const r = detectarPeriodoConHistorial('y entre enero y marzo?', A2024);
+      expect(r).toMatchObject({ ...campos(detectarPeriodo('entre enero y marzo de 2024')), heredado: true });
+    });
+
+    test('el mes va aunque la pregunta siga con otra cosa', () => {
+      expect(detectarPeriodoConHistorial('y en marzo en Piura?', A2024)).toMatchObject({ anio: 2024, heredado: true });
+    });
+
+    test('la pregunta anterior también era un seguimiento: se arrastra el año de la cadena', () => {
+      const r = detectarPeriodoConHistorial('y en Lima?', ['y en la SE 10?', 'dengue en Piura en 2024']);
+      expect(r).toMatchObject({ anio: 2024, semana_desde: 10, semana_hasta: 10, heredado: true });
+      expect(cuenta(r.criterio_usado, 'pregunta anterior')).toBe(1);
+    });
+
+    test('si el mensaje trae el año, manda el mensaje', () => {
+      const r = detectarPeriodoConHistorial('y en la SE 10 de 2023?', A2024);
+      expect(r).toEqual(detectarPeriodo('y en la SE 10 de 2023?'));
+      expect(r.heredado).toBeUndefined();
+    });
+
+    test('sin año anterior que usar: queda como el detector base', () => {
+      for (const previas of [[], ['hola'], ['clima en Ica en 2020, 2021 y 2022']]) {
+        expect(detectarPeriodoConHistorial('y en la SE 10?', previas).heredado).toBeUndefined();
+      }
+      expect(detectarPeriodoConHistorial('y en la SE 10?', [])).toEqual(detectarPeriodo('y en la SE 10?'));
+    });
+
+    test('una pregunta completa con semana y sin año no cambia (no es seguimiento)', () => {
+      const q = 'Dime los casos de la SE 12';
+      expect(detectarPeriodoConHistorial(q, A2024)).toEqual(detectarPeriodo(q));
+    });
+  });
+
+  describe('período relativo', () => {
+    test('el departamento sí se hereda; el período no', () => {
+      expect(detectarDepartamentoConHistorial('y la semana pasada?', A2024).departamento_detectado).toBe('piura');
+      expect(detectarPeriodoConHistorial('y la semana pasada?', A2024).heredado).toBeUndefined();
+    });
+
+    test('una pregunta relativa en medio de la cadena corta la herencia del período', () => {
+      const r = detectarPeriodoConHistorial('y en Lima?', ['y la semana pasada?', 'dengue en Piura en la SE 9 de 2026']);
+      expect(r.heredado).toBeUndefined();
+      expect(r.ventana_por_defecto).toBe(12);
+    });
+  });
+
+  describe('la herencia no salta un cambio de tema', () => {
+    test('una pregunta completa corta la cadena: lo que dijo sí cuenta, lo anterior no', () => {
+      const previas = ['cuantos casos de EDA hubo?', 'clima en Ica en la SE 9 de 2026'];
+      expect(detectarPeriodoConHistorial('y en Piura?', previas).heredado).toBeUndefined();
+      expect(detectarDepartamentoConHistorial('y en 2023?', previas).codigo_departamento).toBeNull();
+      const e = detectarEnfermedadConHistorial('y en Piura?', previas);
+      expect(e.enfermedades_activas).toEqual(['eda']);
+      expect(e.heredado).toBe(true);
+    });
+
+    test('4 preguntas atrás tras un cambio de tema no se usa', () => {
+      const previas = ['que es el dengue?', 'hola', 'gracias', 'clima en Ica en 2020'];
+      expect(detectarPeriodoConHistorial('y en Tacna?', previas).heredado).toBeUndefined();
+      expect(detectarDepartamentoConHistorial('y en 2021?', previas).codigo_departamento).toBeNull();
+    });
+
+    test('una cadena de seguimientos sí llega hasta el origen', () => {
+      const previas = ['y en Cusco?', 'y en Lima?', 'clima en Ica en 2020'];
+      expect(detectarPeriodoConHistorial('y en Tacna?', previas)).toMatchObject({ anio: 2020, heredado: true });
+      expect(detectarDepartamentoConHistorial('y en 2021?', ['y en 2022?', 'y en 2023?', 'dengue en Piura en 2024']).departamento_detectado).toBe('piura');
+    });
+
+    test('un seguimiento nacional en medio corta el departamento', () => {
+      expect(detectarDepartamentoConHistorial('y en 2022?', ['y a nivel nacional?', 'dengue en Piura en 2023']).codigo_departamento).toBeNull();
+    });
+
+    test('la enfermedad heredada de una cadena no repite la nota del criterio', () => {
+      const e = detectarEnfermedadConHistorial('y en Cusco?', ['y en Lima?', 'casos de IRA en 2023']);
+      expect(e.enfermedades_activas).toEqual(['ira_neumonia', 'ira_no_neumonia']);
+      expect(cuenta(e.criterio_enfermedad, 'pregunta anterior')).toBe(1);
+    });
+  });
+
+  describe('alcance: otro alcance no hereda', () => {
+    test('«qué enfermedad…» tampoco hereda la enfermedad', () => {
+      expect(detectarEnfermedadConHistorial('y que enfermedad tuvo mas casos?', A2024).heredado).toBeUndefined();
+    });
+    test('si el mensaje nombra el departamento, manda aunque diga «en el Perú»', () => {
+      expect(detectarDepartamentoConHistorial('y en Lima, en el Peru?', A2024).codigo_departamento).toBe('15');
+    });
+  });
+
+  describe('esSeguimiento: conectores y preposiciones', () => {
+    test.each([
+      'igual que en 2023?',
+      'o en Lima?',
+      'ahora en Piura?',
+      'y que enfermedades hay?',
+    ])('sí: %s', (q) => expect(esSeguimiento(q)).toBe(true));
+
+    test.each([
+      'o que es el dengue?',
+      'tambien como se previene?',
+      'a que se debe el aumento?',
+      'sobre que base se calcula?',
+      'en cuantos departamentos hay casos de EDA?',
+    ])('no: %s', (q) => expect(esSeguimiento(q)).toBe(false));
+  });
+});
